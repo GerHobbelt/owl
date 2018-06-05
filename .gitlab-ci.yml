@@ -9,6 +9,7 @@ build:
       - bin/vm
       - fasl/ol.fasl
 
+build:
   stage: ol
   script:
     - make bin/ol
