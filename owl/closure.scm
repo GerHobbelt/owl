@@ -6,7 +6,6 @@
 
    (export
       build-closures
-      small-value?
       uncompiled-closure?)
 
    (import
@@ -24,13 +23,6 @@
    (begin
       (define (ok exp env) (tuple 'ok exp env))
       (define (fail reason) (tuple 'fail reason))
-
-      (define (small-value? val)
-         (or
-            (and (fixnum? val) (< -129 val 128))
-            (eq? val #true)
-            (eq? val #false)
-            (eq? val null)))
 
       (define (value-primop val)
          (and (tuple? val)

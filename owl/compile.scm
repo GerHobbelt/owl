@@ -28,7 +28,7 @@
 
    (begin
 
-      (define try-n-perms 1000)	 ;; how many load permutations to try before evicting more registers
+      (define try-n-perms 1000) ;; how many load permutations to try before evicting more registers
 
       (define (ok exp env) (tuple 'ok exp env))
       (define (fail reason) (tuple 'fail reason))
@@ -408,23 +408,15 @@
                   (rtl-jump (car all) (cdr all) free
                      (rtl-pick-call regs rator (length rands)))))))
 
-      (define (value-pred pred)
-         (λ (val)
-            (tuple-case val
-               ((value val) (pred val))
-               (else #false))))
-
-      (define null-value? (value-pred null?))
-      (define false-value? (value-pred not))
-      (define zero-value? (value-pred zero?))
+      (define (value-simple? val)
+         (tuple-case val
+            ((value val) (simple-value? val))
+            (else #f)))
 
       (define (simple-first a b cont)
-         (cond
-            ((null-value? b)  (cont b a))
-            ((false-value? b) (cont b a))
-            ((zero-value? b)  (cont b a))
-            (else
-               (cont a b))))
+         (if (value-simple? b)
+            (cont b a)
+            (cont a b)))
 
       (define (extract-value node)
          (tuple-case node
@@ -457,33 +449,20 @@
                      (simple-first a b
                         ;;; move simple to a, if any
                         (λ (a b)
-                           (cond
-                              ;; todo: convert jump-if-<val> rtl nodes to a single shared rtl node to avoid having to deal with them as separate instructions
-                              ((null-value? a) ; jump-if-null (optimization)
-                                 (rtl-simple regs b (λ (regs bp)
+                           (if-lets ((val (value-simple? a)))
+                              (rtl-simple regs b
+                                 (λ (regs bp)
                                     (let
                                        ((then (rtl-any regs then))
                                         (else (rtl-any regs else)))
-                                       (tuple 'jeqi 64 bp then else)))))
-                              ((false-value? a) ; jump-if-false
-                                 (rtl-simple regs b (λ (regs bp)
-                                    (let
-                                       ((then (rtl-any regs then))
-                                        (else (rtl-any regs else)))
-                                       (tuple 'jeqi 192 bp then else)))))
-                              ((zero-value? a) ; jump-if-false
-                                 (rtl-simple regs b (λ (regs bp)
-                                    (let
-                                       ((then (rtl-any regs then))
-                                        (else (rtl-any regs else)))
-                                       (tuple 'jeqi 0 bp then else)))))
-                              (else
-                                 (rtl-simple regs a (λ (regs ap)
+                                       (tuple 'jeqi val bp then else))))
+                              (rtl-simple regs a
+                                 (λ (regs ap)
                                     (rtl-simple regs b (λ (regs bp)
                                        (let
                                           ((then (rtl-any regs then))
                                            (else (rtl-any regs else)))
-                                          (tuple 'jeq ap bp then else)))))))))))
+                                          (tuple 'jeq ap bp then else))))))))))
                   ;; NOT IN USE YET -- typed binding
                   ((eq? kind 4)   ; (branch-4 name type (λ (f0 .. fn) B) Else)
                      ; FIXME check object size here (via meta)

@@ -5,7 +5,9 @@
 (define-library (owl assemble)
 
    (export
-      assemble-code)
+      assemble-code
+      simple-value?
+      small-value?)
 
    (import
       (owl defmac)
@@ -73,6 +75,17 @@
               (set . 25)     ; set a, p, b     Ra[Rp] = Rb
               (jbf . 26)     ; jump-binding tuple n f offset ... r1 ... rn
               )))
+
+      (define simple-values
+         (list->ff '((0 . 0) (() . 64) (#t . 128) (#f . 192))))
+
+      (define (simple-value? val)
+         (get simple-values val #f))
+
+      (define (small-value? val)
+         (or
+            (simple-value? val)
+            (and (fixnum? val) (< -129 val 128))))
 
       (define (inst->op name)
          (or
