@@ -1,35 +1,14 @@
 image: gcc
 
 stages:
-  - fixedpoint
-  - binary
-  - test
+  - everything
 
-fasl fixed point:
-  stage: fixedpoint
+build and test:
+  stage: everything
   script:
-    - make fasl/ol.fasl
+    - make
   artifacts:
     paths:
       - bin/vm
-      - fasl/ol.fasl
-
-ol:
-  stage: binary
-  script:
-    - make bin/ol
-  artifacts:
-    paths:
       - bin/ol
-
-test:
-  stage: test
-  script:
-     - ./bin/ol --run tests/theorem-rand.scm -n 1000
-
-cache:
-  untracked: true
-  paths:
-    - bin/*
-    - fasl/*.fasl
-    - c/*.c
+      - fasl/ol.fasl
