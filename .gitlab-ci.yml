@@ -1,18 +1,9 @@
 image: gcc
 
 stages:
-  - vm
   - fixedpoint
   - binary
   - test
-
-vm:
-  stage: vm
-  script:
-    - make bin/vm
-  artifacts:
-    paths:
-      - bin/vm
 
 fasl fixed point:
   stage: fixedpoint
@@ -20,6 +11,7 @@ fasl fixed point:
     - make fasl/ol.fasl
   artifacts:
     paths:
+      - bin/vm
       - fasl/ol.fasl
 
 ol:
@@ -39,5 +31,5 @@ cache:
   untracked: true
   paths:
     - bin/*
-    - fasl/*
-    - c/*
+    - fasl/*.fasl
+    - c/*.c
