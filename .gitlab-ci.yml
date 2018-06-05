@@ -36,6 +36,7 @@ test:
      - ./bin/ol --run tests/theorem-rand.scm -n 1000
 
 cache:
+  untracked: true
   paths:
     - bin/*
     - fasl/*
