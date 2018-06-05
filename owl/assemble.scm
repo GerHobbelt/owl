@@ -57,13 +57,6 @@
               (clos1 . 196)
               (cloc1 . 68)
               (move2 . 5)     ; two moves, 4 args
-              (goto-code . 18)
-              (goto-proc . 19)
-              (goto-clos . 21)
-              (cons . 51)     ; cons a, b, t:   Rt = mkpair(a, b)
-              (car  . 105)    ; car a, t:       Rt = car(a);
-              (cdr  . 169)    ; cdr a, t:       Rt = cdr(a);
-              (eq   . 54)     ; eq a, b, t:     Rt = (Ra == Rb) ? true : false;
               (jeq . 8)       ; jeq a b o1 o2   ip += o if Ra == Rb
               (jeqi . 16)     ; jeqi a o1 o2    ip += o if Ra == imm[i>>6]
               (ld   . 14)     ; ld a, t:        Rt = a, signed byte
@@ -72,8 +65,6 @@
               (ldf  . 205)     ; ldf t:          Rt = false
               (ldt  . 141)     ; ldt t:          Rt = true
               (ret  . 24)     ; ret a:          call R3 (usually cont) with Ra
-              (set . 25)     ; set a, p, b     Ra[Rp] = Rb
-              (jbf . 26)     ; jump-binding tuple n f offset ... r1 ... rn
               )))
 
       (define simple-values
