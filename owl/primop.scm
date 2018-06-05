@@ -203,7 +203,6 @@
             (tuple 'fx*          39 2 2 fx*)   ;; (fx* a b)      ;; 2 out
             (tuple 'fx-          40 2 2 fx-)   ;; (fx- a b)       ;; 2 out
             (tuple 'fx>>         58 2 2 fx>>)   ;; (fx>> a b) -> hi lo, lo are the lost bits
-            (tuple 'set-ticker   62 1 1 set-ticker)
             (tuple 'sys-prim     63 4 1 sys-prim)))
 
       (define primops
