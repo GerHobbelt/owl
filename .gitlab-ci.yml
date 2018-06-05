@@ -1,0 +1,14 @@
+image: gcc
+
+build:
+  stage: build
+  script:
+    - make
+  artifacts:
+    paths:
+      - bin/ol
+
+test:
+  stage: test
+  script:
+     - ./bin/ol --run tests/theorem-rand.scm -n 1000
