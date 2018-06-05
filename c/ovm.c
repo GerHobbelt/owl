@@ -616,7 +616,7 @@ static word prim_sys(word op, word a, word b, word c) {
       case 9: /* return process variables */
          return onum(
             a == F(0) ? errno :
-            a == F(1) ? (word)environ :
+            a == F(1) ? (uintptr_t)environ :
             a == F(8) ? nalloc + fp - memstart : /* total allocated objects so far */
             a == F(9) ? maxheap : /* maximum heap size in a major gc */
             max_heap_mb, 0);
@@ -643,11 +643,11 @@ static word prim_sys(word op, word a, word b, word c) {
          struct dirent *ent;
          errno = 0;
          ent = readdir((DIR *)(intptr_t)cnum(a));
-         return onum(ent != NULL ? (word)&ent->d_name : 0, 0); }
+         return onum(ent != NULL ? (uintptr_t)&ent->d_name : 0, 0); }
       case 13: /* close-dir dirp → bool */
          return BOOL(closedir((DIR *)(intptr_t)cnum(a)) == 0);
       case 14: /* strerror errnum → pointer */
-         return onum((word)strerror(immval(a)), 0);
+         return onum((uintptr_t)strerror(immval(a)), 0);
       case 15: /* fcntl port cmd arg → integer | #f */
          if (is_type(a, TPORT)) {
             int res = fcntl(immval(a), cnum(b), (intptr_t)cnum(c));
@@ -656,7 +656,7 @@ static word prim_sys(word op, word a, word b, word c) {
          }
          return IFALSE;
       case 16: /* getenv key → pointer */
-         return onum(stringp(a) ? (word)getenv((const char *)a + W) : 0, 0);
+         return onum(stringp(a) ? (uintptr_t)getenv((const char *)a + W) : 0, 0);
       case 17: { /* exec[v] path argl ret */
          char *path = (char *)a + W;
          int nargs = llen((word *)b);
