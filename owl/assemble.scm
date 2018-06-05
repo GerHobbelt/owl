@@ -49,7 +49,7 @@
 
       (define vm-instructions
          (list->ff
-            `((move . 9)      ; move a, t:      Rt = Ra
+            '((move . 9)      ; move a, t:      Rt = Ra
               (refi . 1)      ; refi a, p, t:   Rt = Ra[p], p unsigned
               (goto . 2)      ; jmp a, nargs    call Ra with nargs args
               (clos . 132)    ; clos lp, o, nenv, e0 ... en, t:
@@ -60,10 +60,7 @@
               (jeq . 8)       ; jeq a b o1 o2   ip += o if Ra == Rb
               (jeqi . 16)     ; jeqi a o1 o2    ip += o if Ra == imm[i>>6]
               (ld   . 14)     ; ld a, t:        Rt = a, signed byte
-              (ldz . 13)
-              (ldn  . 77)     ; 13 + 1<<6
-              (ldf  . 205)     ; ldf t:          Rt = false
-              (ldt  . 141)     ; ldt t:          Rt = true
+              (ldi . 13)
               (ret  . 24)     ; ret a:          call R3 (usually cont) with Ra
               )))
 
@@ -193,12 +190,10 @@
                                     (assemble more fail)))))))))
             ((ld val to cont)
                (cond
-                  ((eq? val 0)
-                     (ilist (inst->op 'ldz) (reg to)
-                        (assemble cont fail)))
-                  ((eq? val null)
-                     (ilist (inst->op 'ldn) (reg to)
-                        (assemble cont fail)))
+                  ((simple-value? val) =>
+                     (λ (op)
+                        (ilist (fxbor (inst->op 'ldi) op) (reg to)
+                           (assemble cont fail))))
                   ((fixnum? val)
                      (let ((code (assemble cont fail)))
                         (if (not (< -129 val 128)) ; would be a bug
@@ -206,12 +201,6 @@
                         (ilist (inst->op 'ld)
                            (if (< val 0) (+ 256 val) val)
                            (reg to) code)))
-                  ((eq? val #false)
-                     (ilist (inst->op 'ldf) (reg to)
-                        (assemble cont fail)))
-                  ((eq? val #true)
-                     (ilist (inst->op 'ldt) (reg to)
-                        (assemble cont fail)))
                   (else
                      (fail (list "cannot assemble a load for " val)))))
             ((refi from offset to more)
