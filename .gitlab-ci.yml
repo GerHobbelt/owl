@@ -1,14 +1,22 @@
 image: gcc
 
 build:
-  stage: build
+  stage: fasl fixed point
   script:
-    - make
+    - make fasl/ol.fasl
+  artifacts:
+    paths:
+      - bin/vm
+      - fasl/ol.fasl
+
+  stage: ol
+  script:
+    - make bin/ol
   artifacts:
     paths:
       - bin/ol
 
 test:
-  stage: test
+  stage: theorem-rand 1000 rounds
   script:
      - ./bin/ol --run tests/theorem-rand.scm -n 1000
