@@ -34,3 +34,9 @@ test:
   stage: test
   script:
      - ./bin/ol --run tests/theorem-rand.scm -n 1000
+
+cache:
+  paths:
+    - bin/*
+    - fasl/*
+    - c/*
