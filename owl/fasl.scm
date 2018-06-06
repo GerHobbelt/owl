@@ -53,7 +53,7 @@
       (only (owl syscall) error)
       (owl proof)
       (owl list)
-      (owl rlist))
+      (owl rlist-lcb))
 
    (begin
 
@@ -322,7 +322,7 @@
                            (decoder ll (rcons obj got) fail)))
                      ((eq? kind 0) ;; fasl stream end marker
                         ;; object done
-                        (values ll (rcar got)))
+                        (values ll (rget got 0 #f)))
                      ((eq? (band kind 3) 3) ; shortcut allocated
                         (lets
                            ((type (>> kind 2))
@@ -346,7 +346,7 @@
                         ; a leading 0 is special and means the stream has no allocated objects, just one immediate one
                         (if (eq? (car ll) 0)
                            (decode-immediate (cdr ll) fail)
-                           (decoder ll null fail)))
+                           (decoder ll rnull fail)))
                      (else (decode-or (ll) err)))))))
 
       ;; decode a full (possibly lazy) list of data, and succeed only if it exactly matches a fasl-encoded object
