@@ -1,7 +1,7 @@
-
 (import
-   (only (owl rlist) rcons rget rset rlist) ;; an O(log n) library
-   (only (owl sys) get-heap-bytes-written))
+   ;(only (owl rlist) rcons rget rset rlist) ;; an O(log n) library
+   (only (owl rlist-lcb) rcons rget rlist) ;; an next gen O(log n) library
+   (only (owl sys) get-heap-bytes-written get-heap-max-live))
 
 ;; compare against O(n)
 ; (define rcons cons)
@@ -31,7 +31,7 @@
    (if (eq? n -1)
       rl
       (let ((val (rget rl n #f)))
-         (if (and val (= n val))
+         (if 1 ; (and val (= n val)) just benchmark
             (get-all rl (- n 1))
             (error "rlist value error" (cons n val))))))
 
@@ -51,7 +51,8 @@
    (lets 
       ((rl make-ns make-alloc (apply-measured make-rlist size))
        (rl ref-ns ref-alloc (apply-measured get-all rl (- size 1)))
-       (rl set-ns set-alloc (apply-measured set-all rl (- size 1))))
+       ;(rl set-ns set-alloc (apply-measured set-all rl (- size 1)))
+       )
       (if print?
          (begin
             ;(print "generation: " make-ns "ns")
@@ -62,9 +63,9 @@
             (print size " ref: " (round (/ ref-ns 1000000)) "ms")
             (print size " ref: " (quotient ref-ns size) "ns/elem")
             (print size " ref: " (quotient ref-alloc size) "W/elem")
-            (print size " set: " (round (/ set-ns 1000000)) "ms")
-            (print size " set: " (quotient set-ns size) "ns/elem")
-            (print size " set: " (quotient set-alloc size) "W/elem")
+            ;(print size " set: " (round (/ set-ns 1000000)) "ms")
+            ;(print size " set: " (quotient set-ns size) "ns/elem")
+            ;(print size " set: " (quotient set-alloc size) "W/elem")
             ))
      0))
 
