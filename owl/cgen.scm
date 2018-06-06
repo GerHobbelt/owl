@@ -42,7 +42,7 @@
             ((eq? val null) "INULL")
             ((eq? val #true) "ITRUE")
             ((eq? val #false) "IFALSE")
-            ((and (eq? (type val) type-fix+) (< val 256))
+            ((eq? (type val) type-fix+)
                (bytes->string
                   (foldr render null
                      (list "F(" val ")"))))
@@ -56,7 +56,7 @@
             (let ((bytes (map (H ref code) (iota 0 1 (sizeb code)))))
                (if (eq? (car bytes) 0) ;; (0 <hi8> <lo8>) == call extra instruction
                   (lets
-                     ((opcode (+ (<< (cadr bytes) 8) (car (cddr bytes))))
+                     ((opcode (fxbor (<< (cadr bytes) 8) (car (cddr bytes))))
                       (bytecode (get extras opcode #false)))
                      (if bytecode
                         (code->bytes bytecode extras) ;; <- vanilla bytecode (modulo boostrap bugs)
@@ -115,9 +115,6 @@
             (values
                (list "R["ret"]=prim_sys(R["op"],R["a1"],R["a2"],R["a3"]);")
                bs (del regs ret))))
-
-      (define (cify-type bs regs fail)
-         (error "deprecated type instruction used" 10))
 
       ;; lraw lst-reg type-reg flipp-reg to
       (define (cify-sizeb bs regs fail)
@@ -242,7 +239,7 @@
              (to bs bs))
             (values
                (ilist "*fp=make_header("(+ nfields 1)","type");"
-                   (foldr ; <- fixme: switch to foldr to write in-order
+                  (foldr ; <- fixme: switch to foldr to write in-order
                      (λ (p tl) ; <- (pos . reg)
                         (ilist "fp[" (car p) "]=R[" (cdr p) "];" tl))
                      (list "R[" to "]=(word)fp;fp+=" (+ nfields 1) ";")
@@ -259,7 +256,7 @@
                 (to bs bs))
                (values
                   (ilist "*fp=make_header("size","type");fp[1]=G(R["litp"],"litoff");"
-                      (fold
+                     (fold
                         (λ (tl p) ; <- (pos . reg)
                            (ilist "fp[" (car p) "]=R[" (cdr p) "];" tl))
                         (list "R[" to "]=(word)fp;fp+=" size ";")
@@ -289,7 +286,7 @@
          (λ (bs regs fail)
             (lets
                ((a lo8 hi8 bs (get3 (cdr bs)))
-                (jump-len (bor (<< hi8 8) lo8)))
+                (jump-len (fxbor (<< hi8 8) lo8)))
                (values 'branch (tuple (list "R[" a "]==" (represent val fail)) (drop bs jump-len) regs bs regs) regs))))
 
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -323,14 +320,13 @@
                   (λ (bs regs fail)
                      (lets
                         ((a b lo8 hi8 bs (get4 (cdr bs)))
-                         (jump-len (bor (<< hi8 8) lo8)))
+                         (jump-len (fxbor (<< hi8 8) lo8)))
                         (values 'branch (tuple (list "R[" a "]==R[" b "]") (drop bs jump-len) regs bs regs) regs))))
                (cons 9 ;; move to from
                   (λ (bs regs fail)
                      (lets ((from to bs (get2 (cdr bs))))
                         (cond ;                                                        .--> note, maybe have #false value set
                            (else (values (list "R[" to "]=R[" from "];") bs (put regs to (get regs from #false))))))))
-               (cons 10 cify-type)
                ;; 13=ldi, see higher ops
                (cons 14 ;; ldfix <n> <to>
                   (λ (bs regs fail)
@@ -360,7 +356,7 @@
                ;   (λ (bs regs fail)
                ;      (lets
                ;         ((arity hi8 lo8 bs (get3 (cdr bs)))
-               ;          (jump-len (bor (<< hi8 8) lo8)))
+               ;          (jump-len (fxbor (<< hi8 8) lo8)))
                ;          (values 'branch
                ;            (tuple
                ;               (list "acc>=" arity)
@@ -374,7 +370,7 @@
                   (λ (bs regs fail)
                      (lets
                         ((arity hi8 lo8 bs (get3 (cdr bs)))
-                         (jump-len (bor (<< hi8 8) lo8)))
+                         (jump-len (fxbor (<< hi8 8) lo8)))
                          (values 'branch
                            (tuple
                               (list "acc==" arity)
@@ -411,15 +407,15 @@
                          (known-type (get regs from #false)))
                         (cond
                            ((eq? 'pair known-type)
-                              ;(print " >>> omitting pair check from car <<< ")
+                              ;(print " >>> omitting pair check from car <<<")
                               (values (list "R[" to "]=G(R[" from "],1);") bs (del regs to)))
                            ((eq? 'alloc known-type)
-                              ;(print " >>> omitting immediate check from car  <<< ")
+                              ;(print " >>> omitting immediate check from car <<<")
                               (values
                                  (list "assert(V(R[" from "])==PAIRHDR,R[" from "],1105);R[" to "]=G(R[" from "],1);")
                                  bs (del (put regs from 'pair) to))) ;; upgrade to pair
                            (else
-                              ;(if known-type (print " >>> car on unknown type <<< " known-type))
+                              ;(if known-type (print " >>> car on unknown type <<<" known-type))
                               ;; check that it is a pointer and an object of correct type
                               (values
                                  (list "assert(pairp(R[" from "]),R[" from "],1105);R[" to "]=G(R[" from "],1);")
@@ -431,15 +427,15 @@
                          (known-type (get regs from #false)))
                         (cond
                            ((eq? 'pair known-type)
-                              ;(print " >>> omitting pair check from cdr <<< ")
+                              ;(print " >>> omitting pair check from cdr <<<")
                               (values (list "R[" to "]=G(R[" from "],2);") bs (del regs to)))
                            ((eq? 'alloc known-type)
-                              ;(print " >>> omitting immediate check from cdr  <<< ")
+                              ;(print " >>> omitting immediate check from cdr <<<")
                               (values
                                  (list "assert(V(R[" from "])==PAIRHDR,R[" from "],1169);R[" to "]=G(R[" from "],2);")
                                  bs (del (put regs from 'pair) to))) ;; upgrade to pair
                            (else
-                              ;(if known-type (print " >>> cdr on unknown type <<< " known-type))
+                              ;(if known-type (print " >>> cdr on unknown type <<<" known-type))
                               ;; check that it is a pointer and an object of correct type
                               (values
                                  (list "assert(pairp(R[" from "]),R[" from "],1169);R[" to "]=G(R[" from "],2);")
