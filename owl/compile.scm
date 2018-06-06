@@ -48,13 +48,6 @@
             a0
             (+ (ref (car regs) 3) 1)))
 
-      (define (load-small-value regs val cont)
-         (let ((reg (next-free-register regs)))
-            (tuple 'ld val reg
-               (cont
-                  (cons (tuple 'val val reg) regs)
-                  reg))))
-
       ; get index of thing at (future) tuple
       ; lst = (l0 l1 ... ln) -> #(header <code/proc> l0 ... ln)
       (define (index-of thing lst pos)
@@ -108,9 +101,9 @@
                ((fixnum? position)
                   (cont regs position))
                ((small-value? val)
-                  (load-small-value regs val
-                     (λ (regs pos)
-                        (cont regs pos))))
+                  (let ((reg (next-free-register regs)))
+                     (tuple 'ld val reg
+                        (cont (cons (tuple 'val val reg) regs) reg))))
                ((not position)
                   (error "rtl-value: cannot make a load for a " val))
                ((fixnum? (cdr position))
@@ -449,13 +442,13 @@
                      (simple-first a b
                         ;;; move simple to a, if any
                         (λ (a b)
-                           (if-lets ((val (value-simple? a)))
+                           (if-lets ((i (value-simple? a)))
                               (rtl-simple regs b
                                  (λ (regs bp)
                                     (let
                                        ((then (rtl-any regs then))
                                         (else (rtl-any regs else)))
-                                       (tuple 'jeqi val bp then else))))
+                                       (tuple 'jeqi i bp then else))))
                               (rtl-simple regs a
                                  (λ (regs ap)
                                     (rtl-simple regs b (λ (regs bp)

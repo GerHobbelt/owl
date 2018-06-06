@@ -93,11 +93,11 @@
       ;;;
 
       (define (output-code op lst)
-         (if (eq? op (fxband op #xff))
-            (cons op lst)
+         (if (> op #xff)
             (output-code
                (>> op 8)
-               (cons (band op #xff) lst))))
+               (cons (fxband op #xff) lst))
+            (cons op lst)))
 
       ; rtl -> list of bytes
       ;; ast fail-cont → code' | (fail-cont <reason>)
@@ -191,8 +191,8 @@
             ((ld val to cont)
                (cond
                   ((simple-value? val) =>
-                     (λ (op)
-                        (ilist (fxbor (inst->op 'ldi) op) (reg to)
+                     (λ (i)
+                        (ilist (fxbor (inst->op 'ldi) i) (reg to)
                            (assemble cont fail))))
                   ((fixnum? val)
                      (let ((code (assemble cont fail)))
@@ -215,17 +215,17 @@
                   ((then (assemble then fail))
                    (else (assemble else fail))
                    (len (length else)))
-                  (if (< len #x10000)
-                     (ilist (bor (inst->op 'jeqi) i) (reg a) (band len #xff) (>> len 8) (append else then))
-                     (fail (list "invalid jump offset: " len)))))
+                  (if (> len #xffff)
+                     (fail (list "invalid jump offset: " len))
+                     (ilist (fxbor (inst->op 'jeqi) i) (reg a) (fxband len #xff) (>> len 8) (append else then)))))
             ((jeq a b then else)
                (lets
                   ((then (assemble then fail))
                    (else (assemble else fail))
                    (len (length else)))
-                  (if (< len #x10000)
-                     (ilist (inst->op 'jeq) (reg a) (reg b) (band len #xff) (>> len 8) (append else then))
-                     (fail (list "invalid jump offset: " len)))))
+                  (if (> len #xffff)
+                     (fail (list "invalid jump offset: " len))
+                     (ilist (inst->op 'jeq) (reg a) (reg b) (fxband len #xff) (>> len 8) (append else then)))))
             (else
                ;(print "assemble: what is " code)
                (fail (list "Unknown opcode " code)))))
@@ -254,18 +254,19 @@
                         (bytes->bytecode
                            (if fixed?
                               (ilist 34 arity
-                                 (band 255 (>> len 8))    ;; hi jump
-                                 (band 255 len)           ;; low jump
+                                 (>> len 8)        ;; jump hi
+                                 (fxband len #xff) ;; jump lo
                                  (append bytes
                                     (if (null? tail)
                                        (list 17)
                                        tail)))
                               (ilist 25 (if fixed? arity (- arity 1)) ;; last is the optional one
-                                 (band 255 (>> len 8))    ;; hi jump
-                                 (band 255 len)           ;; low jump
+                                 (>> len 8)        ;; jump hi
+                                 (fxband len #xff) ;; jump lo
                                  (append bytes
                                     (if (null? tail)
                                        (list 17)        ;; force error
                                        tail)))))))))
             (else
-               (error "assemble-code: unknown AST node " obj))))))
+               (error "assemble-code: unknown AST node " obj))))
+))
