@@ -21,7 +21,8 @@
 ;;; a tree in which it is known to be.
 ;;;
 ;;; The initial version mainly has rcons, rnull and rget, which act like cons, null and lref.
-;
+;;;
+
 (define-library (owl rlist-lcb)
 
    (import
@@ -32,6 +33,8 @@
       rnull
       rcons
       rget
+      rcar
+      ;rcdr
       rlist
       node-case
       list->rlist)
@@ -75,23 +78,23 @@
                ;; start finding cases, fill empty ones with elem itsel
                (node-case _bind elem (null double same) () bindings))))
 
-      (define (rcons x a)
-         (node-case a
-            ((same y b)
-               (node-case b
-                  ((same z c)
-                     (node-case c
+      (define (rcons x as)
+         (node-case as
+            ((double a bs)
+               (node-case bs
+                  ((same b cs)
+                     (node-case cs
                         ((double v d)
-                           (node-case (rcons (cons y z) (same v d))
-                              ((same yz b)
-                                 (same x (double yz b)))))
-                        (null
-                           (same x (double (cons y z) rnull)))))
-                  ((double z c)
-                     (same x a))
-                  (null
-                     (same x (same y rnull)))))
-            (null (same x rnull))))
+                           (double x (rcons (cons a b) cs)))
+                        (null (double x (double (cons a b) rnull)))))
+                  ((double z cs) (double x (same a bs)))
+                  (null (double x (same a rnull)))))
+            (null (double x rnull))))
+
+      (define (rcar rl def)
+         (node-case rl
+            ((double a rl) a)
+            (null def)))
 
       (define (pick tree path depth)
          (if (eq? depth 1)
@@ -102,20 +105,21 @@
                   (pick (cdr tree) path depth)))))
 
       (define (rget rl pos def)
-         (let loop ((rl rl) (depth 1) (pos pos))
+         (let loop ((rl rl) (d 0) (dp 1) (pos pos))
             (rl
                (λ (tree rl)
-                  (lets ((posp u (fx- pos depth)))
+                  (lets ((posp u (fx- pos d)))
                      (if u
-                        (pick tree pos depth)
-                        (loop rl depth posp))))
+                        (pick tree pos d)
+                        (loop rl d dp posp))))
                (λ (tree rl)
                   (lets
-                     ((depth o (fx+ depth depth))
-                      (posp u (fx- pos depth)))
+                     ((d dp)
+                      (dp o (fx+ dp dp))
+                      (posp u (fx- pos d)))
                      (if u
-                        (pick tree pos depth)
-                        (loop rl depth posp))))
+                        (pick tree pos d)
+                        (loop rl d dp posp))))
                def)))
 
       (define (list->rlist x)
@@ -123,5 +127,6 @@
 
       (define (rlist . args)
          (list->rlist args))
+
 ))
 

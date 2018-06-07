@@ -1,3 +1,5 @@
+; ,load "owl/rlist-lcb.scm"
+
 (import
    ;(only (owl rlist) rcons rget rset rlist) ;; an O(log n) library
    (only (owl rlist-lcb) rcons rget rlist) ;; an next gen O(log n) library
@@ -31,7 +33,8 @@
    (if (eq? n -1)
       rl
       (let ((val (rget rl n #f)))
-         (if 1 ; (and val (= n val)) just benchmark
+         ;(print "rl[" n "] = " val)
+         (if (and val (= n val))
             (get-all rl (- n 1))
             (error "rlist value error" (cons n val))))))
 
@@ -75,8 +78,13 @@
    ;; bin/vm fasl/boot.fasl --run tests/rlist.scm 100 1000 10000 100000 1000000 10000000
    ;; note: since the data structure should scale logarithmically, one could by
    ;; default double the size at each step and run up to a maximum time or heap size
-   (map
-      (λ (arg)
-         (run-test (string->integer arg) #t))
-      (cdr args))
+   (if (null? (cdr args))
+      (lfold
+         ;; run all ns, print output occasionally
+         (λ (_ n) (run-test n (eq? (band n #xff) 0)))
+         #f (lnums 1))
+      (map
+         (λ (arg)
+            (run-test (string->integer arg) #t))
+         (cdr args)))
    0)
