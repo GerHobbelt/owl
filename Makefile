@@ -36,13 +36,6 @@ fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm scheme/*.scm tests/*.scm tests/*.s
 bin/vm: c/vm.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $?
 
-bin/diet-vm: c/vm.c
-	diet $(CC) -Os -o $@ $?
-	strip $@
-
-bin/diet-ol: c/diet-ol.c
-	diet $(CC) -O2 -o $@ $?
-
 c/_vm.c: c/ovm.c
 	# remove comments and most white-space
 	sed -f bin/compact.sed $? >$@
@@ -62,9 +55,6 @@ manual.pdf: manual.md
 c/ol.c: fasl/ol.fasl
 	# compile the repl using the fixed point image
 	bin/vm fasl/ol.fasl --run owl/ol.scm -s some -o $@
-
-c/diet-ol.c: fasl/ol.fasl
-	bin/vm fasl/ol.fasl --run owl/ol.scm -s none -o $@
 
 bin/ol: c/ol.c
 	# compile the real owl repl binary
@@ -123,14 +113,7 @@ clean:
 	-rm -f tmp/* .start
 	-rm -f bin/ol bin/ol-old bin/vm
 
-# make a standalone binary against dietlibc for release
-standalone: c/ol.c c/vm.c
-	diet gcc -O2 -o bin/vm c/vm.c
-	strip --strip-all bin/vm
-	diet gcc -O2 -o bin/ol c/ol.c
-	strip --strip-all bin/ol
-
 fasl-update: fasl/ol.fasl
 	cp fasl/ol.fasl fasl/init.fasl
 
-.PHONY: all clean fasl-update fasltest install owl random-test simple-ol standalone test uninstall
+.PHONY: all clean fasl-update fasltest install owl random-test simple-ol test uninstall
