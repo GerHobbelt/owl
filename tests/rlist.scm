@@ -1,4 +1,4 @@
-; ,load "owl/rlist-lcb.scm"
+;,load "owl/rlist-lcb.scm"
 
 (import
    ;(only (owl rlist) rcons rget rset rlist) ;; an O(log n) library
@@ -10,7 +10,7 @@
 ; (define rget lget)
 ; (define rset lset)
 ; (define rlist (lambda x x))
-   
+
 (define (make-rlist n)
    (let loop ((rl (rlist)) (n (- n 1)))
       (if (eq? n -1)
@@ -51,7 +51,7 @@
          (repeat thunk (- n 1)))))
 
 (define (run-test size print?)
-   (lets 
+   (lets
       ((rl make-ns make-alloc (apply-measured make-rlist size))
        (rl ref-ns ref-alloc (apply-measured get-all rl (- size 1)))
        ;(rl set-ns set-alloc (apply-measured set-all rl (- size 1)))
@@ -72,7 +72,14 @@
             ))
      0))
 
-; (run-test 100 #f)
+(run-test 100 #f)
+
+(map
+   (λ (l)
+      (if (not (equal? l (rlist->list (list->rlist l))))
+         (error "bidirectional conversion fails for " l)))
+   (map (λ (end) (iota 0 1 end))
+      (iota 0 1 100)))
 
 (λ (args)
    ;; bin/vm fasl/boot.fasl --run tests/rlist.scm 100 1000 10000 100000 1000000 10000000

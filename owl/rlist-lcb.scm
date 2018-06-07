@@ -36,8 +36,10 @@
       rcar
       ;rcdr
       rlist
+      rfold
       node-case
-      list->rlist)
+      list->rlist
+      rlist->list)
 
    (begin
 
@@ -122,11 +124,33 @@
                         (loop rl d dp posp))))
                def)))
 
+      (define (rfold-node op st n d)
+         (if (eq? d 1)
+            (op st n)
+            (lets ((d _ (fx>> d 1)))
+               (rfold-node op (rfold-node op st (car n) d) (cdr n) d))))
+
+      (define (rfold op st rl)
+         (let loop ((rl rl) (st st) (depth 0))
+            (node-case rl
+               ((same a rl)
+                  (loop rl (rfold-node op st depth a) depth))
+               ((double a rl)
+                  (if (eq? depth 0)
+                     (loop rl (op st a) 1)
+                     (lets ((depth o (fx+ depth depth)))
+                        (loop rl
+                           (rfold-node op st a depth)
+                           depth))))
+               (null st))))
+
       (define (list->rlist x)
          (foldr rcons rnull x))
+
+      (define (rlist->list rl)
+         (reverse (rfold (λ (pre val) (cons val pre)) '() rl)))
 
       (define (rlist . args)
          (list->rlist args))
 
 ))
-
