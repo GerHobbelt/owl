@@ -61,7 +61,7 @@
               (jeqi . 16)     ; jeqi a o1 o2    ip += o if Ra == imm[i>>6]
               (ld   . 14)     ; ld a, t:        Rt = a, signed byte
               (ldi . 13)
-              (ret  . 24)     ; ret a:          call R3 (usually cont) with Ra
+              (ret . 24)      ; ret a:          call R3 (usually cont) with Ra
               )))
 
       (define simple-values
@@ -138,14 +138,12 @@
                         (fail (list "Bad opcode arity for " op (length args) 1))))
                   ((list? to)
                      (if (opcode-arity-ok? op (length args) (length to))
-                        (if (multiple-return-variable-primop? op)
-                           (cons op
-                              (append (map reg args)
+                        (cons op
+                           (append (map reg args)
+                              (if (multiple-return-variable-primop? op)
                                  ; <- nargs implicit, FIXME check nargs opcode too
                                  (append (map reg to)
-                                    (assemble more fail))))
-                           (cons op
-                              (append (map reg args)
+                                    (assemble more fail))
                                  (cons (length to)          ; <- prefix with output arity
                                     (append (map reg to)
                                        (assemble more fail))))))
@@ -195,12 +193,9 @@
                         (ilist (fxbor (inst->op 'ldi) i) (reg to)
                            (assemble cont fail))))
                   ((fixnum? val)
-                     (let ((code (assemble cont fail)))
-                        (if (not (< -129 val 128)) ; would be a bug
-                           (fail (list "ld: big value: " val)))
-                        (ilist (inst->op 'ld)
-                           (if (< val 0) (+ 256 val) val)
-                           (reg to) code)))
+                     (ilist (inst->op 'ld)
+                        (if (< val 0) (+ 256 val) val)
+                        (reg to) (assemble cont fail)))
                   (else
                      (fail (list "cannot assemble a load for " val)))))
             ((refi from offset to more)
@@ -252,21 +247,15 @@
                         (if (> len #xffff)
                            (error "too much bytecode: " len))
                         (bytes->bytecode
-                           (if fixed?
-                              (ilist 34 arity
-                                 (>> len 8)        ;; jump hi
-                                 (fxband len #xff) ;; jump lo
-                                 (append bytes
-                                    (if (null? tail)
-                                       (list 17)
-                                       tail)))
-                              (ilist 25 (if fixed? arity (- arity 1)) ;; last is the optional one
-                                 (>> len 8)        ;; jump hi
-                                 (fxband len #xff) ;; jump lo
-                                 (append bytes
-                                    (if (null? tail)
-                                       (list 17)        ;; force error
-                                       tail)))))))))
+                           (ilist
+                              (if fixed? 34 25)
+                              (if fixed? arity (- arity 1)) ;; last is the optional one
+                              (>> len 8)        ;; jump hi
+                              (fxband len #xff) ;; jump lo
+                              (append bytes
+                                 (if (null? tail)
+                                    (list 17) ;; force error
+                                    tail))))))))
             (else
                (error "assemble-code: unknown AST node " obj))))
 ))
