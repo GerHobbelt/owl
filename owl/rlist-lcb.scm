@@ -1,27 +1,43 @@
-;;; Random access lists are a data structure like lists, which offer an efficient cons, car and
-;;; cdr, but they also allow referring and setting values from the middle of the the list without
-;;; having to walk all the way to the position.
+;;; Random access lists are a data structure like lists, but with very different efficiency
+;;; characteristics. A list is an optimal solution if one needs to only work with the head
+;;; or nodes close to it. However, if you need to find or update a node in the middle of
+;;; of the list, you need to walk all the way to the node and possibly back again. Cons, car
+;;; and cdr are constant time operations, or O(1), but getting some arbitrary node at position
+;;; n takes time proportional to n, or we can just denote this by O(n).
 ;;;
-;;; This library is a test implementation of random access lists implemented in part as
-;;; executable functions. The implementation is written so that it does not depend on
-;;; bignum arithmentic. As a consequence the maximum length of a value that can be referred
-;;; from the middle of the list is bound by fixnum size to 16777215. The data structure itself
-;;; does not impose any limits on number of elements.
+;;; A random access list is a data structure, which attempts to make random access efficient.
+;;; The performance characteristics of this random access list library are:
+;;; ```
+;;;   car → O(1)
+;;;   cdr → O(log n)
+;;;   cons → O(log n)
+;;;   get → O(log n)
+;;;   set → O(log n)
+;;;   append → O(n)
+;;; ```
 ;;;
-;;; The idea of the data structure consists of two parts. First in order to maintain efficient
-;;; access to elements in the list, the data structure grows a forest of complete binary trees
-;;; of the values. The first tree is always of height 0, allowing an O(1) car, a following tree
-;;; is always either of snd height or *one* level taller, and twice as large, than the previous one,
-;;; and there are always at most *two* trees of the snd height next to each other.
+;;; The operation is based on two ideas. Firstly, a random access list consists of a sequence
+;;; of complete binary trees. The first tree is always of height 1, meaning it
+;;; just holds the. The next node always holds a binary either of the same height or one level
+;;; taller (and twice as big). There can be at most two trees of the same height next to eachother.
+;;; Therefore, tree heights `(1 1)`, `(1 2 4)` and `(1 1 2 4 4)` are valid, whereas `(1 1 1)`,
+;;; `(2 2 4)` and `(1 2 2 8)` are not. `(5)` is right out.
+;;;
+;;; Secondly, the values in the binary trees are kept in order. When taking a value from such a
+;;; tree, we know the number of bits needed in the address and the branches to turn to in it
+;;; based on the bits of the index.
 ;;;
 ;;; Given these invariants, it is easy to see that it takes O(log n) steps to find the tree in
 ;;; which some particular value is held, and then another O(log n) steps to walk the tree to
-;;; a given position. Because the elements of the tree are kept in order, it is possible to
-;;; use the bits of the index to choose tree branches when finding a particular value from
-;;; a tree in which it is known to be.
+;;; a given position.
 ;;;
-;;; The initial version mainly has rcons, rnull and rget, which act like cons, null and lref.
-;;;
+;;; ```
+;;;   (rcar (rcons 11 rnull)) → 11
+;;;   (rnull? (rcons 11 rnull)) → #false
+;;;   (rlist->list (rcons 1 (rcons 2 rnull))) → (1 2))
+;;;   (rget (list->rlist (iota 0 1 1000)) 123 #f) → 123
+;;;   (rget (list->rlist (iota 0 1 1000)) 1234 #f) → #false
+;;; ```
 
 (define-library (owl rlist-lcb)
 
