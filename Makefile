@@ -47,6 +47,9 @@ c/vm.c: c/_vm.c
 manual.md: doc/manual.md owl/*.scm scheme/*.scm
 	bin/find-documentation.sh | cat doc/manual.md - >$@
 
+manual.man: manual.md
+	pandoc $? -s -t man > $@
+
 manual.pdf: manual.md
 	pandoc --latex-engine xelatex -o $@ $?
 
