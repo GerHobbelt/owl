@@ -14,41 +14,21 @@
 (define-library (owl cgen)
    (export
       compile-to-c            ;; obj extras → #false | c-code-string
-      code->bytes             ;; obj extras → #false | (byte ...)
    )
 
    (import
-      (owl list)
       (owl defmac)
+      (owl list)
       (owl list-extra)
       (owl math)
       (owl function)
       (owl ff)
       (owl string)
-      (owl primop)
+      (only (owl primop) call/cc)
       (owl render)
-      (only (owl syscall) error)
-      (scheme cxr))
+      (only (owl syscall) error))
 
    (begin
-
-      (define alloc-types
-         (list->ff
-            '((1 . pair))))
-
-      ;; represent some immediate as a string in C
-      (define (represent val fail)
-         (cond
-            ((eq? val null) "INULL")
-            ((eq? val #true) "ITRUE")
-            ((eq? val #false) "IFALSE")
-            ((eq? (type val) type-fix+)
-               (bytes->string
-                  (foldr render null
-                     (list "F(" val ")"))))
-            (else
-               ;(print "represent: cannot yet handle " val)
-               (fail))))
 
       ; -> list of bytes | #false
       (define (code->bytes code extras)
@@ -287,7 +267,7 @@
             (lets
                ((a lo8 hi8 bs (get3 (cdr bs)))
                 (jump-len (fxbor (<< hi8 8) lo8)))
-               (values 'branch (tuple (list "R[" a "]==" (represent val fail)) (drop bs jump-len) regs bs regs) regs))))
+               (values 'branch (tuple (list "R["a"]=="val) (drop bs jump-len) regs bs regs) regs))))
 
       (define (cify-load-imm val)
          (λ (bs regs fail)
@@ -453,10 +433,10 @@
                         (values
                            (list "R["to"]=BOOL(R["a"]==R["b"]);")
                            bs regs))))
-               (cons (+ 16 (<< 0 6)) (cify-jump-imm 0))
-               (cons (+ 16 (<< 1 6)) (cify-jump-imm null))
-               (cons (+ 16 (<< 2 6)) (cify-jump-imm #true))
-               (cons (+ 16 (<< 3 6)) (cify-jump-imm #false))
+               (cons 16 (cify-jump-imm "F(0)"))
+               (cons 80 (cify-jump-imm "INULL"))
+               (cons 144 (cify-jump-imm "ITRUE"))
+               (cons 208 (cify-jump-imm "IFALSE"))
                (cons 55 cify-fxband)
                (cons 56 cify-fxbor)
                (cons 57 cify-fxbxor)
@@ -467,7 +447,7 @@
                (cons 13 ;; ldz r
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))
-                        (values (list "R["res"]=F(0);") (cddr bs) (put regs res 'null)))))
+                        (values (list "R["res"]=F(0);") (cddr bs) (put regs res 'fixnum)))))
                (cons 77 ;; ldn r
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))

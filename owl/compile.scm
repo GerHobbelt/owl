@@ -5,9 +5,7 @@
 (define-library (owl compile)
 
    (export
-      compile
-      primops
-      prim-opcodes)
+      compile)
 
    (import
       (owl defmac)
@@ -21,8 +19,7 @@
       (owl lazy)
       (owl sort)
       (owl primop)
-      (owl io)
-      (only (owl env) primop-of prim-opcodes)
+      (only (owl env) primop-of)
       (owl assemble)
       (owl closure))
 
@@ -219,7 +216,7 @@
             (if (null? args)
                (error "rtl-primitive: no type for mkt" args)
                (rtl-primitive regs
-                  (+ (<< op 8) (band (value-of (car args)) #xff))
+                  (fxbor (<< op 8) (band (value-of (car args)) #xff))
                   formals (cdr args) cont))
             (rtl-args regs args
                (λ (regs args)
@@ -336,11 +333,7 @@
                ;;; rator is itself in rands, and does not need rescuing
                ((memq rator rands)
                   (rtl-make-jump rands free
-                     (if inst
-                        (tuple inst (index-of rator rands a0) nargs)
-                        (tuple 'goto
-                           (index-of rator rands a0)
-                           nargs))))
+                     (tuple (or inst 'goto) (index-of rator rands a0) nargs)))
                ;;; rator is above rands, again no need to rescue
                ((> rator (+ 2 nargs))
                   (rtl-make-jump rands free
@@ -460,7 +453,7 @@
                   ((eq? kind 4)   ; (branch-4 name type (λ (f0 .. fn) B) Else)
                      ; FIXME check object size here (via meta)
                      (let ((b (extract-value b)))
-                        (if (and (fixnum? b) (<= 0 b 256))
+                        (if (and (fixnum? b) (<= 0 b 255))
                            (rtl-simple regs a
                               (λ (regs ap)
                                  (tuple-case then
@@ -544,7 +537,7 @@
       (define (rtl-plain-lambda rtl exp clos literals tail)
          (tuple-case exp
             ((lambda-var fixed? formals body)
-               (lets
+               (let
                   ((exec
                      (assemble-code
                         (tuple 'code-var fixed?
