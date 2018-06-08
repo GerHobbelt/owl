@@ -1101,10 +1101,13 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             ip += ip[3] << 8 | ip[2];
          NEXT(4);
       case 9: A1 = A0; NEXT(2);
+      case 10: /* ldfix n to, encoding: nnnnnnnn nsoooooo (num-1/sign/op) */
+         A1 = ((hval)*ip << 9) + (op << 1) + F(1) - 20;
+         NEXT(2);
       case 13: /* ldi{2bit what} [to] */
          A0 = load_imms[op >> 6];
          NEXT(1);
-      case 14:
+      case 14: /* FIXME: remove after fasl update */
          A1 = onum((int8_t)*ip, 1);
          NEXT(2);
       case 15: { /* type o r */

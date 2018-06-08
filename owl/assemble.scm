@@ -59,7 +59,7 @@
               (move2 . 5)     ; two moves, 4 args
               (jeq . 8)       ; jeq a b o1 o2   ip += o if Ra == Rb
               (jeqi . 16)     ; jeqi a o1 o2    ip += o if Ra == imm[i>>6]
-              (ld   . 14)     ; ld a, t:        Rt = a, signed byte
+              (ld . 10)       ; ldfix n t, encoding: nnnnnnnn nsoooooo (n-1/sign/op)
               (ldi . 13)
               (ret . 24)      ; ret a:          call R3 (usually cont) with Ra
               )))
@@ -73,7 +73,7 @@
       (define (small-value? val)
          (or
             (simple-value? val)
-            (and (fixnum? val) (< -129 val 128))))
+            (and (fixnum? val) (<= -512 val 512))))
 
       (define (inst->op name)
          (or
@@ -98,6 +98,13 @@
                (>> op 8)
                (cons (fxband op #xff) lst))
             (cons op lst)))
+
+      (define (ld-encode val)
+         (lets
+            ((n _ (fx- (<< val 6) 59)) ; 59 == (-(ld = 10) >> 1 & 63)
+             (n (fxbor n (type val)))
+             (n _ (fx+ n n)))
+            n))
 
       ; rtl -> list of bytes
       ;; ast fail-cont → code' | (fail-cont <reason>)
@@ -193,9 +200,9 @@
                         (ilist (fxbor (inst->op 'ldi) i) (reg to)
                            (assemble cont fail))))
                   ((fixnum? val)
-                     (ilist (inst->op 'ld)
-                        (if (< val 0) (+ 256 val) val)
-                        (reg to) (assemble cont fail)))
+                     (let ((val (ld-encode val)))
+                        (ilist (fxband val #xff) (>> val 8) (reg to)
+                           (assemble cont fail))))
                   (else
                      (fail (list "cannot assemble a load for " val)))))
             ((refi from offset to more)

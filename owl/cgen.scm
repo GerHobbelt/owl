@@ -289,6 +289,13 @@
                 (jump-len (fxbor (<< hi8 8) lo8)))
                (values 'branch (tuple (list "R[" a "]==" (represent val fail)) (drop bs jump-len) regs bs regs) regs))))
 
+      (define (cify-load-imm val)
+         (λ (bs regs fail)
+            (lets
+               ((hi to bs (get2 (cdr bs)))
+                (val (fxbor (<< hi 2) val)))
+               (values (list "R["to"]=128*"val"+258;") bs (put regs to 'fixnum)))))
+
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       ;; translator function dispatch ff
 
@@ -328,10 +335,10 @@
                         (cond ;                                                        .--> note, maybe have #false value set
                            (else (values (list "R[" to "]=R[" from "];") bs (put regs to (get regs from #false))))))))
                ;; 13=ldi, see higher ops
-               (cons 14 ;; ldfix <n> <to>
-                  (λ (bs regs fail)
-                     (lets ((n to bs (get2 (cdr bs))))
-                        (values (list "R["to"]=onum((int8_t)("n"),1);") bs (put regs to 'fixnum)))))
+               (cons 10 (cify-load-imm 0)) ;; ldfix <n> <to>
+               (cons 74 (cify-load-imm 1))
+               (cons 138 (cify-load-imm 2))
+               (cons 202 (cify-load-imm 3))
                ;; 15=type-byte o r
                (cons 15
                   (λ (bs regs fail)
