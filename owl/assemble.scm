@@ -80,14 +80,6 @@
             (get vm-instructions name #false)
             (error "inst->op: unknown instruction " name)))
 
-      (define (reg a)
-         (if (eq? (type a) type-fix+)
-            (if (< a n-registers)
-               a
-               (error "register too high: " a))
-            (error "bad register: " a)))
-
-
       ;;;
       ;;; Bytecode assembly
       ;;;
@@ -111,48 +103,48 @@
       (define (assemble code fail)
          (tuple-case code
             ((ret a)
-               (list (inst->op 'ret) (reg a)))
+               (list (inst->op 'ret) a))
             ((move a b more)
                (lets
                   ((tl (assemble more fail))
                    (op (inst->op 'move)))
                   (if (eq? (car tl) op) ;; [move a b] + [move c d] = [move2 a b c d] to remove a common dispatch
-                     (ilist (inst->op 'move2) (reg a) (reg b) (cdr tl))
-                     (ilist op (reg a) (reg b) tl))))
+                     (ilist (inst->op 'move2) a b (cdr tl))
+                     (ilist op a b tl))))
             ((prim op args to more)
                (cond
                   ;; fixme: handle mk differently, this was supposed to be a temp hack
                   ((> op #xff)
                      (output-code op
-                        (cons (reg (length (cdr args))) ; tuple size
-                           (cons (reg (car args)) ; type
-                              (append (map reg (cdr args))
-                                 (cons (reg to)
+                        (cons (length (cdr args)) ; tuple size
+                           (cons (car args) ; type
+                              (append (cdr args)
+                                 (cons to
                                     (assemble more fail)))))))
                   ((variable-input-arity? op)
                      ;; fixme: no output arity check
                      (cons op
                         (cons (length args)
-                           (append (map reg args)
-                              (cons (reg to)
+                           (append args
+                              (cons to
                                  (assemble more fail))))))
                   ((fixnum? to)
                      (if (opcode-arity-ok? op (length args) 1)
                         (cons op
-                           (append (map reg args)
+                           (append args
                               (cons to
                                  (assemble more fail))))
                         (fail (list "Bad opcode arity for " op (length args) 1))))
                   ((list? to)
                      (if (opcode-arity-ok? op (length args) (length to))
                         (cons op
-                           (append (map reg args)
+                           (append args
                               (if (multiple-return-variable-primop? op)
                                  ; <- nargs implicit, FIXME check nargs opcode too
-                                 (append (map reg to)
+                                 (append to
                                     (assemble more fail))
                                  (cons (length to)          ; <- prefix with output arity
-                                    (append (map reg to)
+                                    (append to
                                        (assemble more fail))))))
                         (fail (list "Bad opcode arity: " (list op (length args) (length to))))))
                   (else
@@ -165,16 +157,16 @@
                      (cons (+ 2 (length env))
                         ;; size of object (hdr code e0 ... en)
                         (cons offset
-                           (append (map reg env)
-                              (cons (reg to)
+                           (append env
+                              (cons to
                                  (assemble more fail))))))
                   (cons (inst->op 'clos)
                      (cons (+ 2 (length env))
                         ;; size of object (hdr code e0 ... en)
-                        (cons (reg lpos)
+                        (cons lpos
                            (cons offset
-                              (append (map reg env)
-                                 (cons (reg to)
+                              (append env
+                                 (cons to
                                     (assemble more fail)))))))))
             ((clos-code lpos offset env to more)      ;; make a 1-level closure
                (if (= lpos 1)
@@ -182,35 +174,35 @@
                      (cons (+ 2 (length env))
                         ;; size of object (hdr code e0 ... en)
                         (cons offset
-                           (append (map reg env)
-                              (cons (reg to)
+                           (append env
+                              (cons to
                                  (assemble more fail))))))
                   (cons (inst->op 'cloc)
                      (cons (+ 2 (length env))
                         ;; size of object (hdr code e0 ... en)
-                        (cons (reg lpos)
+                        (cons lpos
                            (cons offset
-                              (append (map reg env)
-                                 (cons (reg to)
+                              (append env
+                                 (cons to
                                     (assemble more fail)))))))))
             ((ld val to cont)
                (cond
                   ((simple-value? val) =>
                      (λ (i)
-                        (ilist (fxbor (inst->op 'ldi) i) (reg to)
+                        (ilist (fxbor (inst->op 'ldi) i) to
                            (assemble cont fail))))
                   ((fixnum? val)
                      (let ((val (ld-encode val)))
-                        (ilist (fxband val #xff) (>> val 8) (reg to)
+                        (ilist (fxband val #xff) (>> val 8) to
                            (assemble cont fail))))
                   (else
                      (fail (list "cannot assemble a load for " val)))))
             ((refi from offset to more)
                (ilist
-                  (inst->op 'refi) (reg from) offset (reg to)
+                  (inst->op 'refi) from offset to
                   (assemble more fail)))
             ((goto op nargs)
-               (list (inst->op 'goto) (reg op) nargs))
+               (list (inst->op 'goto) op nargs))
             ;; todo: all jumps could have parameterized lengths (0 = 1-byte, n>0 = 2-byte, being the max code length)
             ((jeqi i a then else)
                (lets
@@ -219,7 +211,7 @@
                    (len (length else)))
                   (if (> len #xffff)
                      (fail (list "invalid jump offset: " len))
-                     (ilist (fxbor (inst->op 'jeqi) i) (reg a) (fxband len #xff) (>> len 8) (append else then)))))
+                     (ilist (fxbor (inst->op 'jeqi) i) a (fxband len #xff) (>> len 8) (append else then)))))
             ((jeq a b then else)
                (lets
                   ((then (assemble then fail))
@@ -227,7 +219,7 @@
                    (len (length else)))
                   (if (> len #xffff)
                      (fail (list "invalid jump offset: " len))
-                     (ilist (inst->op 'jeq) (reg a) (reg b) (fxband len #xff) (>> len 8) (append else then)))))
+                     (ilist (inst->op 'jeq) a b (fxband len #xff) (>> len 8) (append else then)))))
             (else
                ;(print "assemble: what is " code)
                (fail (list "Unknown opcode " code)))))
