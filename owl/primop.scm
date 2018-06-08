@@ -102,24 +102,6 @@
       (define (special-bind-primop? op)
          (or (eq? op 32) (eq? op 49)))
 
-      (define primops-1
-         (list
-            ;;; input arity includes a continuation
-            (tuple 'sys          27 4 1 sys)
-            (tuple 'size         22 1 1 size) ;; get object size (- 1)
-            (tuple 'sizeb        86 1 1 sizeb) ;; raw-obj -> number of bytes (fixnum)
-            (tuple 'raw          59 2 1 raw) ;; make a raw object
-            (tuple 'cons         51 2 1 cons)
-            (tuple 'car         105 1 1 car) ;; opcode: 1 << 6 | 41
-            (tuple 'cdr         169 1 1 cdr) ;; opcode: 2 << 6 | 41
-            (tuple 'eq?          54 2 1 eq?)
-            (tuple 'fxband       55 2 1 fxband)
-            (tuple 'fxbor        56 2 1 fxbor)
-            (tuple 'fxbxor       57 2 1 fxbxor)
-            (tuple 'type         15 1 1 type)
-            (tuple 'ref          47 2 1 ref)   ;;
-            (tuple 'mkt          23 'any 1 mkt))) ;; mkt type v0 .. vn t
-
       (define set (func '(4 45 4 5 6 7 24 7)))
       (define lesser? (func '(3 44 4 5 6 24 6)))
       (define listuple (func '(4 35 4 5 6 7 24 7)))
@@ -184,10 +166,23 @@
             (x
                (car apply-error))))
 
-      (define apply-cont (bytes->bytecode '(61)))
-
-      (define primops-2
+      (define primops
          (list
+            ;; input arity includes a continuation
+            (tuple 'sys          27 4 1 sys)
+            (tuple 'size         22 1 1 size) ;; get object size (- 1)
+            (tuple 'sizeb        86 1 1 sizeb) ;; raw-obj -> number of bytes (fixnum)
+            (tuple 'raw          59 2 1 raw) ;; make a raw object
+            (tuple 'cons         51 2 1 cons)
+            (tuple 'car         105 1 1 car) ;; opcode: 1 << 6 | 41
+            (tuple 'cdr         169 1 1 cdr) ;; opcode: 2 << 6 | 41
+            (tuple 'eq?          54 2 1 eq?)
+            (tuple 'fxband       55 2 1 fxband)
+            (tuple 'fxbor        56 2 1 fxbor)
+            (tuple 'fxbxor       57 2 1 fxbxor)
+            (tuple 'type         15 1 1 type)
+            (tuple 'ref          47 2 1 ref)
+            (tuple 'mkt          23 'any 1 mkt) ;; mkt type v0..vn t
             (tuple 'bind         32 1 #false bind)  ;; (bind thing (lambda (name ...) body)), fn is at CONT so arity is really 1
             (tuple 'set          45 3 1 set)   ;; (set tuple pos val) -> tuple'
             (tuple 'lesser?      44 2 1 lesser?)  ;; (lesser? a b)
@@ -201,10 +196,6 @@
             (tuple 'fx-          40 2 2 fx-)   ;; (fx- a b)       ;; 2 out
             (tuple 'fx>>         58 2 2 fx>>)   ;; (fx>> a b) -> hi lo, lo are the lost bits
             (tuple 'sys-prim     63 4 1 sys-prim)))
-
-      (define primops
-         (app primops-1
-              primops-2))
 
       ;; special things exposed by the vm
       (define (set-memory-limit n) (sys-prim 7 n #f #f))
@@ -230,7 +221,6 @@
                      ((_ a b c d) (k a b c d))
                      ((_ a b c d e) (k a b c d e))
                      (x
-                        ;((c . x) (apply-cont k x))
                         (car "implementation restriction: add more values to continuation handling")
                         ))))))
 
