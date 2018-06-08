@@ -67,7 +67,7 @@
       (owl tuple)
       (owl vector)
       (owl list-extra)
-      (owl rlist)
+      (owl rlist-lcb)
       (owl io)
       (owl syscall)
       (owl sort)
@@ -390,9 +390,7 @@
 
       ;; rs ll n → rs' lst
       (define (reservoir-sample rs ll n)
-         (reservoir-init rs ll n 0 null))
-
-
+         (reservoir-init rs ll n 0 rnull))
 
       ; rs lst → rs' sublist, each element having 50% chance of being in the sublist
       (define (rand-subset rs l)

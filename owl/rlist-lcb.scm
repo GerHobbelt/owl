@@ -61,10 +61,10 @@
       rget
       rcar
       rcdr
+      rset
       rlist
       rfold
       rnull?
-      node-case
       list->rlist
       rlist->list)
 
@@ -188,6 +188,35 @@
                         (pick tree pos d)
                         (loop rl d dp posp))))
                ((null) def))))
+
+      ;; rset is rget + path copying
+
+      (define (set tree path depth val)
+         (if (eq? depth 1)
+            val
+            (lets ((depth _ (fx>> depth 1)))
+               (if (eq? (fxband path depth) 0)
+                  (cons (set (car tree) path depth val) (cdr tree))
+                  (cons (car tree) (set (cdr tree) path depth val))))))
+
+      (define (rset rl pos val)
+         (let loop ((rl rl) (d 0) (dp 1) (pos pos))
+            (node-case rl
+               ((snd tree rl)
+                  (lets ((posp u (fx- pos d)))
+                     (if u
+                        (snd (set tree pos d val) rl)
+                        (snd tree
+                           (loop rl d dp posp)))))
+               ((fst tree rl)
+                  (lets
+                     ((d dp)
+                      (dp o (fx+ dp dp))
+                      (posp u (fx- pos d)))
+                     (if u
+                        (fst (set tree pos d val) rl)
+                        (fst tree (loop rl d dp posp)))))
+               ((null) rl))))
 
       (define (rfold-node op st n d)
          (if (eq? d 1)
