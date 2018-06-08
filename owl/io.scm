@@ -504,7 +504,7 @@
       (define (stream-chunk buff pos tail)
          (if (eq? pos 0)
             (cons (ref buff pos) tail)
-            (lets ((next x (fx- pos 1)))
+            (lets ((next _ (fx- pos 1)))
                (stream-chunk buff next
                   (cons (ref buff pos) tail)))))
 

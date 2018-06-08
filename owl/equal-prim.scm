@@ -14,7 +14,7 @@
             ((eq? pos 0)
                #true)
             ((eq (ref a pos) (ref b pos))
-               (lets ((pos x (fx- pos 1)))
+               (lets ((pos _ (fx- pos 1)))
                   (eq-fields a b eq pos)))
             (else #false)))
 
@@ -22,8 +22,8 @@
          (if (eq? (ref a pos) (ref b pos))
             (if (eq? pos 0)
                #true
-               (receive (fx- pos 1)
-                  (λ (pos x) (eq-bytes a b pos))))
+               (lets ((pos _ (fx- pos 1)))
+                  (eq-bytes a b pos)))
             #false))
 
       (define (equal-prim? self a b)

@@ -152,7 +152,7 @@
             out
             (lets
                ((lo hi (fx* (ncar seed) rand-mult))
-                (this over (fx+ lo acc)))
+                (this _ (fx+ lo acc)))
                (rand-walk hi (ncdr seed) (ncons this out)))))
 
       (define (rand-succ seed)

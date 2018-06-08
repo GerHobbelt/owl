@@ -61,7 +61,7 @@
 
       ;; biggest before highest bit is set (needed in some bignum ops)
       (define *pre-max-fixnum*
-         (lets ((f o (fx>> *max-fixnum* 1)))
+         (lets ((f _ (fx>> *max-fixnum* 1)))
             f))
 
       ;; count the number of bits the VM supports in fixnum
@@ -292,12 +292,12 @@
                ((eq? t type-fix+)
                   (if (eq? n *max-fixnum*)
                      *first-bignum*
-                     (lets ((n x (fx+ n 1))) n)))
+                     (lets ((n _ (fx+ n 1))) n)))
                ((eq? t type-int+)
                   (let ((lo (ncar n)))
                      (if (eq? lo *max-fixnum*)
                         (ncons 0 (nat-succ (ncdr n)))
-                        (lets ((lo x (fx+ lo 1)))
+                        (lets ((lo _ (fx+ lo 1)))
                            (ncons lo (ncdr n))))))
                ((eq? n null)
                   *big-one*)
@@ -827,7 +827,7 @@
                   ((lo hi (fx* a (ncar b)))
                    (lo o? (fx+ lo carry)))
                   (if o?
-                     (lets ((hi o? (fx+ hi 1)))
+                     (lets ((hi _ (fx+ hi 1)))
                         (ncons lo
                            (mult-num-big a (ncdr b) hi)))
                      (ncons lo
@@ -873,7 +873,7 @@
             ((eq? (type a) type-fix+) (add-ext (ncons a null) b ex))
             ((eq? (type ex) type-fix+)
                (lets
-                  ((ex u (fx- ex 1))
+                  ((ex _ (fx- ex 1))
                    (d ds a))
                   (ncons d (add-ext ds b ex))))
             (else
@@ -920,7 +920,7 @@
                (lets
                   ((a at at)
                    (b bt bt)
-                   (l over (fx+ l 1))) ; fixme, no bignum len
+                   (l _ (fx+ l 1))) ; fixme, no bignum len
                   (splice-nums (ncdr ah) (ncdr bh)
                      at bt (ncons a rat) (ncons b rbt) #true l)))))
 
@@ -1226,7 +1226,7 @@
                 (tl carry (rmul (ncdr n) d))
                 (lo over (fx+ lo carry)))
                (if over
-                  (lets ((hi over (fx+ hi 1)))
+                  (lets ((hi _ (fx+ hi 1)))
                      (values (ncons lo tl) hi))
                   (values (ncons lo tl) hi)))))
 
@@ -1246,7 +1246,7 @@
             ((null? (ncdr a)) a)
             ((lesser? (ncar b) (ncar a))
                (lets
-                  ((h over (fx+ (ncar b) 1))
+                  ((h _ (fx+ (ncar b) 1))
                    (_ f r (fxqr 0 (ncar a) h))
                    (bp (rmul-digit b f))
                    (ap (rev-sub a bp)))
@@ -1254,7 +1254,7 @@
             ((rev-sub a b) => (C rrem b))
             (else
                (lets
-                  ((h o (fx+ (ncar b) 1))
+                  ((h _ (fx+ (ncar b) 1))
                    (f r (qr-big-small (ncons (ncar (ncdr a)) (ncons (ncar a) null)) h)) ; FIXME, use fxqr instead
                    )
                   (if (eq? (type f) type-fix+)

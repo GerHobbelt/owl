@@ -182,7 +182,7 @@
                ((fst tree rl)
                   (lets
                      ((d dp)
-                      (dp o (fx+ dp dp))
+                      (dp _ (fx+ dp dp))
                       (posp u (fx- pos d)))
                      (if u
                         (pick tree pos d)
@@ -203,7 +203,7 @@
                ((fst a rl)
                   (if (eq? depth 0)
                      (loop rl (op st a) 1)
-                     (lets ((depth o (fx+ depth depth)))
+                     (lets ((depth _ (fx+ depth depth)))
                         (loop rl
                            (rfold-node op st a depth)
                            depth))))

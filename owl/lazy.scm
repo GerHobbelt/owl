@@ -178,9 +178,9 @@
 
       (define (liota-fix pos end)
          (if (lesser? pos end)
-            (lets ((posp u (fx+ pos 1)))
+            (lets ((posp _ (fx+ pos 1)))
                (if (lesser? posp end)
-                  (lets ((next o (fx+ posp 1)))
+                  (lets ((next _ (fx+ posp 1)))
                      (cons pos (pair posp (liota-fix next end))))
                   (list pos)))
             null))
