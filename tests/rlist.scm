@@ -1,4 +1,3 @@
-
 (import
    ;(owl rlist)
    (owl rlist-lcb) ;; an next gen O(log n) library
@@ -9,6 +8,8 @@
 ; (define rget lget)
 ; (define rset lset)
 ; (define rlist (lambda x x))
+; (define (rlist->list x) x)
+; (define (list->rlist x) x)
 
 ; test rl = 0 ... n-1
 (define (make-rlist n)
@@ -55,7 +56,7 @@
    (if (eq? n -1)
       rl
       (let ((rl (rset rl n n)))
-         (get-all rl (- n 1)))))
+         (set-all rl (- n 1)))))
 
 (define (repeat thunk n)
    (let ((val (thunk)))
@@ -68,7 +69,7 @@
       ((rl make-ns make-alloc (apply-measured make-rlist size))
        (rl cxr-ns cxr-alloc (apply-measured cxr-all rl (- size 1)))
        (rl ref-ns ref-alloc (apply-measured get-all rl (- size 1)))
-       ;(rl set-ns set-alloc (apply-measured set-all rl (- size 1)))
+       (rl set-ns set-alloc (apply-measured set-all rl (- size 1)))
        )
       (if print?
          (begin
@@ -84,9 +85,9 @@
             (print size " cxr: " (round (/ cxr-ns 1000000)) "ms")
             (print size " cxr: " (quotient cxr-ns size) "ns/elem")
             (print size " cxr: " (quotient cxr-alloc size) "W/elem")
-            ;(print size " set: " (round (/ set-ns 1000000)) "ms")
-            ;(print size " set: " (quotient set-ns size) "ns/elem")
-            ;(print size " set: " (quotient set-alloc size) "W/elem")
+            (print size " set: " (round (/ set-ns 1000000)) "ms")
+            (print size " set: " (quotient set-ns size) "ns/elem")
+            (print size " set: " (quotient set-alloc size) "W/elem")
             ))
      0))
 
