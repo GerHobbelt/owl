@@ -80,15 +80,14 @@
       (define set-ticker  (func '(2 62 4 5 24 5)))
       (define sys-prim    (func '(5 63 4 5 6 7 8 24 8)))
       (define sys         (func '(4 27 4 5 6 7 24 7)))
-      (define sizeb       (func '(2 28 4 5 24 5)))
+      (define size        (func '(2 22 4 5 24 5)))
+      (define sizeb       (func '(2 86 4 5 24 5)))
       (define raw         (func '(3 59 4 5 6 24 6)))
       (define eq?         (func '(3 54 4 5 6 24 6)))
       (define fxband      (func '(3 55 4 5 6 24 6)))
       (define fxbor       (func '(3 56 4 5 6 24 6)))
       (define fxbxor      (func '(3 57 4 5 6 24 6)))
-
       (define type        (func '(2 15 4 5 24 5)))
-      (define size        (func '(2 36 4 5 24 5)))
       (define ref         (func '(3 47 4 5 6 24 6)))
 
       ;; make thread sleep for a few thread scheduler rounds
@@ -107,7 +106,8 @@
          (list
             ;;; input arity includes a continuation
             (tuple 'sys          27 4 1 sys)
-            (tuple 'sizeb        28 1 1 sizeb)   ;; raw-obj -> numbe of bytes (fixnum)
+            (tuple 'size         22 1 1 size) ;; get object size (- 1)
+            (tuple 'sizeb        86 1 1 sizeb) ;; raw-obj -> number of bytes (fixnum)
             (tuple 'raw          59 2 1 raw) ;; make a raw object
             (tuple 'cons         51 2 1 cons)
             (tuple 'car         105 1 1 car) ;; opcode: 1 << 6 | 41
@@ -117,7 +117,6 @@
             (tuple 'fxbor        56 2 1 fxbor)
             (tuple 'fxbxor       57 2 1 fxbxor)
             (tuple 'type         15 1 1 type)
-            (tuple 'size         36 1 1 size)  ;;  get object size (- 1)
             (tuple 'ref          47 2 1 ref)   ;;
             (tuple 'mkt          23 'any 1 mkt))) ;; mkt type v0 .. vn t
 
@@ -130,8 +129,6 @@
       (define fx+ (func '(4 38 4 5 6 7 24 7)))
       (define fx- (func '(4 40 4 5 6 7 24 7)))
       (define fx>> (func '(4 58 4 5 6 7 24 7)))
-
-      (define apply (bytes->bytecode '(125))) ;; <- no arity, just call 64 | 61
 
       (define null '())
 

@@ -332,6 +332,8 @@
                      (values
                         (list "error(17,ob,F(acc));")
                         null regs)))
+               (cons 22 cify-size)
+               (cons 86 cify-sizeb)
                (cons 23 cify-mkt)
                (cons 24 ;; ret r == call R3 with 1 argument at Rr
                   (λ (bs regs fail)
@@ -351,7 +353,6 @@
                ;               (drop bs jump-len) regs
                ;               ) regs))))
                (cons 26 cify-fxqr)
-               (cons 28 cify-sizeb)
                (cons 32 cify-bind)
                (cons 34 ;; fixed jump-arity n hi8 lo8
                   (λ (bs regs fail)
@@ -364,7 +365,6 @@
                               bs regs
                               (drop bs jump-len) regs)
                            regs))))
-               (cons 36 cify-size)
                (cons 38 cify-fxadd)
                (cons 39 cify-fxmul)
                (cons 40 cify-fxsub)
