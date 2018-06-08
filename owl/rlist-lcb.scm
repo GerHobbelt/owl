@@ -1,11 +1,17 @@
-;;; Random access lists are a data structure like lists, but with very different efficiency
-;;; characteristics. A list is an optimal solution if one needs to only work with the head
-;;; or nodes close to it. However, if you need to find or update a node in the middle of
-;;; of the list, you need to walk all the way to the node and possibly back again. Cons, car
-;;; and cdr are constant time operations, or O(1), but getting some arbitrary node at position
-;;; n takes time proportional to n, or we can just denote this by O(n).
+;;; Random access lists are a data structure similar to lists,
+;;;;   but with very different efficiency characteristics.
+;;; A regular list built out of cons cells is an optimal solution,
+;;;    if one needs to work mainly with the initial elements or the whole list at a time.
+;;; However, if you need to frequently find and maybe update values in the middle of the list,
+;;;    you have to perform operations taking time proportional to the length of the list.
+;;; In other words, those list operations are linear time, or have complexity O(n).
+;;; Cons, car and cdr on the other hand are very efficient for regular lists.
+;;; Regardless of the size of a list, it will always take a fixed amount of time to add, take or remove a value from it.
+;;; In other words, these operations are constant time, or have complexity O(1).
 ;;;
-;;; A random access list is a data structure, which attempts to make random access efficient.
+;;; A random access list is a data structure,
+;;;    which unsurprisingly attempts to make random access and update efficient.
+;;;
 ;;; The performance characteristics of this random access list library are:
 ;;; ```
 ;;;   car → O(1)
@@ -16,20 +22,24 @@
 ;;;   append → O(n)
 ;;; ```
 ;;;
-;;; The operation is based on two ideas. Firstly, a random access list consists of a sequence
-;;; of complete binary trees. The first tree is always of height 1, meaning it
-;;; just holds the. The next node always holds a binary either of the same height or one level
-;;; taller (and twice as big). There can be at most two trees of the same height next to eachother.
-;;; Therefore, tree heights `(1 1)`, `(1 2 4)` and `(1 1 2 4 4)` are valid, whereas `(1 1 1)`,
-;;; `(2 2 4)` and `(1 2 2 8)` are not. `(5)` is right out.
+;;; The operation is based on two ideas.
+;;; Firstly, a random access list consists of a sequence of complete binary trees.
+;;; The binary trees are built out of cons cells when needed.
+;;; The first tree is always of height 1, meaning it just holds the value, much like a regular cons cell.
+;;; The next node always holds a binary tree either of the same or next height.
+;;; There can be at most two trees of the same height next to eachother.
+;;; Therefore, tree heights `(1 1)`, `(1 2 4)` and `(1 1 2 4 4)` are valid,
+;;;    whereas `(1 1 1)`, `(2 2 4)` and `(1 2 2 8)` are not.
+;;; `(5)` is right out.
 ;;;
-;;; Secondly, the values in the binary trees are kept in order. When taking a value from such a
-;;; tree, we know the number of bits needed in the address and the branches to turn to in it
-;;; based on the bits of the index.
+;;; Secondly, trees can be addressed directly with bits.
+;;; It takes a n-bit number address each node of a complete binary tree of height n.
+;;; Finding a value from a list works by first finding the tree in which the value is held,
+;;;   and then using the remaining bits to find the correct leaf node in the tree.
 ;;;
-;;; Given these invariants, it is easy to see that it takes O(log n) steps to find the tree in
-;;; which some particular value is held, and then another O(log n) steps to walk the tree to
-;;; a given position.
+;;; It is easy to see that it takes O(log n) steps to find the tree in which some particular value is held,
+;;;    and then another O(log n) steps to walk the tree to a given position,
+;;; Threfore we have a total complexity of O(log n) for access and update.
 ;;;
 ;;; ```
 ;;;   (rcar (rcons 11 rnull)) → 11
