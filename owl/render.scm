@@ -13,7 +13,6 @@
       (owl ff)
       (owl tuple)
       (owl function)
-      (owl rlist)
       (owl syscall)
       (owl lazy)
       (owl math)
@@ -99,9 +98,6 @@
                            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
                            (cons #\} tl)
                            (iota (size obj) -1 1)))))
-
-               ((rlist? obj) ;; fixme: rlist not parsed yet
-                  (ilist #\# #\r (render (rlist->list obj) tl)))
 
                ((eq? obj #empty) ;; don't print as #()
                   (ilist #\# #\e #\m #\p #\t #\y tl))
@@ -222,9 +218,6 @@
                ;            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
                ;            (cons 41 tl)
                ;            (iota (size obj) -1 1)))))
-
-               ((rlist? obj) ;; fixme: rlist not parsed yet
-                  (ilist #\# #\r (ser sh (rlist->list obj) k)))
 
                ((eq? obj #empty) ;; @() is also valid
                   (ilist #\# #\e #\m #\p #\t #\y (delay (k sh))))

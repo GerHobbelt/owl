@@ -19,7 +19,11 @@
 ;;;   cons → O(log n)
 ;;;   get → O(log n)
 ;;;   set → O(log n)
+;;;   len → O(log n)
+;;;   fold → O(n)
 ;;;   append → O(n)
+;;;   list->rlist → O(n log n)
+;;;   rlist->list → O(n)
 ;;; ```
 ;;;
 ;;; The operation is based on two ideas.
@@ -62,6 +66,7 @@
       rcar
       rcdr
       rset
+      rlen
       rlist
       rfold
       rnull?
@@ -171,6 +176,20 @@
                   (pick (car tree) path depth)
                   (pick (cdr tree) path depth)))))
 
+      (define (rlen rl)
+         (let loop ((rl rl) (d 0) (dp 1) (n 0))
+            (node-case rl
+               ((snd tree rl)
+                  (lets ((n o (fx+ n d)))
+                     (loop rl d dp n)))
+               ((fst tree rl)
+                  (lets
+                     ((d dp)
+                      (dp _ (fx+ dp dp))
+                      (n o (fx+ n d)))
+                     (loop rl d dp n)))
+               ((null) n))))
+
       (define (rget rl pos def)
          (let loop ((rl rl) (d 0) (dp 1) (pos pos))
             (node-case rl
@@ -217,6 +236,8 @@
                         (fst (set tree pos d val) rl)
                         (fst tree (loop rl d dp posp)))))
                ((null) rl))))
+
+      ;;; fold from left
 
       (define (rfold-node op st n d)
          (if (eq? d 1)

@@ -71,6 +71,8 @@
        (rl ref-ns ref-alloc (apply-measured get-all rl (- size 1)))
        (rl set-ns set-alloc (apply-measured set-all rl (- size 1)))
        )
+      (if (not (= size (rlen rl)))
+         (error "len fail: " (rlen rl)))
       (if print?
          (begin
             (print "\n-- " size "--")

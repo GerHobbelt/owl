@@ -28,7 +28,7 @@
 ; f :: ? → _, keys
 (define (domain x)
    (cond
-      ((rlist? x)  (iota 0 1 (rlen x)))
+      ;((rlist? x)  (iota 0 1 (rlen x)))
       ((list? x)   (iota 0 1 (length x)))
       ((string? x) (iota 0 1 (string-length x)))
       ((vector? x) (iota 0 1 (vec-len x)))
@@ -38,7 +38,7 @@
 ; f :: _ → ?, values
 (define (range x)
    (cond
-      ((rlist? x)  (rlist->list x))
+      ;((rlist? x)  (rlist->list x))
       ((list? x)   x)
       ((string? x) (string->list x))
       ((vector? x) (vector->list x))
@@ -202,7 +202,7 @@
    (λ (rs)
       (lets ((rs n (rand rs elem-ip)))
          (if (eq? n 0)
-            (values rs null)
+            (values rs rnull)
             (lets
                ((rs head (thing rs))
                 (rs tail ((Rlist-of thing) rs)))
@@ -426,23 +426,23 @@
 
       theorem rlist-car-cons
          ∀ a ∊ Byte ∀ r ∊ Rlist
-            a = (rcar (rcons a r))
+            a = (rcar (rcons a r) #f)
 
-      theorem rlist-rfoldr-copy
-         ∀ r ∊ Rlist
-            r = (rfoldr rcons null r)
+      ;theorem rlist-rfoldr-copy
+      ;   ∀ r ∊ Rlist
+      ;      r = (rfoldr rcons null r)
 
-      theorem rlist-rfold-reverse
-         ∀ r ∊ Rlist
-            r = (rrev (rfold (λ (o x) (rcons x o)) null r))
+      ;theorem rlist-rfold-reverse
+      ;   ∀ r ∊ Rlist
+      ;      r = (rrev (rfold (λ (o x) (rcons x o)) null r))
 
-      theorem rlist-set-get-map
-         ∀ r ∊ (Rlist-of Byte)
-            (rmap (λ (x) (+ x 1)) r)
-             = (fold
-                  (lambda (rp i) (rset rp i (+ 1 (rget rp i 'bad))))
-                  r
-                  (iota 0 1 (rlen r)))
+      ;theorem rlist-set-get-map
+      ;   ∀ r ∊ (Rlist-of Byte)
+      ;      (rmap (λ (x) (+ x 1)) r)
+      ;       = (fold
+      ;            (lambda (rp i) (rset rp i (+ 1 (rget rp i 'bad))))
+      ;            r
+      ;            (iota 0 1 (rlen r)))
 
       theorem rlist-convert
          ∀ l ∊ List
