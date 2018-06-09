@@ -399,13 +399,13 @@
                            ((eq? 'alloc known-type)
                               ;(print " >>> omitting immediate check from car <<<")
                               (values
-                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],1105);R[" to "]=G(R[" from "],1);")
+                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],105);R[" to "]=G(R[" from "],1);")
                                  bs (del (put regs from 'pair) to))) ;; upgrade to pair
                            (else
                               ;(if known-type (print " >>> car on unknown type <<<" known-type))
                               ;; check that it is a pointer and an object of correct type
                               (values
-                                 (list "assert(pairp(R[" from "]),R[" from "],1105);R[" to "]=G(R[" from "],1);")
+                                 (list "assert(pairp(R[" from "]),R[" from "],105);R[" to "]=G(R[" from "],1);")
                                  bs (del (put regs from 'pair) to)))))))
                (cons 169 ;; cdr ob to
                   (λ (bs regs fail)
@@ -419,13 +419,13 @@
                            ((eq? 'alloc known-type)
                               ;(print " >>> omitting immediate check from cdr <<<")
                               (values
-                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],1169);R[" to "]=G(R[" from "],2);")
+                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],169);R[" to "]=G(R[" from "],2);")
                                  bs (del (put regs from 'pair) to))) ;; upgrade to pair
                            (else
                               ;(if known-type (print " >>> cdr on unknown type <<<" known-type))
                               ;; check that it is a pointer and an object of correct type
                               (values
-                                 (list "assert(pairp(R[" from "]),R[" from "],1169);R[" to "]=G(R[" from "],2);")
+                                 (list "assert(pairp(R[" from "]),R[" from "],169);R[" to "]=G(R[" from "],2);")
                                  bs (del (put regs from 'pair) to)))))))
                (cons 54 ;; eq a b to
                   (λ (bs regs fail)
