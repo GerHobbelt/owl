@@ -89,7 +89,7 @@
                         (fold
                            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
                            (cons #\] tl)
-                           (iota (size obj) -1 1)))))
+                           (iota (tuple-length obj) -1 1)))))
 
                ((record? obj)
                   (ilist #\# #\{
@@ -97,7 +97,7 @@
                         (fold
                            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
                            (cons #\} tl)
-                           (iota (size obj) -1 1)))))
+                           (iota (tuple-length obj) -1 1)))))
 
                ((eq? obj #empty) ;; don't print as #()
                   (ilist #\# #\e #\m #\p #\t #\y tl))
@@ -217,7 +217,7 @@
                ;         (fold
                ;            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
                ;            (cons 41 tl)
-               ;            (iota (size obj) -1 1)))))
+               ;            (iota (tuple-length obj) -1 1)))))
 
                ((eq? obj #empty) ;; @() is also valid
                   (ilist #\# #\e #\m #\p #\t #\y (delay (k sh))))

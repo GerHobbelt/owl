@@ -116,6 +116,7 @@
    (import
       (owl defmac)
       (owl list)
+      (owl tuple)
       (owl proof)
       (only (owl syscall) error))
 
@@ -175,7 +176,7 @@
       (define (ff->sexp ff)
          (if (eq? ff #empty)
             ff
-            (case (size ff)
+            (case (tuple-length ff)
                (2 (lets ((k v ff)) (list (color ff) k)))
                (3 (lets ((k v x ff))
                   (if (right? ff)
@@ -187,7 +188,7 @@
                   (list 'BAD 'NODE ff)))))
 
       (define (explode node)
-         (case (size node)
+         (case (tuple-length node)
             (2 (lets ((k v node)) (values #empty k v #empty)))
             (3 (lets ((k v x node))
                   (if (right? node)
@@ -364,7 +365,7 @@
                      (ref ff 2))
                   ((lesser? key this-k)
                      ;; go left if possible
-                     (case (size ff)
+                     (case (tuple-length ff)
                         (4 (get (ref ff 3) key def))
                         (2 def)
                         (else
@@ -373,7 +374,7 @@
                               (get (ref ff 3) key def)))))
                   (else
                      ;; go right if possible
-                     (case (size ff)
+                     (case (tuple-length ff)
                         (4 (get (ref ff 4) key def))
                         (2 def)
                         (else
@@ -391,7 +392,7 @@
             (let ((this (ref ff 1)))
                (if (eq? key this)
                   (set ff 2 val) ;; key and value have fixed position
-                  (case (size ff)
+                  (case (tuple-length ff)
                      (2 (ff-update #empty key val)) ;; fail
                      (3 (set ff 3 (ff-update (ref ff 3) key val))) ;; must be here due to contract
                      (else
@@ -632,7 +633,7 @@
 
       ;; just one value? == is the root-node a black key-value pair
       (define (ff-singleton? ff)
-         (eq? (size ff) 2))
+         (eq? (tuple-length ff) 2))
 
       (define-syntax getf
          (syntax-rules ()

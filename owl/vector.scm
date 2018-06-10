@@ -83,6 +83,7 @@
       (owl lazy)
       (owl list)
       (owl list-extra)
+      (owl tuple)
       (only (owl syscall) error)
       (owl math))
 
@@ -203,7 +204,7 @@
             (type-vector-dispatch
                (ref vec 2))
             (type-vector-leaf
-               (size vec))
+               (tuple-length vec))
             (else
                (error "vec-len: not a vector: " (list vec 'of 'type (type vec))))))
 
@@ -466,7 +467,7 @@
          (case (type v)
             (type-vector-dispatch (iterr-any-leaf (ref v 1) tl))
             (type-vector-raw (iterr-raw-leaf v (sizeb v) tl))
-            (type-vector-leaf (iterr-leaf v (size v) tl))
+            (type-vector-leaf (iterr-leaf v (tuple-length v) tl))
             (else
                tl))) ; size field in root is a number → skip
 

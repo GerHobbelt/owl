@@ -36,7 +36,6 @@
       fasl-decode          ; (byte ...) -> obj, input can be lazy
       decode-or            ; (byte ...) fail → object | (fail reason)
       encode               ; obj -> (byte ... 0), n-alloc-objs (mainly for bootstrapping)
-      tuple->list          ; ; TEMPORARILY HERE
       objects-below        ; obj -> (obj ...), all allocated objects below obj
       decode-stream        ; ll failval → (ob ...) | (ob .. failval)
       sub-objects          ; obj wanted? -> ((obj . n-occurrences) ...)
@@ -53,20 +52,12 @@
       (only (owl syscall) error)
       (owl proof)
       (owl list)
+      (owl tuple)
       (owl rlist-lcb))
 
    (begin
 
       (define enodata #false) ;; reason to fail if out of data (progressive readers want this)
-
-      (define (read-tuple tuple pos lst)
-         (if (= pos 0)
-            lst
-            (read-tuple tuple (- pos 1)
-               (cons (ref tuple pos) lst))))
-
-      (define (tuple->list tuple)
-         (read-tuple tuple (size tuple) null))
 
       ;;;
       ;;; Encoder
@@ -161,7 +152,7 @@
                            (copy-bytes out val (- bs 1)))))
                   (lets
                      ((t (type-byte-of val))
-                      (s (size val)))
+                      (s (tuple-length val)))
                      ; options for optimization
                      ; t and s fit in 6 bits -> pack (seems to be only about 1/20 compression)
                      ; t fits in 6 bits -> (+ (<< t 2) 3) (ditto)

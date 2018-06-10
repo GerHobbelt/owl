@@ -5,7 +5,8 @@
       simple-equal?)
 
    (import
-      (owl defmac))
+      (owl defmac)
+      (only (owl primop) tuple-length))
 
    (begin
 
@@ -32,12 +33,12 @@
             (let ((ta (type a)))
                (if (eq? ta type-symbol)
                   #false ; would have been eq?, because they are interned
-                  (let ((sa (size a)))
+                  (let ((sa (tuple-length a)))
                      (cond
                         ; a is immediate -> would have been eq?
                         ((not sa) #false)
                         ; same size
-                        ((eq? sa (size b))
+                        ((eq? sa (tuple-length b))
                            ; check equal types
                            (if (eq? ta (type b))
                               (if (raw? a)

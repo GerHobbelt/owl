@@ -1126,15 +1126,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          *t = make_header(acc+1, TTUPLE);
          memcpy(t + 1, R + 3, acc * W);
          error(17, ob, t); }
-      case 22: { /* size[b] obj to */
-         word ob = A0;
-         if (immediatep(ob)) {
-            A1 = IFALSE;
-         } else {
-            hval hdr = header(ob);
-            A1 = op & 64 ? (rawp(hdr) ? F(payl_len(hdr)) : IFALSE) : F(objsize(hdr) - 1);
-         }
-         NEXT(2); }
       case 23: { /* mkt t s f1 .. fs r */
          word t = *ip++;
          word s = *ip++ + 1; /* the argument is n-1 to allow making a 256-tuple with 255, and avoid 0-tuples */
@@ -1184,7 +1175,7 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          if (ticker > 10)
             bank = ticker; /* deposit remaining ticks for return to thread */
          goto apply;
-      case 28: { /* FIXME: remove after fasl update */
+      case 28: { /* sizeb obj to */
          word ob = A0;
          if (immediatep(ob)) {
             A1 = IFALSE;

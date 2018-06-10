@@ -19,6 +19,7 @@
       call/cc
       lets/cc
       create-type
+      tuple-length
       len
       )
 
@@ -80,8 +81,7 @@
       (define set-ticker  (func '(2 62 4 5 24 5)))
       (define sys-prim    (func '(5 63 4 5 6 7 8 24 8)))
       (define sys         (func '(4 27 4 5 6 7 24 7)))
-      (define size        (func '(2 22 4 5 24 5)))
-      (define sizeb       (func '(2 86 4 5 24 5)))
+      (define sizeb       (func '(2 28 4 5 24 5)))
       (define raw         (func '(3 59 4 5 6 24 6)))
       (define eq?         (func '(3 54 4 5 6 24 6)))
       (define fxband      (func '(3 55 4 5 6 24 6)))
@@ -107,10 +107,6 @@
       (define listuple (func '(4 35 4 5 6 7 24 7)))
       (define mkblack (func '(5 48 4 5 6 7 8 24 8)))
       (define mkred (func '(5 176 4 5 6 7 8 24 8)))
-      (define fxqr (func '(4 26))) ;; <- placeholder
-      (define fx+ (func '(4 38 4 5 6 7 24 7)))
-      (define fx- (func '(4 40 4 5 6 7 24 7)))
-      (define fx>> (func '(4 58 4 5 6 7 24 7)))
 
       (define null '())
 
@@ -170,8 +166,7 @@
          (list
             ;; input arity includes a continuation
             (tuple 'sys          27 4 1 sys)
-            (tuple 'size         22 1 1 size) ;; get object size (- 1)
-            (tuple 'sizeb        86 1 1 sizeb) ;; raw-obj -> number of bytes (fixnum)
+            (tuple 'sizeb        28 1 1 sizeb) ;; raw-obj -> number of bytes (fixnum)
             (tuple 'raw          59 2 1 raw) ;; make a raw object
             (tuple 'cons         51 2 1 cons)
             (tuple 'car         105 1 1 car) ;; opcode: 1 << 6 | 41
@@ -231,11 +226,20 @@
             ((lets/cc var . body)
                (call/cc (λ (var) (lets . body))))))
 
-      (define create-type
-         (let ((get-header (raw '(1 4 0 5 24 5) type-bytecode)))
-            (λ (type)
-               (let ((hdr (get-header (raw '() type))))
-                  (fxbxor hdr hdr)))))
+      ;; unsafe function - not to be exported!
+      (define get-header (bytes->bytecode '(1 4 0 5 24 5)))
+
+      (define (create-type type)
+         (let ((hdr (get-header (raw '() type))))
+            (fxbxor hdr hdr)))
+
+      (define (tuple-length obj)
+         (and
+            (allocated? obj)
+            (lets
+               ((s _ (fx>> (get-header obj) 8)) ; 8 == SPOS - IPOS
+                (s _ (fx- s 1)))
+               s)))
 
       ;; non-primop instructions that can report errors
       (define (instruction-name op)

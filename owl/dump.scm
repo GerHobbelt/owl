@@ -15,6 +15,7 @@
       (owl defmac)
       (owl fasl)
       (owl list)
+      (owl tuple)
       (owl sort)
       (owl syscall)
       (owl ff)

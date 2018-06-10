@@ -315,7 +315,7 @@
       (define (update-state state exec)
          (if (tuple? exec) ;; vm thread suspensions are tuples
             (lets
-               ((bcode (bytecode-of (ref exec (size exec)) 'not-a-function)) ;; identify place based in bytecode which is inert
+               ((bcode (bytecode-of (ref exec (tuple-length exec)) 'not-a-function)) ;; identify place based in bytecode which is inert
                 (prof (get state 'prof #false))
                 (count (get prof bcode 0))
                 (prof (put prof bcode (+ count 1)))

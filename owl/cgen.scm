@@ -104,13 +104,6 @@
                bs (put regs to 'fixnum)))) ;; output is always a fixnum
 
       ;; lraw lst-reg type-reg flipp-reg to
-      (define (cify-size bs regs fail)
-         (lets ((ob to bs (get2 (cdr bs))))
-            (values
-               (list "R["to"]=(immediatep(R["ob"]))?IFALSE:F(objsize(V(R["ob"]))-1);")
-               bs (put regs to 'fixnum))))
-
-      ;; lraw lst-reg type-reg flipp-reg to
       (define (cify-lraw bs regs fail)
          (lets ((lr tr to bs (get3 (cdr bs))))
             (values (list "R["to"]=prim_lraw(R["lr"],R["tr"]);") bs
@@ -332,8 +325,6 @@
                      (values
                         (list "error(17,ob,F(acc));")
                         null regs)))
-               (cons 22 cify-size)
-               (cons 86 cify-sizeb)
                (cons 23 cify-mkt)
                (cons 24 ;; ret r == call R3 with 1 argument at Rr
                   (λ (bs regs fail)
@@ -353,6 +344,7 @@
                ;               (drop bs jump-len) regs
                ;               ) regs))))
                (cons 26 cify-fxqr)
+               (cons 28 cify-sizeb)
                (cons 32 cify-bind)
                (cons 34 ;; fixed jump-arity n hi8 lo8
                   (λ (bs regs fail)

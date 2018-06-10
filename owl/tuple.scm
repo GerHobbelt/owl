@@ -17,13 +17,14 @@
 
    (export
       tuple?
+      tuple-length
       list->tuple
       tuple->list)
 
    (import
       (owl defmac)
       (owl list)
-      (only (owl primop) len)
+      (only (owl primop) len tuple-length)
       (only (owl syscall) error))
 
    (begin
@@ -44,5 +45,5 @@
                (cons (ref tuple pos) lst))))
 
       (define (tuple->list tuple)
-         (read-tuple tuple (size tuple) null))
+         (read-tuple tuple (tuple-length tuple) null))
 ))

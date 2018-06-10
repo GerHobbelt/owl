@@ -22,6 +22,7 @@
       (owl ff)
       (owl function)
       (owl list)
+      (owl tuple)
       (owl symbol)
       (owl string)
       (owl render)
@@ -197,12 +198,6 @@
                   ((walker env (B ret fail)) exp)))))
 
       (define env-fold ff-fold)
-
-      (define (tuple->list t)
-         (let loop ((pos 1))
-            (if (eq? pos (size t))
-               (list (ref t pos))
-               (cons (ref t pos) (loop (+ pos 1))))))
 
       (define (env-serializer env thing)
          ((make-serializer (env-get env name-tag empty)) thing null))

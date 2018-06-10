@@ -319,7 +319,7 @@
                (lets ((rs n (rand rs (length obj))))
                   (values rs (list-ref obj n))))
             ((tuple? obj)
-               (lets ((rs n (rand rs (size obj))))
+               (lets ((rs n (rand rs (tuple-length obj))))
                   (values rs (ref obj (+ n 1)))))
             ((vector? obj)
                (lets ((rs n (rand rs (vec-len obj))))
