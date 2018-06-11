@@ -2,13 +2,15 @@
 ;;; random access lists
 ;;;
 
-(define-library (owl rlist-old)
+(define-library (owl rlist old)
 
    (export
+      rnull
       rcons  ; O(1), (rcons a rl) -> rl'
       rcar   ; O(1), (rcar (rcons a rl)) -> a
       rcdr   ; O(1), (rcdr (rcons a rl)) -> rl'*
       rnull? ; O(1), plain null?
+      rpair?
       rlist? ; O(1), obj -> bool
       rget   ; O(log n), (rget rl pos def) -> val | def if outside of rl
       rset   ; O(log n), (rset rl pos val) -> rl' | error if outside of rl
@@ -41,7 +43,12 @@
       (only (owl syscall) error))
 
    (begin
+
+      (define rnull null)
+
       (define rnull? null?)
+
+      (define (rpair? x) (not (rnull? x)))
 
       (define (rlist? l)
          (cond

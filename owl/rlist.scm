@@ -1,7 +1,11 @@
 (define-library (owl rlist)
    (import
       (owl defmac)
-      (owl rlist-lcb))
+
+      ;; alternative implementations
+      (owl rlist lc-forest) ;; option 1
+      ;(owl rlist old)      ;; option 2
+      )
 
    (export
       rnull
@@ -23,5 +27,3 @@
       rlist->list)
 
    (begin))
-      
-      

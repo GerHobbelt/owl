@@ -53,10 +53,11 @@
 ;;;   (rget (list->rlist (iota 0 1 1000)) 1234 #f) → #false
 ;;; ```
 
-(define-library (owl rlist-lcb)
+(define-library (owl rlist lc-forest)
 
    (import
       (owl defmac)
+      (only (owl syscall) error)
       (owl list))
 
    (export
@@ -134,23 +135,18 @@
                   ((null) (fst x (snd a rnull)))))
             ((null) (fst x rnull))))
 
-      (define (rcar rl def)
-         (node-case rl
-            ((fst a rl) a)
-            ((null) def)))
-
-      (define (tof) #f)
-
-      (define rcar
+      (define rcar 
          (case-lambda
             ((rl)
                (node-case rl
                   ((fst a rl) a)
-                  (null tof)))
+                  ((null) (error "rcar on non-rcons" rl))))
             ((rl def)
                (node-case rl
                   ((fst a rl) a)
                   ((null) def)))))
+
+      (define (tof) #f)
 
       (define rnull?
          (let ((y (λ () #t))
