@@ -19,7 +19,7 @@
       call/cc
       lets/cc
       create-type
-      tuple-length
+      object-size
       len
       )
 
@@ -235,13 +235,10 @@
          (let ((hdr (get-header (raw '() type))))
             (fxbxor hdr hdr)))
 
-      (define (tuple-length obj)
-         (and
-            (allocated? obj)
-            (lets
-               ((s _ (fx>> (get-header obj) 8)) ; 8 == SPOS - IPOS
-                (s _ (fx- s 1)))
-               s)))
+      (define (object-size obj)
+         (if (immediate? obj)
+            0
+            (lets ((s _ (fx>> (get-header obj) 8))) s))) ; 8 == SPOS - IPOS
 
       ;; non-primop instructions that can report errors
       (define (instruction-name op)

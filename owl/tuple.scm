@@ -24,12 +24,16 @@
    (import
       (owl defmac)
       (owl list)
-      (only (owl primop) len tuple-length)
+      (only (owl primop) len object-size)
       (only (owl syscall) error))
 
    (begin
       (define (tuple? x)
          (eq? (type x) type-tuple))
+
+      (define (tuple-length x)
+         (lets ((len u (fx- (object-size x) 1)))
+            (and (not u) len)))
 
       (define (list->tuple lst)
          (let ((l (len lst)))
