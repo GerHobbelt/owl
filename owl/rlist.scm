@@ -1,6 +1,7 @@
 (define-library (owl rlist)
    (import
       (owl defmac)
+      (owl proof)
 
       ;; alternative implementations
       (owl rlist lc-forest) ;; fairly fast, can hold any data, fixnum offset
@@ -27,4 +28,25 @@
       list->rlist
       rlist->list)
 
-   (begin))
+   (begin
+
+      ;; the functionality comes from the imported library
+      ;; here we just nail down some semantics using (owl proof)
+
+      (example
+
+         (rcar (rcons 11 rnull)) = 11
+
+         (rget rnull 100 'no) = 'no
+
+         (rget (rlist 11 22 33) 2 'no) = 33
+
+         (rget (list->rlist '(11 22 33)) 9 'no) = 'no
+
+         (rnull? (rcdr (rcons 11 rnull))) = #t
+
+         (rlen (rcons 11 rnull)) = 1
+
+         (rlist->list (rlist 11 22 33)) = '(11 22 33)
+
+)))
