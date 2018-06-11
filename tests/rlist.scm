@@ -1,6 +1,5 @@
 (import
-   ;(owl rlist)
-   (owl rlist-lcb) ;; an next gen O(log n) library
+   (owl rlist)
    (only (owl sys) get-heap-bytes-written get-heap-max-live))
 
 ;; compare against O(n)

@@ -53,7 +53,7 @@
       (owl proof)
       (owl list)
       (owl tuple)
-      (owl rlist-lcb))
+      (owl rlist))
 
    (begin
 

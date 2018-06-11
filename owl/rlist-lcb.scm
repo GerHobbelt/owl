@@ -69,7 +69,12 @@
       rlen
       rlist
       rfold
+      rfoldr
+      riter
+      riterr
+      rmap
       rnull?
+      rpair?
       list->rlist
       rlist->list)
 
@@ -151,6 +156,11 @@
          (let ((y (λ () #t))
                (n (λ (a b) #f)))
             (λ (rl) (rl n n y))))
+
+      (define rpair?
+         (let ((y (λ (a b) #t))
+               (n (λ () #f)))
+            (λ (rl) (rl y y n))))
 
       (define (drop as)
          (node-case as
@@ -267,5 +277,10 @@
 
       (define (rlist . args)
          (list->rlist args))
+
+      (define rmap    #f)
+      (define rfoldr  #f)
+      (define riter   #f)
+      (define riterr  #f)
 
 ))

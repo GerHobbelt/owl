@@ -67,7 +67,7 @@
       (owl tuple)
       (owl vector)
       (owl list-extra)
-      (owl rlist-lcb)
+      (owl rlist)
       (owl io)
       (owl syscall)
       (owl sort)

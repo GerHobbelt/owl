@@ -5,7 +5,7 @@
    (export
       (exports (owl defmac))
       (exports (owl list))
-      (exports (owl rlist-lcb))
+      (exports (owl rlist))
       (exports (owl list-extra))
       (exports (owl ff))
       (exports (owl io))
@@ -43,7 +43,7 @@
    (import
       (owl defmac)
       (owl list)
-      (owl rlist-lcb)
+      (owl rlist)
       (owl list-extra)
       (owl tuple)
       (owl ff)
