@@ -279,7 +279,7 @@
                   (λ (bs regs fail)
                      (lets ((from offset to bs (get3 (cdr bs))))
                         (values (list "R["to"]=G(R["from"],"offset");") bs (del regs to)))))
-               (cons 2 ;; goto <rator> <nargs>
+               (cons 3 ;; goto <rator> <nargs>
                   (λ (bs regs fail)
                      (lets ((rator nargs bs (get2 (cdr bs))))
                         (let ((code (list "ob=(word*)R[" rator "];acc=" nargs ";" )))

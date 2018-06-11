@@ -51,7 +51,7 @@
          (list->ff
             '((move . 9)      ; move a, t:      Rt = Ra
               (refi . 1)      ; refi a, p, t:   Rt = Ra[p], p unsigned
-              (goto . 2)      ; jmp a, nargs    call Ra with nargs args
+              (goto . 3)      ; jmp a, nargs    call Ra with nargs args
               (clos . 132)    ; clos lp, o, nenv, e0 ... en, t:
               (cloc . 4)      ; cloc lp, o, nenv, e0 ... en, t:
               (clos1 . 196)

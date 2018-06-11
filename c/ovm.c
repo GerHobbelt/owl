@@ -1077,7 +1077,8 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
       case 1:
          A2 = G(A0, ip[1]);
          NEXT(3);
-      case 2:
+      case 2: /* FIXME: move op34 here after fasl update */
+      case 3: /* goto */
          ob = (word *)A0;
          acc = ip[1];
          goto apply;
