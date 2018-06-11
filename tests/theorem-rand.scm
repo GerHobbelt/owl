@@ -426,7 +426,7 @@
 
       theorem rlist-car-cons
          ∀ a ∊ Byte ∀ r ∊ Rlist
-            a = (rcar (rcons a r) #f)
+            a = (rcar (rcons a r))
 
       ;theorem rlist-rfoldr-copy
       ;   ∀ r ∊ Rlist

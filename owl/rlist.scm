@@ -3,8 +3,9 @@
       (owl defmac)
 
       ;; alternative implementations
-      (owl rlist lc-forest) ;; option 1
-      ;(owl rlist old)      ;; option 2
+      (owl rlist lc-forest) ;; fairly fast, can hold any data, fixnum offset
+      ;(owl rlist old)      ;; fairly fast, can hold non-rlist-node -data, bignum offsets
+      ;(owl rlist linear)   ;; reference library using regular lists. can bootstrap ol, barely
       )
 
    (export
