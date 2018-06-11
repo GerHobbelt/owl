@@ -1126,6 +1126,16 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          *t = make_header(acc+1, TTUPLE);
          memcpy(t + 1, R + 3, acc * W);
          error(17, ob, t); }
+      case 21: { /* fx- a b r u, types prechecked, signs ignored */
+         hval r = immval(A0) - immval(A1);
+         A3 = F(r >> FBITS & 1);
+         A2 = F(r);
+         NEXT(4); }
+      case 22: { /* fx+ a b r o, types prechecked, signs ignored */
+         hval r = immval(A0) + immval(A1);
+         A3 = F(r >> FBITS);
+         A2 = F(r);
+         NEXT(4); }
       case 23: { /* mkt t s f1 .. fs r */
          word t = *ip++;
          word s = *ip++ + 1; /* the argument is n-1 to allow making a 256-tuple with 255, and avoid 0-tuples */
@@ -1215,7 +1225,7 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          word *ob = (word *)A0;
          A1 = immediatep(ob) ? IFALSE : F(objsize(*ob) - 1);
          NEXT(2); }
-      case 38: { /* fx+ a b r o, types prechecked, signs ignored */
+      case 38: { /* FIXME: remove after fasl update */
          hval res = immval(A0) + immval(A1);
          A3 = BOOL(1 << FBITS & res);
          A2 = F(res);
@@ -1225,7 +1235,7 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          A3 = F(res >> FBITS);
          A2 = F(res);
          NEXT(4); }
-      case 40: { /* fx- a b r u, args prechecked, signs ignored */
+      case 40: { /* FIXME: remove after fasl update */
          hval r = immval(A0) - immval(A1);
          A3 = BOOL(1 << FBITS & r);
          A2 = F(r);
