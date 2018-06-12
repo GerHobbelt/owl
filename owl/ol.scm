@@ -135,7 +135,6 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
          ; suffix-array bisect
          fold foldr map reverse length zip append unfold
          list-ref lset iota
-         ;vec-ref vec-len vec-fold vec-foldr
          ;print
          mail interact
          take filter remove

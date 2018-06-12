@@ -322,8 +322,8 @@
                (lets ((rs n (rand rs (tuple-length obj))))
                   (values rs (ref obj (+ n 1)))))
             ((vector? obj)
-               (lets ((rs n (rand rs (vec-len obj))))
-                  (values rs (vec-ref obj n))))
+               (lets ((rs n (rand rs (vector-length obj))))
+                  (values rs (vector-ref obj n))))
             (else
                (error "rand-elem: what be " obj))))
 

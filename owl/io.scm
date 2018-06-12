@@ -288,7 +288,7 @@
          (let loop ((ll ll) (n 0))
             (cond
                ((pair? ll)
-                  (if (byte-vector? (car ll))
+                  (if (bytevector? (car ll))
                      (if (write-really (car ll) fd)
                         (loop (cdr ll) (+ n (sizeb (car ll))))
                         (values ll n))

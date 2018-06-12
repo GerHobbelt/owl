@@ -46,9 +46,9 @@
    (export
       vector              ; v0, .., vn → vector
       vector?             ; x → bool
-      byte-vector?
-      vec-len             ; v → n
-      vec-ref             ; v x p → v[p] | error
+      bytevector?
+      vector-length       ; v → n
+      vector-ref          ; v x p → v[p] | error
       list->vector
       list->byte-vector   ; (byte ...) -> bvec | #false
       vector->list
@@ -71,8 +71,6 @@
       merge-chunks          ; exported for use in lib-io (may be moved later)
       make-vector           ; n elem → #(elem ...)
       leaf-data vec-leaf-of
-      vector-ref
-      vector-length
       vec-leaves
       vec-cat             ;  vec x vec → vec
       vec-rev
@@ -96,7 +94,7 @@
       (define *vec-leaf-size* (<< 1 *vec-bits*))
       (define *vec-leaf-max* (- *vec-leaf-size* 1))
 
-      (define (byte-vector? x)
+      (define (bytevector? x)
          (eq? (type x) type-vector-raw))
 
       ;;;
@@ -160,7 +158,7 @@
             (ncar n)))
 
       ; vec x n -> vec[n] or fail
-      (define (vec-ref v n)
+      (define (vector-ref v n)
          (case (type n)
             (type-fix+
                (cond
@@ -173,11 +171,11 @@
             (type-int+
                (vec-ref-big v n))
             (else
-               (error "vec-ref: bad index: " n))))
+               (error "vector-ref: bad index: " n))))
 
       ;;; searching the leaves containing a pos
 
-      ;; todo: switch vec-ref to use vec-leaf-of for int+ indeces
+      ;; todo: switch vector-ref to use vec-leaf-of for int+ indices
 
       (define (vec-leaf-big v n)
          (vec-dispatch-2 (vec-seek v (ncdr n)) (ncar n)))
@@ -197,7 +195,7 @@
 
       ;; others
 
-      (define (vec-len vec)
+      (define (vector-length vec)
          (case (type vec)
             (type-vector-raw
                (sizeb vec))
@@ -206,7 +204,7 @@
             (type-vector-leaf
                (tuple-length vec))
             (else
-               (error "vec-len: not a vector: " (list vec 'of 'type (type vec))))))
+               (error "vector-length: not a vector: " (list vec 'of 'type (type vec))))))
 
 
 
@@ -405,7 +403,7 @@
             (else tl))) ; size field -> number
 
       (define (vec-iter v)
-         (let loop ((end (vec-len v)) (pos 0))
+         (let loop ((end (vector-length v)) (pos 0))
             (let ((this (vec-leaf-of v pos)))
                (iter-leaf-of this
                   (λ () (let ((pos (+ pos *vec-leaf-size*))) (if (< pos end) (loop end pos) null)))))))
@@ -413,7 +411,7 @@
       (define (iter-leaf-range v p n t)
          (if (eq? n 0)
             t
-            (pair (vec-ref v p)
+            (pair (vector-ref v p)
                (iter-leaf-range v (+ p 1) (- n 1) t))))
 
       (define (iter-range-really v p n)
@@ -440,7 +438,7 @@
                         (λ () (iter-range-really v (+ p n-here) n-left))))))))
 
       (define (vec-iter-range v p e)
-         (if (<= e (vec-len v))
+         (if (<= e (vector-length v))
             (cond
                ((< p e)
                   (iter-range-really v p (- e p)))
@@ -479,7 +477,7 @@
 
       (define (vec-iterr v)
          (lets
-            ((end (vec-len v))
+            ((end (vector-length v))
              (last (band end *vec-leaf-max*)))
             (if (eq? last 0) ; vec is empty or ends to a full leaf
                (if (eq? end 0) ; blank vector
@@ -522,7 +520,7 @@
 
       ;; fixme: proper vec-range not implemented
       (define (vec-range-naive vec from to) ; O(m log n)
-         (list->vector (map (H vec-ref vec) (iota from 1 to))))
+         (list->vector (map (H vector-ref vec) (iota from 1 to))))
 
       (define vec-range vec-range-naive)
 
@@ -533,7 +531,7 @@
 
       ;; vec → a stream of leaves
       (define (vec-leaves vec)
-         (let ((end (vec-len vec)))
+         (let ((end (vector-length vec)))
             (let loop ((pos 0))
                (if (< pos end)
                   (let ((data (leaf-data (vec-leaf-of vec pos))))
@@ -563,11 +561,6 @@
       ;;;
 
       ;; todo: start adding Vector-style constructors at some point
-      (define-syntax vector
-         (syntax-rules ()
-            ((vector . things)
-               (list->vector (list . things)))))
-
-      (define vector-length vec-len)
-      (define vector-ref vec-ref)
+      (define (vector . lst)
+         (list->vector lst))
 ))

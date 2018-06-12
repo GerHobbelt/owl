@@ -457,7 +457,6 @@
       (define-missing-bad close-input-port)
       (define-missing-bad char-ready?)
       (define-missing-bad call-with-port)
-      (define-missing-bad bytevector?)
       (define-missing-bad bytevector-u8-set!)
       (define-missing-bad bytevector-u8-ref)
       (define-missing-bad bytevector-length)

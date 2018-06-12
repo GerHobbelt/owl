@@ -3,13 +3,13 @@
 ; note: end = minimum
 
 (define (lex-less? vec a b)
-   (let ((end (vec-len vec)))
+   (let ((end (vector-length vec)))
       (let loop ((a a) (b b))
          (cond
             ((= a end) #true)
             ((= b end) #false)
             (else
-               (let ((av (vec-ref vec a)) (bv (vec-ref vec b)))
+               (let ((av (vector-ref vec a)) (bv (vector-ref vec b)))
                   (cond
                      ((< av bv) #true)
                      ((= av bv) (loop (+ a 1) (+ b 1)))
@@ -20,7 +20,7 @@
    (list->vector
       (sort
          (λ (a b) (lex-less? data a b))
-         (iota 0 1 (vec-len data)))))
+         (iota 0 1 (vector-length data)))))
 
 (define (try rst maxlen alphafact)
    (lets

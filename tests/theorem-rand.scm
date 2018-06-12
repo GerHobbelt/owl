@@ -31,7 +31,7 @@
       ;((rlist? x)  (iota 0 1 (rlen x)))
       ((list? x)   (iota 0 1 (length x)))
       ((string? x) (iota 0 1 (string-length x)))
-      ((vector? x) (iota 0 1 (vec-len x)))
+      ((vector? x) (iota 0 1 (vector-length x)))
       ((ff? x)     (keys x))
       (else (error "domain: what is " x))))
 

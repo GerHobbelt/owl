@@ -18,7 +18,7 @@
       (owl math)
       (owl port)
       (only (owl symbol) render-symbol symbol?)
-      (only (owl vector) byte-vector? vector? vector->list)
+      (only (owl vector) bytevector? vector? vector->list)
       (only (owl math) render-number number?)
       (only (owl string) render-string string?))
 
@@ -68,7 +68,7 @@
                   (render-symbol obj tl))
 
                ;; these are a subclass of vectors in owl
-               ;((byte-vector? obj)
+               ;((bytevector? obj)
                ;   (ilist #\# #\u #\8 (render (vector->list obj) tl)))
 
                ((vector? obj)
