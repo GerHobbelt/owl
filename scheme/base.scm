@@ -384,6 +384,10 @@
             ((let*-values () . rest)
                (begin . rest))))
 
+      (define-syntax let-values
+         (syntax-rules ()
+            ((let-values . stuff) (let*-values . stuff))))
+
       (define-syntax let*
          (syntax-rules ()
             ((let* . stuff) (lets . stuff))))
@@ -433,7 +437,6 @@
       (define-missing-bad make-bytevector)
       (define-missing-bad list-set!)
       (define-missing-bad letrec-syntax)
-      (define-missing-bad let-values)
       (define-missing-bad let-syntax)
       (define-missing-bad input-port?)
       (define-missing-bad input-port-open?)
