@@ -68,8 +68,8 @@
                   (render-symbol obj tl))
 
                ;; these are a subclass of vectors in owl
-               ;((bytevector? obj)
-               ;   (ilist #\# #\u #\8 (render (vector->list obj) tl)))
+               ((bytevector? obj)
+                  (ilist #\# #\u #\8 (render (vector->list obj) tl)))
 
                ((vector? obj)
                   (cons #\# (render (vector->list obj) tl)))
@@ -196,6 +196,9 @@
 
                ((symbol? obj)
                   (render-symbol obj (delay (k sh))))
+
+               ((bytevector? obj)
+                  (ilist #\# #\u #\8 (ser sh (vector->list obj) k)))
 
                ((vector? obj)
                   (cons #\#

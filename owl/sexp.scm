@@ -347,6 +347,20 @@
                         (list 'quote (list 'hashbang (list->string line)))))))
                val)))
 
+      (define get-bytevector
+         (let-parses
+            ((skip (get-imm #\#))
+             (skip (get-imm #\u))
+             (skip (get-imm #\8))
+             (fields
+               (get-list-of
+                  (let-parses
+                     ((skip maybe-whitespace)
+                      (base get-base)
+                      (val (get-natural base)))
+                     val))))
+            (raw fields type-vector-raw)))
+
       (define (get-vector-of parser)
          (let-parses
             ((skip (get-imm #\#))
@@ -406,6 +420,7 @@
                   get-symbol
                   get-string
                   get-funny-word
+                  get-bytevector
                   (get-list-of (get-sexp))
                   (get-vector-of (get-sexp)) ;; #(...) -> vector or #((a . b) (c . d))
                   (get-ff (get-sexp)) ;; #(...) -> vector or #((a . b) (c . d))
