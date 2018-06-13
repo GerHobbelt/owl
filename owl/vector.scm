@@ -46,11 +46,9 @@
    (export
       vector              ; v0, .., vn → vector
       vector?             ; x → bool
-      bytevector?
       vector-length       ; v → n
       vector-ref          ; v x p → v[p] | error
       list->vector
-      list->byte-vector   ; (byte ...) -> bvec | #false
       vector->list
       vec-iter
       vec-iterr
@@ -78,6 +76,7 @@
    (import
       (owl defmac)
       (owl lazy)
+      (owl bytevector)
       (owl list)
       (owl list-extra)
       (owl tuple)
@@ -92,9 +91,6 @@
 
       (define *vec-leaf-size* (<< 1 *vec-bits*))
       (define *vec-leaf-max* (- *vec-leaf-size* 1))
-
-      (define (bytevector? x)
-         (eq? (type x) type-vector-raw))
 
       ;;;
       ;;; Vector search
@@ -136,7 +132,7 @@
       ; vec x fixnum -> local value
       (define (vec-ref-digit v n)
          (case (type v)
-            (type-vector-raw
+            (type-bytevector
                (ref v (fxband n *vec-leaf-max*)))
             (type-vector-dispatch
                 (vec-ref-digit (ref v 1) n)) ; read the leaf of the node
@@ -161,7 +157,7 @@
          (case (type n)
             (type-fix+
                (cond
-                  ((eq? (type v) type-vector-raw)
+                  ((eq? (type v) type-bytevector)
                      (ref v n))
                   ((lesser? n *vec-leaf-size*)
                      (vec-ref-digit v n))
@@ -183,7 +179,7 @@
          (case (type n)
             (type-fix+
                (cond
-                  ((eq? (type v) type-vector-raw) v)
+                  ((eq? (type v) type-bytevector) v)
                   ((lesser? n *vec-leaf-size*) v)
                   (else (vec-dispatch-2 v n))))
             (type-int+
@@ -195,7 +191,7 @@
 
       (define (vector-length vec)
          (case (type vec)
-            (type-vector-raw
+            (type-bytevector
                (sizeb vec))
             (type-vector-dispatch
                (ref vec 2))
@@ -212,15 +208,12 @@
       ; note, a blank vector must use a raw one, since there are no such things as 0-tuples
 
       (define empty-vector
-         (raw null type-vector-raw))
-
-      (define list->byte-vector
-         (C raw type-vector-raw))
+         (raw null type-bytevector))
 
       (define (make-leaf rvals n raw?)
          (if raw?
             ;; the leaf contains only fixnums 0-255, so make a compact leaf
-           (list->byte-vector (reverse rvals)) ;; make node and reverse
+           (list->bytevector (reverse rvals)) ;; make node and reverse
            ;; the leaf contains other values, so need full 4/8-byte descriptors
            (listuple type-vector-leaf n (reverse rvals))))
 
@@ -350,26 +343,11 @@
 
       (define (vector? x) ; == raw or a variant of major type 11?
          (case (type x)
-            (type-vector-raw #true)
+            (type-bytevector #true)
             (type-vector-leaf #true)
             (type-vector-dispatch #true)
             (else #false)))
 
-      ;; a separate function for listifying byte vectors, which may not be valid vectos (can be > leaf node size)
-
-      (define (copy-bvec bv pos tail)
-         (if (eq? pos 0)
-            (cons (ref bv pos) tail)
-            (lets
-               ((byte (ref bv pos))
-                (pos _ (fx- pos 1)))
-               (copy-bvec bv pos (cons byte tail)))))
-
-      (define (byte-vector->list bv)
-         (let ((size (sizeb bv)))
-            (if (eq? size 0)
-               null
-               (copy-bvec bv (- size 1) null))))
 
       ;;;
       ;;; Vector iterators
@@ -392,7 +370,7 @@
       (define (iter-leaf-of v tl)
          (case (type v)
             (type-vector-dispatch (iter-leaf-of (ref v 1) tl))
-            (type-vector-raw
+            (type-bytevector
                (let ((s (sizeb v)))
                   (if (eq? s 0)
                      tl
@@ -461,7 +439,7 @@
       (define (iterr-any-leaf v tl)
          (case (type v)
             (type-vector-dispatch (iterr-any-leaf (ref v 1) tl))
-            (type-vector-raw (iterr-raw-leaf v (sizeb v) tl))
+            (type-bytevector (iterr-raw-leaf v (sizeb v) tl))
             (type-vector-leaf (iterr-leaf v (tuple-length v) tl))
             (else
                tl))) ; size field in root is a number → skip
@@ -490,14 +468,14 @@
       ;; list conversions
 
       (define (vector->list vec)
-         (if (eq? (type vec) type-vector-raw)
+         (if (eq? (type vec) type-bytevector)
             ;; convert raw vectors directly to allow this to be used also for large chunks
             ;; which are often seen near IO code
-            (byte-vector->list vec)
+            (bytevector->list vec)
             (vec-foldr cons null vec)))
 
       (define (leaf-data leaf)
-         (if (eq? (type leaf) type-vector-raw)
+         (if (eq? (type leaf) type-bytevector)
             leaf
             (ref leaf 1)))
 

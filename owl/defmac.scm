@@ -33,7 +33,7 @@
       type-pair
       type-vector-dispatch
       type-vector-leaf
-      type-vector-raw
+      type-bytevector
       type-tuple
       type-symbol
       type-const
@@ -408,7 +408,7 @@
       (define type-pair              1)
       (define type-vector-dispatch  15)
       (define type-vector-leaf      11)
-      (define type-vector-raw       19) ;; see also TBVEC in c/ovm.c
+      (define type-bytevector       19) ;; see also TBVEC in c/ovm.c
       (define type-symbol            4)
       (define type-tuple             2)
       (define type-rlist-node       14)

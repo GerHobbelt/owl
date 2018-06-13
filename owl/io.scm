@@ -81,6 +81,7 @@
       (prefix (owl sys) sys-)
       (owl ff)
       (owl equal)
+      (owl bytevector)
       (owl vector)
       (owl render)
       (owl list)
@@ -100,7 +101,7 @@
 
       ;; #[0 1 .. n .. m] n → #[n .. m]
       (define (bvec-tail bvec n)
-         (raw (map (H ref bvec) (iota n 1 (sizeb bvec))) type-vector-raw))
+         (raw (map (H ref bvec) (iota n 1 (sizeb bvec))) type-bytevector))
 
       (define (try-write-block fd bvec len)
          ;; stdio ports are in blocking mode, so poll always
@@ -174,7 +175,7 @@
          (try-get-block fd block-size #false))
 
       (define (bvec-append a b)
-         (list->byte-vector
+         (list->bytevector
             (append
                (vector->list a)
                (vector->list b))))
@@ -260,7 +261,7 @@
          (cond
             ((not (eq? (type port) type-fix+))
                #false)
-            ((and (eq? (type ip) type-vector-raw) (eq? 4 (sizeb ip))) ;; silly old formats
+            ((and (eq? (type ip) type-bytevector) (eq? 4 (sizeb ip))) ;; silly old formats
                (sys-port->non-blocking (sys-prim 29 ip port socket-type-tcp)))
             (else
                ;; note: could try to autoconvert formats to be a bit more user friendly
@@ -348,10 +349,10 @@
          (cond
             ((eq? len output-buffer-size)
                (and
-                  (write-really (raw (reverse out) type-vector-raw) fd)
+                  (write-really (raw (reverse out) type-bytevector) fd)
                   (printer lst 0 null fd)))
             ((null? lst)
-               (write-really (raw (reverse out) type-vector-raw) fd))
+               (write-really (raw (reverse out) type-bytevector) fd))
             (else
                ;; avoid dependency on generic math in IO
                (lets ((len _ (fx+ len 1)))
@@ -589,7 +590,7 @@
          (let loop ((bs bs) (n stream-block-size) (out null))
             (cond
                ((eq? n 0)
-                  (if (write-really (list->byte-vector (reverse out)) fd)
+                  (if (write-really (list->bytevector (reverse out)) fd)
                      (loop bs stream-block-size null)
                      #false))
                ((pair? bs)

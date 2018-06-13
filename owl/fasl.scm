@@ -43,7 +43,7 @@
 
    (import
       (owl defmac)
-      (owl vector)
+      (owl bytevector)
       (owl math)
       (owl primop)
       (owl ff)
@@ -205,12 +205,12 @@
          (cond
             ((eq? n chunk-size)
                (cons
-                  (list->byte-vector (reverse buff))
+                  (list->bytevector (reverse buff))
                   (chunk-stream bs 0 null)))
             ((null? bs)
                (if (null? buff)
                   null
-                  (list (list->byte-vector (reverse buff)))))
+                  (list (list->bytevector (reverse buff)))))
             ((pair? bs)
                (lets ((n _ (fx+ n 1)))
                   (chunk-stream (cdr bs) n (cons (car bs) buff))))

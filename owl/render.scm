@@ -18,7 +18,8 @@
       (owl math)
       (owl port)
       (only (owl symbol) render-symbol symbol?)
-      (only (owl vector) bytevector? vector? vector->list)
+      (only (owl bytevector) bytevector? bytevector->list)
+      (only (owl vector) vector? vector->list)
       (only (owl math) render-number number?)
       (only (owl string) render-string string?))
 
@@ -67,12 +68,11 @@
                ((symbol? obj)
                   (render-symbol obj tl))
 
-               ;; these are a subclass of vectors in owl
-               ((bytevector? obj)
-                  (ilist #\# #\u #\8 (render (vector->list obj) tl)))
-
                ((vector? obj)
-                  (cons #\# (render (vector->list obj) tl)))
+                  (cons #\#
+                     (if (bytevector? obj)
+                        (ilist #\u #\8 (render (bytevector->list obj) tl))
+                        (render (vector->list obj) tl))))
 
                ((function? obj)
                   ;; anonimas
@@ -197,12 +197,11 @@
                ((symbol? obj)
                   (render-symbol obj (delay (k sh))))
 
-               ((bytevector? obj)
-                  (ilist #\# #\u #\8 (ser sh (vector->list obj) k)))
-
                ((vector? obj)
                   (cons #\#
-                     (ser sh (vector->list obj) k))) ;; <- should convert incrementally!
+                     (if (bytevector? obj)
+                        (ilist #\u #\8 (ser sh (bytevector->list obj) k))
+                        (ser sh (vector->list obj) k)))) ;; <- should convert incrementally!
 
                ((function? obj)
                   (let ((name (getf names obj)))

@@ -359,7 +359,7 @@
                       (base get-base)
                       (val (get-natural base)))
                      val))))
-            (raw fields type-vector-raw)))
+            (raw fields type-bytevector)))
 
       (define (get-vector-of parser)
          (let-parses
