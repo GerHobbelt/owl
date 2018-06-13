@@ -52,14 +52,13 @@
       list->vector
       list->byte-vector   ; (byte ...) -> bvec | #false
       vector->list
-      vec->list
       vec-iter
       vec-iterr
       vec-fold
       vec-foldr
       vec-range           ; vec x start x end -> vec'
       vec-iter-range      ; vec x start x end -> ll
-      vec-map             ; (val → val') x vec → vec'
+      vector-map          ; (val → val') x vec → vec'
 
       ; these assume a sorted vector (as used by pred) having matches in one continuous range
       ;vec-match-range         ; vec x val-pred -> lo x hi | #false x #false
@@ -192,7 +191,6 @@
             (else
                (error "vec-leaf-of: bad index: " n))))
 
-
       ;; others
 
       (define (vector-length vec)
@@ -205,7 +203,6 @@
                (tuple-length vec))
             (else
                (error "vector-length: not a vector: " (list vec 'of 'type (type vec))))))
-
 
 
       ;;;
@@ -492,14 +489,12 @@
 
       ;; list conversions
 
-      (define (vec->list vec)
+      (define (vector->list vec)
          (if (eq? (type vec) type-vector-raw)
             ;; convert raw vectors directly to allow this to be used also for large chunks
             ;; which are often seen near IO code
             (byte-vector->list vec)
             (vec-foldr cons null vec)))
-
-      (define vector->list vec->list)
 
       (define (leaf-data leaf)
          (if (eq? (type leaf) type-vector-raw)
@@ -510,8 +505,8 @@
       ;;; vector map
       ;;;
 
-      ;; fixme: vec-map <- placeholder
-      (define (vec-map fn vec)
+      ;; fixme: vector-map <- placeholder
+      (define (vector-map fn vec)
           (list->vector (lmap fn (vec-iter vec))))
 
       ;;;

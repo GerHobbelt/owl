@@ -398,7 +398,6 @@
       (define-missing-bad write-bytevector)
       (define-missing-bad with-exception-handler)
       (define-missing-bad vector-set!)
-      (define-missing-bad vector-map)
       (define-missing-bad vector-for-each)
       (define-missing-bad vector-fill!)
       (define-missing-bad vector-copy!)

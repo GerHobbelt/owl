@@ -38,7 +38,7 @@
       (values rst (if (eq? vec 0) hd (list->vector hd)) tl)))
 
 (define (explode bvec tail)
-   (append (vec->list bvec) tail))
+   (append (vector->list bvec) tail))
 
 ;; send a stream of known data in chunks, while receiving and and flushing randomly and asynchronously
 ;; fd rst data → (bvec ...)
