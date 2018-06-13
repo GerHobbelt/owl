@@ -459,6 +459,4 @@
       (define-missing-bad call-with-port)
       (define-missing-bad bytevector-u8-set!)
       (define-missing-bad bytevector-copy!)
-      (define-missing-bad bytevector-copy)
-      (define-missing-bad bytevector-append)
 ))

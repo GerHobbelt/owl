@@ -174,12 +174,6 @@
       (define (maybe-get-block fd block-size)
          (try-get-block fd block-size #false))
 
-      (define (bvec-append a b)
-         (list->bytevector
-            (append
-               (vector->list a)
-               (vector->list b))))
-
       ;; get a block of size block-size, wait more if less is available and not eof
       ;; fd n → eof-seen? eof|#false|bvec
       (define (get-whole-block fd block-size)
@@ -200,7 +194,7 @@
                                  ;; reads, but block size is tiny in file->vector making this
                                  ;; irrelevant
                                  (values eof-seen?
-                                    (bvec-append this tail)))))))))))
+                                    (bytevector-append this tail)))))))))))
 
       ;;; TCP sockets
 
