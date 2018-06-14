@@ -47,26 +47,26 @@
             ((eq? n 0) f)
             ((eq? (type n) type-fix+)
                (lets ((hi lo (fx>> n 1)))
-                  (nbits hi (nat-succ f))))
+                  (nbits hi (+ f 1))))
             (else
                (let ((tl (ncdr n)))
                   (if (null? tl)
                      (nbits (ncar n) f)
-                     (nbits tl (add f *fixnum-bits*)))))))
+                     (nbits tl (+ f *fixnum-bits*)))))))
 
       (define (isqrt-init n)
          (lets
             ((nb (nbits n 0))
-             (val (<< 1 (sub (>> nb 1) 1))))
+             (val (<< 1 (- (>> nb 1) 1))))
             (if (eq? (band nb 1) 0)
                val
-               (lets ((val2 (<< val 1)) (sq (mul val2 val2)))
+               (lets ((val2 (<< val 1)) (sq (* val2 val2)))
                   (if (<= sq n) val2 val)))))
 
       (define (isqrt-fix hi bit n)
          (if (eq? bit 0)
             hi
-            (lets ((this (bor hi bit)) (mid (mul this this)))
+            (lets ((this (bor hi bit)) (mid (* this this)))
                (if (> mid n)
                   (isqrt-fix hi (>> bit 1) n)
                   (isqrt-fix this (>> bit 1) n)))))
@@ -74,8 +74,8 @@
       ; largest m where m^2 <= n
       (define (isqrt n)
          (cond
-            ((eq? (type n) type-fix-) (sub 0 (isqrt (sub 0 n))))
-            ((eq? (type n) type-int-) (sub 0 (isqrt (sub 0 n))))
+            ((eq? (type n) type-fix-) (- 0 (isqrt (- 0 n))))
+            ((eq? (type n) type-int-) (- 0 (isqrt (- 0 n))))
             ((eq? n 0) 0)
             ((eq? n 1) 1)
             (else
@@ -84,7 +84,7 @@
 
       (define (exact-integer-sqrt n)
          (let ((sq (isqrt n)))
-            (values sq (sub n (mul sq sq)))))
+            (values sq (- n (* sq sq)))))
 
       ;; sqrt n → m such that m^2 = n
       ;; fixme: finish sqrt after adding complex numbers
@@ -118,8 +118,9 @@
             ((eq? b 0) 1)
             ((eq? b 1) a)
             ((eq? b 2) (* a a))
-            ((eq? (type b) type-fix+) (expt-loop a (sub b 1) a))
-            ((eq? (type b) type-int+) (expt-loop a (sub b 1) a))
+            ((eq? (type b) type-fix+) (expt-loop a (- b 1) a))
+            ((eq? (type b) type-int+) (expt-loop a (- b 1) a))
+            ;; could generate the rational directly
             ((eq? (type b) type-fix-) (/ 1 (expt a (negate b))))
             ((eq? (type b) type-int-) (/ 1 (expt a (negate b))))
             (else (big-bad-args 'expt a b))))
@@ -130,17 +131,17 @@
          (cond
             ((eq? p 0) (modulo out m))
             ((eq? (band p 1) 0)
-               (expt-mod-loop (remainder (mul ap ap) m) (>> p 1) out m))
+               (expt-mod-loop (remainder (* ap ap) m) (>> p 1) out m))
             (else
-               (expt-mod-loop (remainder (mul ap ap) m) (>> p 1)
-                  (remainder (mul out ap) m) m))))
+               (expt-mod-loop (remainder (* ap ap) m) (>> p 1)
+                  (remainder (* out ap) m) m))))
 
       (define (expt-mod a b m)
          (cond
             ((eq? b 0) (modulo 1 m))
             ((eq? b 1) (modulo a m))
             (else
-               (expt-mod-loop (remainder a m) (sub b 1) a m))))
+               (expt-mod-loop (remainder a m) (- b 1) a m))))
 
       ;;;
       ;;; PRIMES AND FACTORING
