@@ -101,7 +101,7 @@
 
       ;; #[0 1 .. n .. m] n → #[n .. m]
       (define (bvec-tail bvec n)
-         (raw (map (H ref bvec) (iota n 1 (sizeb bvec))) type-bytevector))
+         (list->bytevector (map (H ref bvec) (iota n 1 (sizeb bvec)))))
 
       (define (try-write-block fd bvec len)
          ;; stdio ports are in blocking mode, so poll always
@@ -255,7 +255,7 @@
          (cond
             ((not (eq? (type port) type-fix+))
                #false)
-            ((and (eq? (type ip) type-bytevector) (eq? 4 (sizeb ip))) ;; silly old formats
+            ((and (bytevector? ip) (eq? (bytevector-length ip) 4)) ;; silly old formats
                (sys-port->non-blocking (sys-prim 29 ip port socket-type-tcp)))
             (else
                ;; note: could try to autoconvert formats to be a bit more user friendly
@@ -343,10 +343,10 @@
          (cond
             ((eq? len output-buffer-size)
                (and
-                  (write-really (raw (reverse out) type-bytevector) fd)
+                  (write-really (list->bytevector (reverse out)) fd)
                   (printer lst 0 null fd)))
             ((null? lst)
-               (write-really (raw (reverse out) type-bytevector) fd))
+               (write-really (list->bytevector (reverse out)) fd))
             (else
                ;; avoid dependency on generic math in IO
                (lets ((len _ (fx+ len 1)))

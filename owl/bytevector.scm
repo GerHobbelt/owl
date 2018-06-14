@@ -14,8 +14,11 @@
 
    (begin
 
+      (define list->bytevector
+         (C raw type-bytevector))
+
       (define (bytevector . lst)
-         (raw lst type-bytevector))
+         (list->bytevector lst))
 
       (define (bytevector? obj)
          (eq? (type obj) type-bytevector))
@@ -37,20 +40,17 @@
                (bytevector-copy->list vec 0 (sizeb vec) (bytevectors->list lst)))))
 
       (define (bytevector-append . lst)
-         (raw (bytevectors->list lst) type-bytevector))
+         (list->bytevector (bytevectors->list lst)))
 
       (define bytevector-copy
          (case-lambda
             ((vec)
                vec)
             ((vec top)
-               (raw (bytevector-copy->list vec top (sizeb vec) '()) type-bytevector))
+               (list->bytevector (bytevector-copy->list vec top (sizeb vec) '())))
             ((vec top end)
-               (raw (bytevector-copy->list vec top end '()) type-bytevector))))
+               (list->bytevector (bytevector-copy->list vec top end '())))))
 
-      (define (bytevector->list vec)
-         (bytevector-copy->list vec 0 (sizeb vec) '()))
-
-      (define list->bytevector
-         (C raw type-bytevector))
+      (define (bytevector->list . lst)
+         (bytevectors->list lst))
 ))
