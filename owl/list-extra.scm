@@ -12,7 +12,7 @@
 
    (import
       (owl defmac)
-      (owl math)
+      (owl math integer)
       (owl list)
       (owl proof)
       (owl syscall))

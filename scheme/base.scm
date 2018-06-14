@@ -250,7 +250,7 @@
       (only (owl variable) link-variable)
       (owl string)
       (owl primop)
-      (owl math-extra)
+      (owl math extra)
       (owl bytevector)
       (owl vector)
       (owl port)

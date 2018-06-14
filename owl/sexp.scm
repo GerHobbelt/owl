@@ -19,7 +19,7 @@
       (owl math)
       (owl string)
       (owl list)
-      (owl math-extra)
+      (owl math extra)
       (owl vector)
       (owl list-extra)
       (owl ff)

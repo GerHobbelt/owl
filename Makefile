@@ -21,7 +21,7 @@ fasl/boot.fasl: fasl/init.fasl
 	# start bootstrapping with the bundled init.fasl image
 	cp $? $@
 
-fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm scheme/*.scm tests/*.scm tests/*.sh
+fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm scheme/*.scm tests/*.scm tests/*.sh owl/*/*.scm
 	# selfcompile boot.fasl until a fixed point is reached
 	@bin/vm fasl/init.fasl -e '(time-ms)' >.start
 	bin/vm fasl/boot.fasl --run owl/ol.scm -s none -o fasl/bootp.fasl
