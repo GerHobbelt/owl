@@ -306,6 +306,13 @@
       ;; just for compatibility, as lists are always immutable in owl
       (define list-copy self)
 
+      (define make-bytevector
+         (case-lambda
+            ((n)
+               (list->bytevector (make-list n 0)))
+            ((n val)
+               (list->bytevector (make-list n val)))))
+
       (define floor-remainder modulo)
       (define truncate-quotient quotient)
       (define truncate-remainder remainder)
@@ -352,7 +359,7 @@
       (define textual-port? port?)
 
       (define (newline . port)
-         (write-really '#(#\newline) (if (null? port) stdout (car port))))
+         (write-bytevector (bytevector #\newline) (if (null? port) stdout (car port))))
 
       (define-syntax call-with-values
          (syntax-rules ()
@@ -396,7 +403,6 @@
       (define-missing-bad write-u8)
       (define-missing-bad write-string)
       (define-missing-bad write-char)
-      (define-missing-bad write-bytevector)
       (define-missing-bad with-exception-handler)
       (define-missing-bad vector-set!)
       (define-missing-bad vector-for-each)
@@ -421,7 +427,6 @@
       (define-missing-bad read-error?)
       (define-missing-bad read-char)
       (define-missing-bad read-bytevector!)
-      (define-missing-bad read-bytevector)
       (define-missing-bad raise-continuable)
       (define-missing-bad raise)
       (define-missing-bad peek-u8)
@@ -434,7 +439,6 @@
       (define-missing-bad open-input-string)
       (define-missing-bad open-input-bytevector)
       (define-missing-bad make-parameter)
-      (define-missing-bad make-bytevector)
       (define-missing-bad list-set!)
       (define-missing-bad letrec-syntax)
       (define-missing-bad let-syntax)

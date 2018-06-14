@@ -148,7 +148,7 @@
                         (close-port port)
                         #true)
                      ((pair? data)
-                        (if (write-byte-vector port (car data))
+                        (if (write-bytevector (car data) port)
                            (loop (cdr data))
                            #false))
                      (else

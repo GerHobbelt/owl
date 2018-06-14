@@ -520,7 +520,7 @@
 (define (random-seed)
    (let ((fd (open-input-file "/dev/urandom"))) ;; #false if not there
       (if fd
-         (let ((data (get-block fd 16)))
+         (let ((data (read-bytevector 16 fd)))
             (close-port fd)
             (if (vector? data)
                (vec-fold (λ (n d) (+ d (<< n 8))) 0 data)

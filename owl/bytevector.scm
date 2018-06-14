@@ -7,6 +7,7 @@
       bytevector-append
       bytevector-copy
       bytevector->list
+      bytevectors->list
       list->bytevector)
 
    (import

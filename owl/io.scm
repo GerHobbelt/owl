@@ -55,10 +55,9 @@
       write
       writer-to         ;; names → (port val → bool + io)
       write-to          ;; port val → bool
-      write-bytes       ;; port byte-list   → bool
-      write-byte-vector ;; port byte-vector → bool
-      get-block         ;; fd n → bvec | eof | #false
-      write-really
+      write-bytes       ;; port byte-list  → bool
+      write-bytevector  ;; bytevector port → bool
+      read-bytevector   ;; n port → bvec | eof | #false
       try-get-block     ;; fd n block? → bvec | eof | #false=error | #true=block
       byte-stream->lines ;; (byte ...) → null | ll of string, read error is just null, each [\r]\n removed
       lines              ;; fd → null | ll of string, read error is just null, each [\r]\n removed
@@ -99,10 +98,6 @@
 
       ;;; Writing
 
-      ;; #[0 1 .. n .. m] n → #[n .. m]
-      (define (bvec-tail bvec n)
-         (list->bytevector (map (H ref bvec) (iota n 1 (sizeb bvec)))))
-
       (define (try-write-block fd bvec len)
          ;; stdio ports are in blocking mode, so poll always
          (if (stdio-port? fd)
@@ -122,7 +117,7 @@
                            (interact 'iomux (tuple 'write fd))
                            (loop))
                         (wrote ;; partial write
-                           (write-really (bvec-tail bvec wrote) fd))
+                           (write-really (bytevector-copy bvec wrote) fd))
                         (else #false))))))) ;; write error or other failure
 
       ;; how many bytes (max) to add to output buffer before flushing it to the fd
@@ -168,8 +163,12 @@
                res))) ;; is #false, eof or bvec
 
       ;; get a block of size up to block size
-      (define (get-block fd block-size)
-         (try-get-block fd block-size #true))
+      (define read-bytevector
+         (case-lambda
+            ((size)
+               (try-get-block stdin size #t))
+            ((size port)
+               (try-get-block port size #t))))
 
       (define (maybe-get-block fd block-size)
          (try-get-block fd block-size #false))
@@ -177,7 +176,7 @@
       ;; get a block of size block-size, wait more if less is available and not eof
       ;; fd n → eof-seen? eof|#false|bvec
       (define (get-whole-block fd block-size)
-         (let ((this (get-block fd block-size)))
+         (let ((this (read-bytevector block-size fd)))
             (cond
                ((eof-object? this) (values #true this))
                ((not this) (values #false this))
@@ -352,8 +351,16 @@
                (lets ((len _ (fx+ len 1)))
                   (printer (cdr lst) len (cons (car lst) out) fd)))))
 
-      (define (write-byte-vector port bvec)
-         (write-really bvec port))
+      (define write-bytevector
+         (case-lambda
+            ((vec)
+               (write-really vec stdout))
+            ((vec port)
+               (write-really vec port))
+            ((vec port top)
+               (write-really (bytevector-copy vec top) port))
+            ((vec port top end)
+               (write-really (bytevector-copy vec top end) port))))
 
       (define (write-bytes port byte-list)
          (printer byte-list 0 null port))
@@ -423,23 +430,14 @@
                   (read-blocks port
                      (cons val buff))))))
 
-      (define (explode-block block tail)
-         (let ((end (sizeb block)))
-            (if (eq? end 0)
-               tail
-               (let loop ((pos (- end 1)) (tail tail))
-                  (if (eq? pos -1)
-                     tail
-                     (loop (- pos 1) (cons (ref block pos) tail)))))))
-
       (define (read-blocks->list port buff)
-         (let ((block (get-block port 4096)))
+         (let ((block (read-bytevector 4096 port)))
             (cond
                ((eof-object? block)
-                  (foldr explode-block null (reverse buff)))
+                  (bytevectors->list (reverse buff)))
                ((not block)
                   ;; read error
-                  (foldr explode-block null (reverse buff)))
+                  (bytevectors->list (reverse buff)))
                (else
                   (read-blocks->list port (cons block buff))))))
 
@@ -478,7 +476,7 @@
          (let loop ((ll (vec-leaves vec)))
             (cond
                ((pair? ll)
-                  (write-byte-vector port (car ll))
+                  (write-really (car ll) port)
                   (loop (cdr ll)))
                ((null? ll) #true)
                (else (loop (ll))))))
@@ -508,7 +506,7 @@
 
       (define (block-stream fd tail?)
          (λ ()
-            (let ((block (get-block fd stream-block-size)))
+            (let ((block (read-bytevector stream-block-size fd)))
                (cond
                   ((eof-object? block)
                      (if tail?
