@@ -33,5 +33,5 @@
 ;             (vec (list->vector (random-numbers rst n n))))
 ;            vec))
 ;      (liter rand-succ (lets ((ss ms (clock))) (+ (* ss 1000) ms))))
-;   (λ (v) (vec-foldr cons null v))
-;   (λ (v) (reverse (vec-fold (λ (a b) (cons b a)) null v))))
+;   (λ (v) (vec-foldr cons #n v))
+;   (λ (v) (reverse (vec-fold (λ (a b) (cons b a)) #n v))))

@@ -25,11 +25,11 @@
 (define elems (list a b c d))
 
 ;; all that should be received
-(define all-data (foldr push null elems))
+(define all-data (foldr push #n elems))
 
 ;; read until all-data comes out
 (define (reader fd)
-   (let loop ((read null))
+   (let loop ((read #n))
       (if (equal? read all-data)
          (print "That's all folks.")
          (loop (append read (vector->list (interact fd 'input)))))))

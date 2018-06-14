@@ -5,7 +5,7 @@
 ;;; you know how something is constructed, but don't yet know how many of them will be
 ;;; needed, or know that you only need them one at a time and don't want to waste memory.
 ;;;
-;;; A lazy list is either null, a pair of a value and rest of the lazy list, or a
+;;; A lazy list is either #null, a pair of a value and rest of the lazy list, or a
 ;;; function of zero arguments (a thunk) which when called will return the rest of the
 ;;; lazy list. Therefore, since normal lists are a subset of lazy lists, all lazy list
 ;;; functions can also take normal lists as arguments.
@@ -308,7 +308,7 @@
       ;         (lambda () (ssubs-take (cdr l) out more)))))
       ;
       ;(define (ssubs l)
-      ;   (ssubs-take (reverse l) null ltail))
+      ;   (ssubs-take (reverse l) #n ltail))
 
       (define (lpick l out n more)
          (cond

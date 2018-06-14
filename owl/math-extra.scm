@@ -532,7 +532,7 @@
                ;(sort carless
                ;   (let loop ((ya (bound y n)) (r 0))
                ;      (if (= r s)
-               ;         null
+               ;         #n
                ;         (cons (cons ya r) (loop (bound (* ya a) n) (+ r 1))))))
                )
              (giant

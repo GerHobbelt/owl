@@ -568,11 +568,11 @@
 ;(define blocksize 4096)
 
 ;(λ (args)
-;   (let loop ((rs (rands->bytes (seed->rands (time-ms)))) (out null) (n 0))
+;   (let loop ((rs (rands->bytes (seed->rands (time-ms)))) (out #n) (n 0))
 ;      (cond
 ;         ((eq? n blocksize)
 ;            (if (write-byte-vector stdout (list->byte-vector (reverse out))) ;; keep order
-;               (loop rs null 0)))
+;               (loop rs #n 0)))
 ;         (else
 ;            (lets
 ;               ((byte rs (uncons rs 0))

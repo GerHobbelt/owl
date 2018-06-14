@@ -163,7 +163,7 @@
       (example
          (append '(1 2 3) '(a b c)) = '(1 2 3 a b c))
 
-      ;(define (reverse l) (fold (λ (r a) (cons a r)) null l))
+      ;(define (reverse l) (fold (λ (r a) (cons a r)) #n l))
 
       (define (rev-loop a b)
          (if (null? a)

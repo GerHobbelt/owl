@@ -335,7 +335,9 @@
                   (one-of
                      (get-word "true" #true)    ;; get the longer ones first if present
                      (get-word "false" #false)
+                     (get-word "null" '())
                      (get-word "empty" #empty)
+                     (get-word "n" '())
                      (get-word "t" #true)
                      (get-word "f" #false)
                      (get-word "T" #true)

@@ -82,7 +82,7 @@
 						(list-test rst rl l len steps)))))))
 
 (define (test-ops)
-	(list-test (seed->rands (time-ms)) rnull null 0 10000))
+	(list-test (seed->rands (time-ms)) rnull #n 0 10000))
 
 (test-ops)
 

@@ -63,10 +63,10 @@
 ;;;
 ;;;   (ff-diff @(a 1 b 2 c 3) @(a 10 b 20)) → @(c 3)
 ;;;
-;;;   (ff-fold (λ (o k v) (cons (cons k v) o)) null @(foo 1 bar 2) →
+;;;   (ff-fold (λ (o k v) (cons (cons k v) o)) #n @(foo 1 bar 2) →
 ;;;      '((bar . 2) (foo . 1))
 ;;;
-;;;   (ff-foldr (λ (o k v) (cons (cons k v) o)) null @(foo 1 bar 2) →
+;;;   (ff-foldr (λ (o k v) (cons (cons k v) o)) #n @(foo 1 bar 2) →
 ;;;      '((foo . 1) (bar . 2))
 ;;;   (ff-map @(a 1 b 2 c 3) (λ (k v) (square v))) → @(a 1 b 4 c 9)
 ;;;

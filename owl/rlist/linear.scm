@@ -25,7 +25,7 @@
       rlist->list)
 
    (begin
-      (define rnull null)
+      (define rnull #n)
       (define rcons cons)
       (define rget lget)
       (define rcar car)

@@ -840,7 +840,7 @@
       ;      (lambda (lo hi)
       ;         (if (eq? hi 0)
       ;            lo
-      ;            (ncons lo (ncons hi null))))))
+      ;            (ncons lo (ncons hi #n))))))
 
       (define-syntax mult-fixnums
          (syntax-rules ()

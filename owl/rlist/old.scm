@@ -44,7 +44,7 @@
 
    (begin
 
-      (define rnull null)
+      (define rnull #n)
 
       (define rnull? null?)
 
@@ -146,7 +146,7 @@
 
       (define (rmap op rl)
          (if (null? rl)
-            null
+            #n
             (lets ((w t tl rl))
                (spine w (rmap-tree t op) (rmap op tl)))))
 
@@ -171,7 +171,7 @@
                (riter-tree t
                   (lambda () (riterator tl tail))))))
 
-      (define riter (C riterator null))
+      (define riter (C riterator #n))
 
       ;; riterr (backwards)
 
@@ -191,7 +191,7 @@
                   (lambda ()
                      (riterr-tree t tail))))))
 
-      (define riterr (C riteratorr null))
+      (define riterr (C riteratorr #n))
 
       ;; rfold (== (lfold op st (riter rl)))
 
@@ -230,10 +230,10 @@
       ;; conversions
 
       (define (list->rlist l) ; naive O(n log n)
-         (foldr rcons null l))
+         (foldr rcons #n l))
 
       (define (rlist->list rl)
-         (rfoldr cons null rl))
+         (rfoldr cons #n rl))
 
       ;; len
 
@@ -250,13 +250,13 @@
 
       (define-syntax rlist
          (syntax-rules ()
-            ((rlist) null)
+            ((rlist) #n)
             ((rlist a . as)
                (rcons a (rlist . as)))))
 
    ;; note, could also be done in O(n)
    (define (rrev rl)
-      (rfold (λ (out x) (rcons x out)) null rl))
+      (rfold (λ (out x) (rcons x out)) #n rl))
 
 ))
 
