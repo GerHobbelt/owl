@@ -12,6 +12,7 @@
       epsilon ε
       byte-if
       rune
+      rune-if
       either
       one-of
       star
@@ -23,10 +24,6 @@
       backtrack
       try-parse
       word
-
-      ;; old compat names
-      get-imm get-byte get-kleene+ get-kleene* get-epsilon get-byte-between get-either
-      get-byte-if get-rune get-rune-if get-greedy* get-greedy+ get-word
 
       ;; old ones
       fd->exp-stream
@@ -288,20 +285,6 @@
             (if fd
                (fd->exp-stream fd parser fail)
                #false)))
-
-      (define get-imm imm)
-      (define get-byte byte)
-      (define get-byte-if byte-if)
-      (define get-rune rune)
-      (define get-rune-if rune-if)
-      (define get-kleene+ plus)
-      (define get-kleene* star)
-      (define get-greedy+ greedy-plus)
-      (define get-greedy* greedy-star)
-      (define get-epsilon ε)
-      (define get-byte-between byte-between)
-      (define get-either either)
-      (define get-word word)
 
       (define (try-parse parser data maybe-path maybe-error-msg fail-fn)
          (lets ((l r val (parser null data parser-succ)))

@@ -21,7 +21,9 @@
 
    (import
       (owl defmac)
-      (owl parse)
+      (only (owl parse) let-parses one-of try-parse)
+      (prefix (only (owl parse) byte either epsilon imm) get-)
+      (prefix (only (owl parse) plus star) get-kleene-)
       (only (owl syscall) error)
       (owl io)
       (owl ff)
@@ -699,7 +701,7 @@
 
       (define get-number
          (let-parses
-            ((digits (get-kleene+ get-digit)))
+            ((digits (get-kleene-plus get-digit)))
             (fold (λ (n d) (+ (* n 10) d)) 0 digits)))
 
       ;; \<suff> → code-point (not acceptor as in get-quoted-char)
@@ -784,7 +786,7 @@
          (let-parses
             ((open (get-imm 91))
              (comp? get-maybe-caret)
-             (charss (get-kleene+ char-class-elem)) ;; todo: [] might also be useful
+             (charss (get-kleene-plus char-class-elem)) ;; todo: [] might also be useful
              (close (get-imm 93)))
             (make-char-class comp?
                (foldr append null charss))))
@@ -894,7 +896,7 @@
       (define (get-regex)
          (let-parses
             ((hd (get-catn get-regex))
-             (tl (get-kleene* (let-parses ((skip (get-imm 124)) (rex (get-catn get-regex))) rex))))
+             (tl (get-kleene-star (let-parses ((skip (get-imm 124)) (rex (get-catn get-regex))) rex))))
             (fold rex-or hd tl)))
 
       (define get-matcher-regex
@@ -953,7 +955,7 @@
              (start? (get-either (get-imm 94) (get-epsilon #false))) ;; maybe get leading ^ (special)
              (rex (get-regex))
              (skip (get-imm 47))  ;; delimiting /
-             (rep (get-kleene* get-replace-char))
+             (rep (get-kleene-star get-replace-char))
              (skip (get-imm 47)) ;; closing /
              (all? get-maybe-g)) ;; fixme: add other search/replace match than g
             (make-replacer rex rep all? start?)))

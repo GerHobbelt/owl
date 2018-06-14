@@ -15,7 +15,8 @@
    (import
       (owl defmac)
       (owl eof)
-      (owl parse)
+      (only (owl parse) fd->exp-stream let-parses one-of silent-syntax-fail try-parse)
+      (prefix (only (owl parse) byte byte-if either epsilon greedy-plus greedy-star imm rune rune-if star word) get-)
       (owl math)
       (owl string)
       (owl list)
@@ -54,7 +55,7 @@
          (get-either
             (let-parses
                ((head (get-rune-if symbol-lead-char?))
-                (tail (get-greedy* (get-rune-if symbol-char?)))
+                (tail (get-greedy-star (get-rune-if symbol-char?)))
                 ;(next (peek get-byte))
                 ;(foo (assert (B not symbol-char?) next))
                 )
@@ -62,7 +63,7 @@
             (let-parses
                ((skip (get-imm #\|))
                 (chars
-                  (get-greedy*
+                  (get-greedy-star
                      (get-either
                         (let-parses ((skip (get-imm #\\)) (rune get-rune)) rune)
                         (get-rune-if (B not (C eq? #\|))))))
@@ -119,7 +120,7 @@
 
       (define (get-natural base)
          (let-parses
-            ((digits (get-greedy+ (get-byte-if (digit-char? base)))))
+            ((digits (get-greedy-plus (get-byte-if (digit-char? base)))))
             (bytes->number digits base)))
 
       (define (get-integer base)
@@ -151,7 +152,7 @@
                (get-either
                   (let-parses
                      ((skip (get-imm 46))
-                      (digits (get-greedy* (get-byte-if (digit-char? base)))))
+                      (digits (get-greedy-star (get-byte-if (digit-char? base)))))
                      (/ (bytes->number digits base)
                         (expt base (length digits))))
                   (get-epsilon 0)))
@@ -197,7 +198,7 @@
 
       (define get-rest-of-line
          (let-parses
-            ((chars (get-greedy* (get-byte-if (B not (C eq? 10)))))
+            ((chars (get-greedy-star (get-byte-if (B not (C eq? 10)))))
              (skip (get-imm 10))) ;; <- note that this won't match if line ends to eof
             chars))
 
@@ -235,14 +236,14 @@
                 (skip (get-block-comment)))
                'comment)))
 
-      (define maybe-whitespace (get-kleene* get-a-whitespace))
-      (define whitespace (get-greedy+ get-a-whitespace))
+      (define maybe-whitespace (get-star get-a-whitespace))
+      (define whitespace (get-greedy-plus get-a-whitespace))
 
       (define (get-list-of parser)
          (let-parses
             ((lp (get-imm 40))
              (things
-               (get-kleene* parser))
+               (get-star parser))
              (skip maybe-whitespace)
              (tail
                (get-either
@@ -277,7 +278,7 @@
                      (getf quoted-values char))
                   (let-parses
                      ((skip (get-imm #\x))
-                      (hexes (get-greedy+ (get-byte-if (digit-char? 16))))
+                      (hexes (get-greedy-plus (get-byte-if (digit-char? 16))))
                       (skip (get-imm #\;)))
                      (bytes->number hexes 16)))))
             char))
@@ -286,7 +287,7 @@
          (let-parses
             ((skip (get-imm #\"))
              (chars
-               (get-kleene*
+               (get-star
                   (get-either
                      get-quoted-string-char
                      (get-rune-if (B not (C memq '(#\" #\\)))))))
@@ -442,7 +443,7 @@
             (intern-symbols sexp)))
 
       (define get-sexps
-         (get-greedy* sexp-parser))
+         (get-greedy-star sexp-parser))
 
       ;; whitespace at either end
       (define get-padded-sexps
