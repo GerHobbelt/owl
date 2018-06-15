@@ -48,9 +48,9 @@
             ((vec)
                vec)
             ((vec top)
-               (list->bytevector (bytevector-copy->list vec top (sizeb vec) '())))
+               (list->bytevector (bytevector-copy->list vec top (sizeb vec) #n)))
             ((vec top end)
-               (list->bytevector (bytevector-copy->list vec top end '())))))
+               (list->bytevector (bytevector-copy->list vec top end #n)))))
 
       (define (bytevector->list . lst)
          (bytevectors->list lst))

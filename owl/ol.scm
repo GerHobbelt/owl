@@ -25,7 +25,7 @@
 
 (mail 'intern (tuple 'flush)) ;; ask symbol interner to forget all symbols it knows
 
-(define *libraries* '()) ;; clear loaded libraries
+(define *libraries* #n) ;; clear loaded libraries
 
 (import (owl defmac)) ;; reload default macros needed for defining libraries etc
 

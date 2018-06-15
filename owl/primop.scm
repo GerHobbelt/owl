@@ -32,14 +32,14 @@
          (C raw type-bytecode))
 
       (define (app a b)
-         (if (eq? a '())
+         (if (null? a)
             b
             (cons (car a) (app (cdr a) b))))
 
       ;; l -> fixnum | #false if too long
       (define (len l)
          (let loop ((l l) (n 0))
-            (if (eq? l '())
+            (if (null? l)
                n
                (lets ((n o (fxadd n 1)))
                   (and (eq? o 0) (loop (cdr l) n))))))
