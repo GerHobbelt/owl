@@ -83,8 +83,7 @@
                ((and (pair? lst) (null? (cdr lst)) (list? (car lst)))
                   (cons 10
                      (let ((ind (+ ind 2)))
-                        (append (map (λ (x) 32) (iota 0 1 ind))
-                           (format-error (car lst) ind)))))
+                        (append (make-list ind 32) (format-error (car lst) ind)))))
                ((pair? lst)
                   (render (car lst)
                      (cons 32

@@ -11,6 +11,7 @@
       (owl defmac)
       (owl math)
       (owl list)
+      (owl bytevector)
       (only (owl syscall) error)
       (owl function)
       (owl symbol)
@@ -558,7 +559,7 @@
       (define (bytecode->list thing)
          (cond
             ((bytecode? thing)
-               (map (H ref thing) (iota 0 1 (sizeb thing))))
+               (bytevector->list thing))
             ((function? thing)
                ;; get the bytecode
                (bytecode->list (ref thing 1)))

@@ -20,6 +20,7 @@
       (owl syscall)
       (owl ff)
       (owl symbol)
+      (owl bytevector)
       (owl vector)
       (owl equal)
       (owl function)
@@ -213,8 +214,7 @@
             #false))
 
       (define (show-func val)
-         (cons 'bytecode
-            (map (H ref val) (iota 0 1 (sizeb val)))))
+         (cons 'bytecode (bytevector->list val)))
 
       ; native-ops → (obj → obj')
       ;; fixme: rewrite...
@@ -248,7 +248,7 @@
                         (clone-code original extras)
                         (error "bug: no original code found for superinstruction " opcode)))))
             (else
-               (let ((bytes (map (H ref bc) (iota 0 1 (sizeb bc)))))
+               (let ((bytes (bytevector->list bc)))
                   (if (eq? (cadr bytes) 0)
                      (error "bug: vm speciazation instruction probably referencing code from current vm: " bytes))
                   (raw bytes type-bytecode))))) ; <- reallocate it

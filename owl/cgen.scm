@@ -20,6 +20,7 @@
       (owl defmac)
       (owl list)
       (owl list-extra)
+      (owl bytevector)
       (owl math)
       (owl function)
       (owl ff)
@@ -33,7 +34,7 @@
       ; -> list of bytes | #false
       (define (code->bytes code extras)
          (if (bytecode? code)
-            (let ((bytes (map (H ref code) (iota 0 1 (sizeb code)))))
+            (let ((bytes (bytevector->list code)))
                (if (eq? (car bytes) 0) ;; (0 <hi8> <lo8>) == call extra instruction
                   (lets
                      ((opcode (fxbor (<< (cadr bytes) 8) (car (cddr bytes))))

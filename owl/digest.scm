@@ -246,12 +246,9 @@
             ((key (any->bytes key)) ;; we want to UTF-8 encode it
              (msg (any->bytes msg)) ;; ditto
              (key (if (> (length key) blocksize) (hasher key) key))
-             (key
-               (append key
-                  (map (λ (x) 0)
-                     (iota 0 1 (- blocksize (length key))))))
-             (o-pad (map (λ (x) #x5c) (iota 0 1 blocksize)))
-             (i-pad (map (λ (x) #x36) (iota 0 1 blocksize))))
+             (key (append key (make-list (- blocksize (length key)) 0)))
+             (o-pad (make-list blocksize #x5c))
+             (i-pad (make-list blocksize #x36)))
             (hasher
                (append (list-xor o-pad key)
                   (hasher (append (list-xor i-pad key) msg)))))))
