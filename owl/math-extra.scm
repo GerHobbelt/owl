@@ -285,7 +285,7 @@
 
       (define (atkin-remove-squares max store)
          (ifold
-            (lambda (store prime v)
+            (λ (store prime v)
                (if v (atkin-remove-duplicates-of store prime max) store))
             store store))
 
@@ -303,9 +303,9 @@
 
       (define (atkin-apply store pows)
          (call/cc
-            (lambda (done)
+            (λ (done)
                (ifold
-                  (lambda (out k v)
+                  (λ (out k v)
                      (let ((res (atkin-try out k)))
                         (if (eq? (car res) 1)
                            (done res)
@@ -424,7 +424,7 @@
          (if (< n 2)
             1
             (fold
-               (lambda (left factor) (- left (/ left (car factor))))
+               (λ (left factor) (- left (/ left (car factor))))
                n (factor n))))
 
       (define phi totient)
@@ -435,7 +435,7 @@
          (if (eq? num 1)
             1
             (fold
-               (lambda (total factor)
+               (λ (total factor)
                   (* total
                      (/ (- (expt (car factor) (+ (cdr factor) 1)) 1)
                         (- (expt (car factor) 1) 1))))
@@ -446,7 +446,7 @@
          (if (eq? n 1)
             1
             (fold
-               (lambda (out n) (* out (+ (cdr n) 1)))
+               (λ (out n) (* out (+ (cdr n) 1)))
                1 (factor n))))
 
 

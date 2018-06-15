@@ -131,16 +131,16 @@
                                (new-dict dictionary)
                                (form form))
                               (call/cc
-                                 (lambda (ret)
+                                 (λ (ret)
                                  (if (and new-dict (pair? form))
                                     (loop (cddr pattern) form #false
-                                       (lambda (argh)
+                                       (λ (argh)
                                           (ret
                                              (next new-dict form
                                                 (call/cc
-                                                   (lambda (ret)
+                                                   (λ (ret)
                                                       (loop (car pattern) (car form)
-                                                         #true (lambda (x) (ret #false))
+                                                         #t (λ (x) (ret #f))
                                                          new-dict)))
                                                 (cdr form))))
                                        new-dict)
@@ -161,12 +161,12 @@
 
       (define (try-pattern pattern literals form)
          (call/cc
-            (lambda (ret)
+            (λ (ret)
                (match-pattern
                   pattern
                   (cons (car form) literals)
                   form
-                  (lambda (argh) (ret #false))))))
+                  (λ (argh) (ret #f))))))
 
       ;; given dictionary resulting from pattern matching, decide how many times an ellipsis
       ;; rewrite should be done. owl uses minimum repetition of length more than one, so that
@@ -325,7 +325,7 @@
                    (template-symbols (symbols-of template))
                    (fresh-symbols
                      (filter
-                        (lambda (x) (and (unbound? x) (not (memq x literals))))
+                        (λ (x) (and (unbound? x) (not (memq x literals))))
                         (diff template-symbols pattern-symbols))))
                   (list pattern fresh-symbols template)))
             patterns templates))
@@ -451,8 +451,7 @@
                    (templates (list-ref rules 3))
                    (rules
                      (make-pattern-list literals patterns templates
-                        (lambda (sym)
-                           (not (env-get-raw env sym #false)))))
+                        (λ (sym) (not (env-get-raw env sym #f)))))
                    (transformer
                      (make-transformer literals rules env)))
                   (let ((env (env-set-macro env keyword transformer)))

@@ -42,7 +42,7 @@
 
       (define (execute exp env)
          (receive (exp)
-            (lambda vals
+            (λ vals
                (ok
                   (cond
                      ((null? vals) "nothing")

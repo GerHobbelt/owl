@@ -101,7 +101,7 @@
             ((null? lst) state)
             (else (lfoldr op state (lst)))))
 
-      (define (llen lst) (lfold (lambda (n x) (+ n 1)) 0 lst))
+      (define (llen lst) (lfold (λ (n x) (+ n 1)) 0 lst))
 
       ; much more readable this way...
 
@@ -147,7 +147,7 @@
                ((b _ (fx+ a 1))
                 (c _ (fx+ b 1))
                 (d _ (fx+ c 1)))
-               (ilist a b c (lambda () (lnums-fix d))))
+               (ilist a b c (λ () (lnums-fix d))))
             (lnums-other a)))
 
       (define (lnums n)
@@ -202,8 +202,7 @@
             ((null? l)
                l)
             (else
-               (lambda ()
-                  (ledit op (l))))))
+               (λ () (ledit op (l))))))
 
       (define (liter op st)
          (pair st (liter op (op st))))
@@ -288,7 +287,7 @@
                (if (null? a)
                   (rest)
                   (lperm-take (append b (cdr a)) (cons (car a) out)
-                     (lambda () (loop (cdr a) (cons (car a) b))))))))
+                     (λ () (loop (cdr a) (cons (car a) b))))))))
 
       (define (lperms l)
          (if (null? l)
@@ -305,7 +304,7 @@
       ;   (if (null? l)
       ;      (cons out more)
       ;      (ssubs-take (cdr l) (cons (car l) out)
-      ;         (lambda () (ssubs-take (cdr l) out more)))))
+      ;         (λ () (ssubs-take (cdr l) out more)))))
       ;
       ;(define (ssubs l)
       ;   (ssubs-take (reverse l) #n ltail))
@@ -316,7 +315,7 @@
             ((null? l) more)
             (else
                (lpick (cdr l) (cons (car l) out) (- n 1)
-                  (lambda () (lpick (cdr l) out n more))))))
+                  (λ () (lpick (cdr l) out n more))))))
 
        ; subsets of growing size
       (define (subs l)
@@ -328,14 +327,13 @@
                      (if (= n end)
                         #n
                         (lpick l #n n
-                           (lambda ()
-                              (loop (+ n 1))))))))))
+                           (λ () (loop (+ n 1))))))))))
 
       (define subsets subs)
 
-      ; (lfold (lambda (n s) (print s) (+ n 1)) 0 (subsets (iota 0 1 5)))
+      ; (lfold (λ (n s) (print s) (+ n 1)) 0 (subsets (iota 0 1 5)))
 
-      ; (lfold (lambda (n s) (print s) (+ n 1)) 0 (permutations (iota 0 1 5)))
+      ; (lfold (λ (n s) (print s) (+ n 1)) 0 (permutations (iota 0 1 5)))
 
       (define (force-ll it)
          (cond

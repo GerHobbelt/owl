@@ -83,7 +83,7 @@
          (syntax-rules ()
             ((invoke module name arg ...)
                ((env-get module (quote name)
-                  (lambda (arg ...)
+                  (λ (arg ...)
                      (error "invoke: failed to invoke "
                         (cons (quote name)
                            (list arg ...)))))
@@ -193,7 +193,7 @@
 
       (define (apply-env exp env)
          (call/cc
-            (lambda (ret)
+            (λ (ret)
                (ok env
                   ((walker env (B ret fail)) exp)))))
 

@@ -104,7 +104,7 @@
                   (if (eq? pos (tuple-length str))
                      (str-iter-any (ref str pos) tl)
                      (str-iter-any (ref str pos)
-                        (lambda () (loop (+ pos 1)))))))
+                        (λ () (loop (+ pos 1)))))))
             (else
                (error "str-iter: not a string: " str))))
 
@@ -140,8 +140,7 @@
                   (if (eq? pos 2)
                      (str-iterr-any (ref str 2) tl)
                      (str-iterr-any (ref str pos)
-                        (lambda ()
-                           (loop (- pos 1)))))))
+                        (λ () (loop (- pos 1)))))))
             (else
                (error "str-iterr: not a string: " str))))
 
@@ -427,7 +426,7 @@
 
       (define (str-iter-bytes str)
          (ledit
-            (lambda (codepoint tl)
+            (λ (codepoint tl)
                (if (lesser? codepoint #x80)
                   (cons codepoint tl)
                   (encode-point codepoint tl)))

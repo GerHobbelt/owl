@@ -262,7 +262,7 @@
       (define (cps exp env)
          (or
             (call/cc
-               (lambda (fail)
+               (λ (fail)
                   (let ((cont-sym (gensym exp)))
                      ; a hack to be able to define code sans cps
                      ; a better solution would be ability to change the

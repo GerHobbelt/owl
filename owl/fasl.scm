@@ -173,7 +173,7 @@
                   ((null? kvs) fasl-finale)
                   ((pair? kvs)
                      (lets ((kv (car kvs)))
-                        (enc (lambda () (loop (cdr kvs))) (car kv) (cdr kv))))
+                        (enc (λ () (loop (cdr kvs))) (car kv) (cdr kv))))
                   (else (loop (kvs)))))))
 
       ; root cook-fn -> byte-stream

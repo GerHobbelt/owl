@@ -78,12 +78,12 @@
       (define-syntax example
          (syntax-rules (theorem-equal? = receive)
             ((example term-a = term-b . rest)
-               (let ((eva (lambda () term-a))
-                     (evb (lambda () term-b)))
+               (let ((eva (λ () term-a))
+                     (evb (λ () term-b)))
                   (receive (eva)
-                     (lambda as
+                     (λ as
                         (receive (evb)
-                           (lambda bs
+                           (λ bs
                               (if (not (theorem-equal? as bs))
                                  (error "example does not hold: " (list (quote term-a) " != " (quote term-b)))
                                  (example . rest))))))))

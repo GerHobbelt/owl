@@ -241,7 +241,7 @@
             x)))
 
    (define (make-hmac hasher blocksize)
-      (lambda (key msg)
+      (λ (key msg)
          (lets
             ((key (any->bytes key)) ;; we want to UTF-8 encode it
              (msg (any->bytes msg)) ;; ditto

@@ -59,7 +59,7 @@
                   ((null? bs)
                      #false)
                   ((hex-char->bits b) =>
-                     (lambda (b)
+                     (λ (b)
                         (lets
                            ((a bs bs)
                             (a (hex-char->bits a)))

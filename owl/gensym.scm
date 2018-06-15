@@ -59,8 +59,7 @@
                   (max-gensym-id (cdr exp)
                      (max-gensym-id (car exp) max))))
             ((gensym-id exp) =>
-               (lambda (id)
-                  (if (> id max) id max)))
+               (λ (id) (if (> id max) id max)))
             (else max)))
 
       (define (max-ast-id exp max)
@@ -76,7 +75,7 @@
             ((call rator rands)
                (max-ast-id rator
                   (fold
-                     (lambda (max exp) (max-ast-id exp max))
+                     (λ (max exp) (max-ast-id exp max))
                      max rands)))
             ((value val) max)
             ((receive op fn)
@@ -86,7 +85,7 @@
                (max-ast-id a (max-ast-id b
                   (max-ast-id then (max-ast-id else max)))))
             ((values vals)
-               (fold (lambda (max exp) (max-ast-id exp max)) max vals))
+               (fold (λ (max exp) (max-ast-id exp max)) max vals))
             ((case-lambda fn else)
                (max-ast-id fn
                   (max-ast-id else max)))

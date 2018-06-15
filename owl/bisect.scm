@@ -67,9 +67,9 @@
       ; -> #false x #false | n x m, where n,m <- [lo .. hi-1] are the endpoints where (get i) = val
 
       (define (bisect-range get val lo hi)
-         (let ((loc (bisect (lambda (p) (>= (get p) val)) lo hi)))
+         (let ((loc (bisect (λ (p) (>= (get p) val)) lo hi)))
             (if (and loc (= (get loc) val))
-               (let ((hic (bisect (lambda (p) (> (get p) val)) loc hi)))
+               (let ((hic (bisect (λ (p) (> (get p) val)) loc hi)))
                   (values loc (if hic (- hic 1) (- hi 1))))
                (values #false #false))))
 
@@ -87,7 +87,7 @@
 
 ; note that bisect is more than just an array search. for example:
 ;
-; (define (divide a b) (- (bisect (lambda (q) (> (* q b) a)) 0 a) 1))
-; (define (square n) (- (bisect (lambda (q) (> (* q q) n)) 0 n) 1))
-; (define (nth-root i n) (- (bisect (lambda (q) (> (expt q n) i)) 0 i) 1)) ; actually hi would be around nbits(i)/n
+; (define (divide a b) (- (bisect (λ (q) (> (* q b) a)) 0 a) 1))
+; (define (square n) (- (bisect (λ (q) (> (* q q) n)) 0 n) 1))
+; (define (nth-root i n) (- (bisect (λ (q) (> (expt q n) i)) 0 i) 1)) ; actually hi would be around nbits(i)/n
 

@@ -78,5 +78,5 @@
             ff))
 
       (define (iff->list iff)
-         (ifold (lambda (tail n v) (cons (cons n v) tail)) #n iff))
+         (ifold (λ (tail n v) (cons (cons n v) tail)) #n iff))
 ))

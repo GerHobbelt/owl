@@ -118,7 +118,7 @@
                               (let ((env (env-bind env formals)))
                                  (tuple 'rlambda formals
                                     (map
-                                       (lambda (x) (translate x env fail))
+                                       (λ (x) (translate x env fail))
                                        values)
                                     (translate body env fail)))
                               (fail (list "Bad rlambda: " exp))))
@@ -150,7 +150,7 @@
                   ;; FIXME pattern
                   ((values)
                      (tuple 'values
-                        (map (lambda (arg) (translate arg env fail)) (cdr exp))))
+                        (map (λ (arg) (translate arg env fail)) (cdr exp))))
                   (else
                      (fail
                         (list
@@ -159,7 +159,7 @@
             ((bound)
                (mkcall (mkvar (car exp))
                   (map
-                     (lambda (x) (translate x env fail))
+                     (λ (x) (translate x env fail))
                      (cdr exp))))
             ;; both now handled by apply-env
             ;((undefined)
@@ -167,7 +167,7 @@
             ; left here to handle primops temporarily
             ((defined value)
                (mkcall value
-                  (map (lambda (x) (translate x env fail)) (cdr exp))))
+                  (map (λ (x) (translate x env fail)) (cdr exp))))
             (else
                ; could be useful for (eval (list + 1 2) env)
                ; so just warn for now
@@ -187,8 +187,7 @@
                   (mkcall
                      (translate (car exp) env fail)
                      (map
-                        (lambda (x)
-                           (translate x env fail))
+                        (λ (x) (translate x env fail))
                         (cdr exp)))))
             ((symbol? exp)
                (tuple-case (lookup env exp)
@@ -212,7 +211,7 @@
 
       (define (sexp->ast exp env)
          (call/cc
-            (lambda (drop)
+            (λ (drop)
                (tuple 'ok
                   (translate exp env (B drop fail))
                   env))))

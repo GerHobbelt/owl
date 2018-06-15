@@ -130,9 +130,9 @@
       (define-syntax thread
          (syntax-rules ()
             ((thread id val)
-               (thunk->thread id (lambda () val)))
+               (thunk->thread id (λ () val)))
             ((thread val)
-               (thunk->thread (lambda () val)))))
+               (thunk->thread (λ () val)))))
 
       ;; (thread (op . args)) → id
       ;; (wait-thread (thread (op . args)) [default]) → value

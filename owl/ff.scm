@@ -246,7 +246,7 @@
             ;((with-ff (name l k v r) . rest)
             ;   (lets ((l k v r (explode name))) . rest))
             ((with-ff (name l k v r) . rest)
-               (ff-bind name (lambda (l k v r) . rest)))
+               (ff-bind name (λ (l k v r) . rest)))
             ))
 
       ;; FIXME: misleading names!
@@ -650,8 +650,8 @@
             (ff->list (put ff 'd 42)) = '((a . 1) (b . 2) (c . 3) (d . 42))
             (ff->list (del ff 'a)) = '((b . 2) (c . 3))
             (ff->list (del ff 'x)) = '((a . 1) (b . 2) (c . 3))
-            (ff-fold (lambda (out k v) (cons v out)) #n ff) = '(3 2 1)
-            (ff-foldr (lambda (out k v) (cons v out)) #n ff) = '(1 2 3)
+            (ff-fold (λ (out k v) (cons v out)) #n ff) = '(3 2 1)
+            (ff-foldr (λ (out k v) (cons v out)) #n ff) = '(1 2 3)
             (keys ff) = '(a b c)
             (get ff 'a 0) = 1
             (get ff 'x 0) = 0

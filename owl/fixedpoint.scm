@@ -38,7 +38,7 @@
 
          (define (walk-list exp bound found)
             (fold
-               (lambda (found thing)
+               (λ (found thing)
                   (walk thing bound found))
                found exp))
 
@@ -91,7 +91,7 @@
             ; things which only depend on themselvs (simply recursive)
             (maybe 'simple
                (filter
-                  (lambda (node)
+                  (λ (node)
                      (and
                         (lambda? (value-of node) env)
                         (equal? (deps-of node) (list (name-of node)))))
@@ -107,11 +107,11 @@
                   ((node
                      (least
                         (B length deps-of)
-                        (filter (lambda (node) (lambda? (value-of node) env)) deps))))
+                        (filter (λ (node) (lambda? (value-of node) env)) deps))))
                   (if node
                      (let ((partition (deps-of node)))
                         (filter
-                           (lambda (node) (memq (name-of node) partition))
+                           (λ (node) (memq (name-of node) partition))
                            deps))
                      #n)))
 
@@ -120,11 +120,11 @@
       ;;; remove nodes and associated deps
       (define (remove-deps lost deps)
          (map
-            (lambda (node)
+            (λ (node)
                (set-deps node
                   (diff (deps-of node) lost)))
             (remove
-               (lambda (node)
+               (λ (node)
                   (memq (name-of node) lost))
                deps)))
 
@@ -228,13 +228,13 @@
             (else
                (error "carry-bindings: strage expression: " exp))))
 
-      ;;; ((name (lambda (formals) body) deps) ...) env
+      ;;; ((name (λ (formals) body) deps) ...) env
       ;;; -> ((lambda (formals+deps) body') ...)
 
       (define (handle-recursion nodes env)
          ; convert the lambda and carry bindings in the body
          (map
-            (lambda (node)
+            (λ (node)
                (lets
                   ((lexp (value-of node))
                    (formals (ref lexp 2))
@@ -278,7 +278,7 @@
                   (let
                      ((env-rec
                         (fold
-                           (lambda (env node)
+                           (λ (env node)
                               (let ((formals (ref (value-of node) 2)))
                                  (env-put-raw env
                                     (name-of node)
@@ -309,7 +309,7 @@
                            ; remember, the change is just to append the function name to the call
                            ; and make a (lambda (v ...) (self v .. self)) if it is used as a value
                            (fold
-                              (lambda (body node)
+                              (λ (body node)
                                  (lets ((name val deps node))
                                     (carry-simple-recursion body name
                                        (append (ref val 2) deps)))) ; add self to args
@@ -322,7 +322,7 @@
                      ((partition (deps-of (car nodes)))
                       (nodes
                         (map
-                           (lambda (node)
+                           (λ (node)
                               (if (null? (diff (deps-of node) partition))
                                  (set-deps node partition)
                                  (error
@@ -331,7 +331,7 @@
                            nodes))
                       (env-rec
                         (fold
-                           (lambda (env node)
+                           (λ (env node)
                               (let ((formals (ref (value-of node) 2)))
                                  (env-put-raw env
                                     (name-of node)
@@ -358,7 +358,7 @@
          (define (grow current deps)
             (lets
                ((related
-                  (filter (lambda (x) (memq (name-of x) current)) deps))
+                  (filter (λ (x) (memq (name-of x) current)) deps))
                 (new-deps
                   (fold union current
                      (map third related))))
@@ -367,7 +367,7 @@
                   (grow new-deps deps))))
 
          (map
-            (lambda (node)
+            (λ (node)
                (set-deps node
                   (grow (deps-of node) deps)))
             deps))
@@ -377,7 +377,7 @@
          ;; -> (name value-exp dependencies)
          (define dependencies
             (zip
-               (lambda (name value)
+               (λ (name value)
                   (tuple name value
                      (intersect names
                         (free-vars value env))))

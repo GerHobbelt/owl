@@ -91,7 +91,7 @@
             ((sc name index) (define name (sys-const index)))))
 
       (define (sys-const i)
-         (lambda () (sys-prim 8 i #f #f)))
+         (λ () (sys-prim 8 i #f #f)))
 
       ;; owl value → value processable in vm (mainly string conversion)
       (define (sys-arg x)
