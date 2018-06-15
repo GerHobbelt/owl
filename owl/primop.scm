@@ -50,7 +50,7 @@
              (lst (cdr lst))
              (len (len lst)))
             (bytes->bytecode
-               (ilist 34 arity 0 len
+               (ilist 2 arity 0 len
                   (app lst (list 17)))))) ;; fail if arity mismatch
 
       ;; changing any of the below 3 primops is tricky. they have to be recognized by the primop-of of

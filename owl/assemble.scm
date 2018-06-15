@@ -247,7 +247,7 @@
                            (error "too much bytecode: " len))
                         (bytes->bytecode
                            (ilist
-                              (if fixed? 34 25)
+                              (if fixed? 2 25)
                               (if fixed? arity (- arity 1)) ;; last is the optional one
                               (>> len 8)        ;; jump hi
                               (fxband len #xff) ;; jump lo
