@@ -283,7 +283,7 @@
                   (λ (bs regs fail)
                      (lets ((rator nargs bs (get2 (cdr bs))))
                         (let ((code (list "ob=(word*)R[" rator "];acc=" nargs ";" )))
-                           (values code null regs)))))
+                           (values code #n regs)))))
                (cons 132 (cify-closer "TCLOS"))
                (cons 4 (cify-closer "TPROC"))
                (cons 196 (cify-closer-1 "TCLOS"))
@@ -324,7 +324,7 @@
                   (λ (bs regs fail)
                      (values
                         (list "error(17,ob,F(acc));")
-                        null regs)))
+                        #n regs)))
                (cons 21 cify-fxsub)
                (cons 22 cify-fxadd)
                (cons 23 cify-mkt)
@@ -333,7 +333,7 @@
                      (let ((res (cadr bs)))
                         (values
                            (list "ob=(word*)R[3];R[3]=R["res"];acc=1;") ; the goto apply is automatic
-                           null regs)))) ;; <- always end compiling (another branch may continue here)
+                           #n regs)))) ;; <- always end compiling (another branch may continue here)
                ;(cons 25 ;; jump-variable-arity n
                ;   (λ (bs regs fail)
                ;      (lets
@@ -490,8 +490,8 @@
                (call/cc
                   (λ (ret)
                      (list->string
-                        (foldr render null
-                           (emit-c ops empty (λ () (ret #false)) null))))))
+                        (foldr render #n
+                           (emit-c ops empty (λ () (ret #false)) #n))))))
             #false))
 ))
 ; (import (owl cgen))

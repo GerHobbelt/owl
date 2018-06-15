@@ -68,7 +68,7 @@
                   (print "free-vars: unknown node type: " exp)
                   found)))
 
-         (walk exp null null))
+         (walk exp #n #n))
 
       (define (lambda? exp env)
          (eq? (ref exp 1) 'lambda))
@@ -113,7 +113,7 @@
                         (filter
                            (lambda (node) (memq (name-of node) partition))
                            deps))
-                     null)))
+                     #n)))
 
             (error "unable to resolve dependencies for mutual recursion. remaining bindings are " deps)))
 

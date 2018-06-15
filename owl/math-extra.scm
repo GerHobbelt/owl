@@ -317,7 +317,7 @@
 
       (define (atkin-primes-between lo hi)
          (cond
-            ((> lo hi) null)
+            ((> lo hi) #n)
             ; 2 and 3 are special
             ((<= lo 2 hi) (cons 2 (atkin-primes-between 3 hi)))
             ((<= lo 3 hi) (cons 3 (atkin-primes-between 5 hi)))
@@ -325,7 +325,7 @@
                (sort <
                   (ifold
                      (λ (out k v) (if v (cons k out) out))
-                     null
+                     #n
                      (atkin-remove-squares hi
                         (atkin-candidates lo hi)))))))
 
@@ -371,7 +371,7 @@
                   (if (eq? (car pows) 1)
                      (cdr pows)
                      (atkin-factor-driver pows 32))))
-            null))
+            #n))
 
 
       ;;;
@@ -573,7 +573,7 @@
       ;; (num ...) [n-bins] -> ((n-in-bin . bin-limit) ...)
       (define (histogram data . bins)
          (if (null? data)
-            null
+            #n
             (lets
                ((l (length data))
                 (bins

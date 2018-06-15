@@ -49,7 +49,7 @@
 
       ;; formals-sexp → (sym ..)|#false fixed-arity?
       (define (check-formals lst)
-         (let loop ((lst lst) (out null))
+         (let loop ((lst lst) (out #n))
             (cond
                ((null? lst)
                   (values (reverse out) #true))

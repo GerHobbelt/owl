@@ -128,7 +128,7 @@
 
       ; ll -> list | #false
       (define (utf8-encode thing)
-         (foldr encode-point null thing))
+         (foldr encode-point #n thing))
 
 
       ;;;
@@ -138,7 +138,7 @@
       ;; compute the minimal sizes using the encoder to avoid silly bugs
       (define (min-nbyte n)
          (let loop ((cp 1))
-            (if (= (length (encode-point cp null)) n)
+            (if (= (length (encode-point cp #n)) n)
                cp
                (loop (<< cp 1)))))
 
@@ -203,11 +203,11 @@
 
       ; ll -> lst' | #false
       (define (utf8-decode lst)
-         (decoder lst null #false))
+         (decoder lst #n #false))
 
       ; ll -> lst', rewrite all errors with #
       (define (utf8-sloppy-decode lst)
-         (decoder lst null 35))
+         (decoder lst #n 35))
 
 
       ; byte-ll fail → cp-ll | (cp ... . (fail self line data))
@@ -217,7 +217,7 @@
          (let loop ((ll ll) (line 0))
             (cond
                ((null? ll)
-                  null)
+                  #n)
                ((pair? ll)
                   (lets ((val ll (decode-char ll)))
                      (cond

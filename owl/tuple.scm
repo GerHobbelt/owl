@@ -49,5 +49,5 @@
                (cons (ref tuple pos) lst))))
 
       (define (tuple->list tuple)
-         (read-tuple tuple (tuple-length tuple) null))
+         (read-tuple tuple (tuple-length tuple) #n))
 ))

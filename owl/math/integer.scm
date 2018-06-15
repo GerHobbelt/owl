@@ -84,7 +84,7 @@
          (mkt type-int- (ncar n) (ncdr n)))
 
       (define *big-one*
-         (ncons 1 null))
+         (ncons 1 #n))
 
       (define *first-bignum*
          (ncons 0 *big-one*))
@@ -119,8 +119,8 @@
       (define (big-digits-equal? a b)
          (cond
             ((eq? a b) #true)      ; shared tail or both empty
-            ((eq? a null) #false)
-            ((eq? b null) #false)
+            ((null? a) #false)
+            ((null? b) #false)
             ((eq? (ncar a) (ncar b))
                (big-digits-equal? (ncdr a) (ncdr b)))
             (else #false)))
@@ -129,8 +129,8 @@
          (cond
             ((eq? a b)    ; both ended or shared tail
                lower)
-            ((eq? a null) #true)
-            ((eq? b null) #false)
+            ((null? a) #true)
+            ((null? b) #false)
             (else
                (let ((ad (ncar a)) (bd (ncar b)))
                   (cond
@@ -220,7 +220,7 @@
                         (ncons 0 (nat-succ (ncdr n)))
                         (lets ((lo _ (fx+ lo 1)))
                            (ncons lo (ncdr n))))))
-               ((eq? n null)
+               ((null? n)
                   *big-one*)
                (else
                   (big-bad-args 'inc n n)))))
@@ -241,17 +241,17 @@
              (new overflow (fxadd a b)))
             (if (eq? overflow 0)
                (ncons new bs)
-               (if (eq? bs null)
+               (if (null? bs)
                   (ncons new *big-one*)
                   (ncons new (add-number-big overflow bs))))))
 
       (define (add-big a b carry)
          (cond
-            ((eq? a null)
-               (if (eq? b null)
+            ((null? a)
+               (if (null? b)
                   (if (eq? carry 0) #n *big-one*)
                   (if (eq? carry 0) b (add-number-big carry b))))
-            ((eq? b null)
+            ((null? b)
                (if (eq? carry 0) a (add-number-big carry a)))
             (else
                (lets ((r o (fxadd (ncar a) (ncar b))))
@@ -283,10 +283,10 @@
                         (tail (ncons r tail))   ; otherwise tail went to 0
                         (leading? r)
                         ((eq? r 0) #false)
-                        (else (ncons r null)))))
+                        (else (ncons r #n)))))
                ((eq? r 0)
                   (let ((tail (ncdr a)))
-                     (if (eq? tail null)
+                     (if (null? tail)
                         (if leading? r #false)
                         (ncons r tail))))
                (else
@@ -306,9 +306,9 @@
 
       (define (sub-digits a b borrow leading?)
          (cond
-            ((eq? a null)
+            ((null? a)
                #false)
-            ((eq? b null)
+            ((null? b)
                (if (eq? borrow 0)
                   a
                   (sub-big-number a borrow leading?)))
@@ -321,14 +321,14 @@
                               (tail (ncons r tail))
                               (leading? r)
                               ((eq? r 0) #false)
-                              (else (ncons r null)))))
+                              (else (ncons r #n)))))
 
                      (let ((tail (sub-digits (ncdr a) (ncdr b) u #f)))
                         (cond
                            (tail (ncons r tail))
                            (leading? r)
                            ((eq? r 0) #false)
-                           (else (ncons r null)))))))))
+                           (else (ncons r #n)))))))))
 
 
       ; A - B = -(B - A)
@@ -457,7 +457,7 @@
                   (qr-bs-loop r as b (ncons q2 (ncons q1 out)))))))
 
       (define (nrev-walk num to)
-         (if (eq? num null)
+         (if (null? num)
             to
             (nrev-walk
                (ncdr num)
@@ -466,7 +466,7 @@
       (define-syntax nrev
          (syntax-rules ()
             ((nrev num)
-               (nrev-walk num null))))
+               (nrev-walk num #n))))
 
       (define (qr-big-small a b) ; -> q r
          (cond
@@ -479,7 +479,7 @@
                (lets
                   ((ra (nrev a))
                    (a as ra))
-                  (qr-bs-loop a as b null)))))
+                  (qr-bs-loop a as b #n)))))
 
       ;;;
       ;;; BITWISE OPERATIONS
@@ -489,12 +489,12 @@
       ; fx>> -> hi + lo
 
       (define (shift-right-walk this rest n first?)
-         (if (eq? rest null)
+         (if (null? rest)
             (cond
                (first?  this)
                ((eq? this 0) #false)
                (else
-                  (ncons this null)))
+                  (ncons this #n)))
             (let ((next (ncar rest)))
                (lets ((hi lo (fx>> next n)))
                   (lets
@@ -506,10 +506,10 @@
                            (if first? 0 #false))
                         (else
                            (if first? this
-                              (ncons this null)))))))))
+                              (ncons this #n)))))))))
 
       (define (shift-right a n)
-         (if (eq? a null)
+         (if (null? a)
             0
             (lets ((hi lo (fx>> (ncar a) n)))
                (shift-right-walk hi (ncdr a) n #true))))
@@ -518,7 +518,7 @@
       (define (drop-digits a words)
          (cond
             ((eq? words 0) a)
-            ((eq? a null) a)
+            ((null? a) a)
             (else
                (lets ((words _ (fx- words 1)))
                   (drop-digits (ncdr a) words)))))
@@ -554,10 +554,10 @@
 
       ; make a digit with last as low bits
       (define (shift-left num n last)
-         (if (eq? num null)
+         (if (null? num)
             (if (eq? last 0)
-               null
-               (ncons last null))
+               #n
+               (ncons last #n))
             (lets ((hi lo (fx>> (ncar num) n)))
                (ncons (fxbor last lo)
                   (shift-left (ncdr num) n hi)))))
@@ -585,21 +585,21 @@
                            (if (eq? hi 0)
                               (if (eq? words 0)
                                  lo
-                                 (extend-digits (ncons lo null) words))
+                                 (extend-digits (ncons lo #n) words))
                               (if (eq? words 0)
-                                 (ncons lo (ncons hi null))
+                                 (ncons lo (ncons hi #n))
                                  (extend-digits
-                                    (ncons lo (ncons hi null))
+                                    (ncons lo (ncons hi #n))
                                     words)))))
                      (type-fix-
                         (lets ((hi lo (fx>> a bits)))
                            (if (eq? hi 0)
                               (if (eq? words 0)
                                  (to-fix- lo)
-                                 (to-int- (extend-digits (ncons lo null) words)))
+                                 (to-int- (extend-digits (ncons lo #n) words)))
                               (to-int-
                                  (extend-digits
-                                    (ncons lo (ncons hi null)) words)))))
+                                    (ncons lo (ncons hi #n)) words)))))
                      (type-int+
                         (extend-digits (shift-left a bits 0) words))
                      (type-int-
@@ -616,8 +616,8 @@
 
       (define (big-band a b)
          (cond
-            ((eq? a null) 0)
-            ((eq? b null) 0)
+            ((null? a) 0)
+            ((null? b) 0)
             (else
                (lets
                   ((this (fxband (ncar a) (ncar b)))
@@ -625,15 +625,15 @@
                   (cond
                      ((eq? tail 0) this)
                      ((eq? (type tail) type-fix+)
-                        (ncons this (ncons tail null)))
+                        (ncons this (ncons tail #n)))
                      (else
                         (ncons this tail)))))))
 
       ;; answer is quaranteed to be a bignum
       (define (big-bor a b)
          (cond
-            ((eq? a null) b)
-            ((eq? b null) a)
+            ((null? a) b)
+            ((null? b) a)
             (else
                (lets
                   ((this (fxbor (ncar a) (ncar b)))
@@ -651,7 +651,7 @@
                    (tail (big-bxor-digits (ncdr a) (ncdr b))))
                   (if (null? tail)
                      (if (eq? this 0)
-                        null
+                        #n
                         (ncons this tail))
                      (ncons this tail))))))
 
@@ -738,10 +738,10 @@
 
       (define (mult-num-big a b carry)
          (cond
-            ((eq? b null)
+            ((null? b)
                (if (eq? carry 0)
-                  null
-                  (ncons carry null)))
+                  #n
+                  (ncons carry #n)))
             ((eq? carry 0)
                (lets ((lo hi (fx* a (ncar b))))
                   (ncons lo
@@ -768,7 +768,7 @@
                (lets ((lo hi (fx* a b)))
                   (if (eq? hi 0)
                      lo
-                     (ncons lo (ncons hi null)))))))
+                     (ncons lo (ncons hi #n)))))))
 
 
       ;;;
@@ -780,7 +780,7 @@
       ; ensure bigness
       (define (bigen x)
          (if (eq? (type x) type-fix+)
-            (ncons x null)
+            (ncons x #n)
             x))
 
       ; a + (b << ex*16)
@@ -789,8 +789,8 @@
             ((eq? ex 0) (if (null? a) (bigen b) (+ a b)))
             ((null? a)
                (ncons 0
-                  (add-ext null b (subi ex 1))))
-            ((eq? (type a) type-fix+) (add-ext (ncons a null) b ex))
+                  (add-ext #n b (subi ex 1))))
+            ((eq? (type a) type-fix+) (add-ext (ncons a #n) b ex))
             ((eq? (type ex) type-fix+)
                (lets
                   ((ex _ (fx- ex 1))
@@ -806,7 +806,7 @@
       ; can be used for small bignums
       (define (mul-simple a b)
          (if (null? a)
-            null
+            #n
             (lets
                ((digit (ncar a))
                 (head (ncons 0 (mul-simple (ncdr a) b)))
@@ -866,7 +866,7 @@
                (lets
                   ; 3O(n)
                   ((ah at bh bt atl
-                     (splice-nums a b a b null null #true 0)))
+                     (splice-nums a b a b #n #n #t 0)))
                   (if (lesser? atl 30)
                      (mul-simple a b)
                      (lets
@@ -1104,7 +1104,7 @@
       (define (rsub a b) ; -> a' borrow|null
          (cond
             ((null? b) (values a #false)) ; ok if borrowable
-            ((null? a) (values a null)) ; fail
+            ((null? a) (values a #n)) ; fail
             (else
                (lets
                   ((d (subi (ncar a) (ncar b))) ; fix+ or fix-
@@ -1137,7 +1137,7 @@
 
       (define (rmul n d) ; tl x carry-up
          (if (null? n)
-            (values null 0)
+            (values #n 0)
             (lets
                ((x tl n)
                 (lo hi (fx* x d))
@@ -1148,7 +1148,7 @@
 
       (define (rmul-digit n d) ; -> bignum
          (cond
-            ((eq? d 0) (ncons 0 null))
+            ((eq? d 0) (ncons 0 #n))
             ((eq? d 1) n)
             (else
                (lets ((tl carry (rmul n d)))
@@ -1171,7 +1171,7 @@
             (else
                (lets
                   ((h _ (fx+ (ncar b) 1))
-                   (f r (qr-big-small (ncons (ncar (ncdr a)) (ncons (ncar a) null)) h)) ; FIXME, use fxqr instead
+                   (f r (qr-big-small (ncons (ncar (ncdr a)) (ncons (ncar a) #n)) h)) ; FIXME, use fxqr instead
                    )
                   (if (eq? (type f) type-fix+)
                      (lets
@@ -1225,7 +1225,7 @@
          (cond
             ((null? (ncdr n)) (ncar n))
             ((eq? (ncar n) 0) (div-finish (ncdr n)))
-            (else (div-rev n null))))
+            (else (div-rev n #n))))
 
       ; fixme, postpone and merge shifts and substraction
 
@@ -1254,7 +1254,7 @@
                (divex bit bp (subi a (<< b bp))
                   b (ncons (fxbor bit (ncar out)) (ncdr out))))))
 
-      (define divex-start (ncons 0 null))
+      (define divex-start (ncons 0 #n))
 
       ; FIXME: shifts are O(a+b), switch to bit walking later to get O(1)
 

@@ -103,7 +103,7 @@
                   (ilist #\# #\e #\m #\p #\t #\y tl))
 
                ((ff? obj)
-                  (cons #\@ (render (ff-foldr (λ (st k v) (cons k (cons v st))) null obj) tl)))
+                  (cons #\@ (render (ff-foldr (λ (st k v) (cons k (cons v st))) #n obj) tl)))
 
                ((tuple? obj)
                   (ilist #\# #\[ (render (tuple->list obj) (cons #\] tl))))
@@ -225,7 +225,7 @@
                   (ilist #\# #\e #\m #\p #\t #\y (delay (k sh))))
 
                ((ff? obj)
-                  (cons #\@ (ser sh (ff-foldr (λ (st k v) (cons k (cons v st))) null obj) k)))
+                  (cons #\@ (ser sh (ff-foldr (λ (st k v) (cons k (cons v st))) #n obj) k)))
 
                ((tuple? obj)
                   (ilist #\# #\[
@@ -284,7 +284,7 @@
                            ((eq? refs 1) shared)
                            ((shareable? ob) (cons ob shared))
                            (else shared))))
-                  null refs)))
+                  #n refs)))
             (let loop ((out empty) (shares shares) (n 1))
                (if (null? shares)
                   out
@@ -308,5 +308,5 @@
 
       (define (str . args)
          (bytes->string
-            (foldr render null args)))
+            (foldr render #n args)))
 ))

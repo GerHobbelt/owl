@@ -19,9 +19,9 @@
 
       (define (quicksort op lst)
          (let loop ((x lst))
-            (if (null? x) null
+            (if (null? x) x
                (let ((this (car x)))
-                  (let diffx ((x (cdr x)) (left null) (right null))
+                  (let diffx ((x (cdr x)) (left #n) (right #n))
                      (cond
                         ((null? x)
                            (let ((left (loop left)))
@@ -42,7 +42,7 @@
             (else (cons (car lst) (insert (cdr lst) val op)))))
 
       (define (isort op lst)
-         (let loop ((out null) (lst lst))
+         (let loop ((out #n) (lst lst))
             (if (null? lst)
                out
                (loop (insert out (car lst) op) (cdr lst)))))
@@ -60,7 +60,7 @@
 
       (define (merger op l)
          (if (null? l)
-            null
+            l
             (let ((a (car l)) (l (cdr l)))
                (if (null? l)
                   (list a)
@@ -75,7 +75,7 @@
       (define (chunker op l out n)
          (cond
             ((null? l)
-               (if (null? out) null (list out)))
+               (if (null? out) out (list out)))
             ((eq? n chunk-size)
                (cons out
                   (chunker op (cdr l) (list (car l)) 1)))
@@ -90,8 +90,8 @@
 
       (define (mergesort op l)
          (if (null? l)
-            null
-            (let ((l (chunker op l null 0)))
+            l
+            (let ((l (chunker op l #n 0)))
                (if (null? (cdr l))
                   (car l)
                   (merge-pairs op l)))))

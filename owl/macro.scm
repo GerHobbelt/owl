@@ -41,7 +41,7 @@
                   (cons exp found))
                (else found)))
 
-         (C walk null))
+         (C walk #n))
 
 
       ;;;
@@ -66,7 +66,7 @@
                   (if (pattern exp) (cons exp vals) #false))
                (else #false)))
 
-         (match-pattern pattern exp null))
+         (match-pattern pattern exp #n))
 
 
       ;;;
@@ -76,7 +76,7 @@
       ; store nulls to variables in exp
       (define (init-variables exp literals dict)
          (fold
-            (λ (dict key) (cons (cons key null) dict))
+            (λ (dict key) (cons (cons key #n) dict))
             dict
             (diff (symbols-of exp) literals)))
 
@@ -96,7 +96,7 @@
       (define (match-pattern pattern literals form fail)
          (let loop
             ((pattern pattern) (form form) (collect? #false)
-               (fail fail) (dictionary null))
+               (fail fail) (dictionary #n))
             (cond
                ((symbol? pattern)
                   (cond
@@ -345,7 +345,7 @@
 
          (define (expand-list exps env free)
             (if (null? exps)
-               (values null free)
+               (values #n free)
                (lets
                   ((this free (expand (car exps) env free abort))
                    (tail free (expand-list (cdr exps) env free)))

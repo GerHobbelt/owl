@@ -200,7 +200,7 @@
       (define env-fold ff-fold)
 
       (define (env-serializer env thing)
-         ((make-serializer (env-get env name-tag empty)) thing null))
+         ((make-serializer (env-get env name-tag empty)) thing #n))
 
       (define (verbose-vm-error env opcode a b)
          (case opcode
@@ -282,7 +282,7 @@
             empty env))
 
       (define (env-keys env)
-         (ff-fold (λ (words key value) (cons key words)) null env))
+         (ff-fold (λ (words key value) (cons key words)) #n env))
 
       (define primitive? primop-of)
 ))

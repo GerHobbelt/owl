@@ -275,7 +275,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                   (else
                      ;; load the given files
                      (define input
-                        (foldr (λ (path tail) (ilist ',load path tail)) null others))
+                        (foldr (λ (path tail) (ilist ',load path tail)) #n others))
                      (tuple-case (repl (env-set env '*interactive* #false) input)
                         ((ok val env)
                            0)
@@ -289,7 +289,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       (reverse
          (or
             (memq #\/ (reverse (string->runes path)))
-            null))))
+            #n))))
 
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
    (make-compiler #empty))
@@ -348,7 +348,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                                                 (cons 'render render)
                                                 (cons '*vm-special-ops* vm-special-ops)
                                                 (cons '*state* state))))))))))
-                     null)))))))
+                     #n)))))))
 
 
 (define command-line-rules
@@ -358,7 +358,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
 
 (define (choose-natives str all)
    (cond
-      ((equal? str "none") null)
+      ((equal? str "none") #n)
       ((equal? str "some") usual-suspects)
       ((equal? str "all") all)
       (else (print "Bad native selection: " str))))

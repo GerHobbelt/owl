@@ -244,7 +244,7 @@
                      (pair
                         (wait-udp-packet sock)
                         (loop sock))))
-               null)))
+               #n)))
 
       (define open-socket open-tcp-socket)
 
@@ -313,7 +313,7 @@
          (lets ((ip cli (tcp-client sock)))
             (if ip
                (pair (cons ip cli) (socket-clients sock))
-               null)))
+               #n)))
 
       ;; port → ((ip . fd) ... . null|#false), CLOSES SOCKET
       (define (tcp-clients port)
@@ -343,7 +343,7 @@
             ((eq? len output-buffer-size)
                (and
                   (write-really (list->bytevector (reverse out)) fd)
-                  (printer lst 0 null fd)))
+                  (printer lst 0 #n fd)))
             ((null? lst)
                (write-really (list->bytevector (reverse out)) fd))
             (else
@@ -363,36 +363,36 @@
                (write-really (bytevector-copy vec top end) port))))
 
       (define (write-bytes port byte-list)
-         (printer byte-list 0 null port))
+         (printer byte-list 0 #n port))
 
       (define (print-to to . stuff)
-         (printer (foldr render '(10) stuff) 0 null to))
+         (printer (foldr render '(10) stuff) 0 #n to))
 
       (define (writer-to names)
          (let ((serialize (make-serializer names)))
             (λ (to obj)
-               (printer (serialize obj '()) 0 null to))))
+               (printer (serialize obj '()) 0 #n to))))
 
       (define write-to
          (writer-to
             (put #empty map "map")))
 
       (define (display-to to obj)
-         (printer (render obj '()) 0 null to))
+         (printer (render obj '()) 0 #n to))
 
       (define print
          (case-lambda
             ((obj) (print-to stdout obj))
-            (xs (printer (foldr render '(#\newline) xs) 0 null stdout))))
+            (xs (printer (foldr render '(#\newline) xs) 0 #n stdout))))
 
       (define write
          (H write-to stdout))
 
       (define (print*-to to lst)
-         (printer (foldr render '(10) lst) 0 null to))
+         (printer (foldr render '(10) lst) 0 #n to))
 
       (define (print* lst)
-         (printer (foldr render '(10) lst) 0 null stdout))
+         (printer (foldr render '(10) lst) 0 #n stdout))
 
       (define-syntax output
          (syntax-rules ()
@@ -454,7 +454,7 @@
       (define (file->vector path) ; path -> vec | #false
          (let ((port (maybe-open-file path)))
             (if port
-               (let ((data (read-blocks port null)))
+               (let ((data (read-blocks port #n)))
                   (maybe-close-port port)
                   data)
                (begin
@@ -464,7 +464,7 @@
       (define (file->list path) ; path -> vec | #false
          (let ((port (maybe-open-file path)))
             (if port
-               (let ((data (read-blocks->list port null)))
+               (let ((data (read-blocks->list port #n)))
                   (maybe-close-port port)
                   data)
                (begin
@@ -516,9 +516,9 @@
                            (block-stream fd #true))
                         (begin
                            (close-port fd)
-                           null)))
+                           #n)))
                   ((not block)
-                     null)
+                     #n)
                   (else
                      (cons block
                         (block-stream fd tail?)))))))
@@ -538,7 +538,7 @@
                (cond
                   ((eof-object? block)
                      (close-port fd)
-                     null)
+                     #n)
                   ((not block)
                      (list 'io-error))
                   ((eq? block #true) ;; will block
@@ -579,11 +579,11 @@
                (block-stream->port (bs) fd))))
 
       (define (byte-stream->port bs fd)
-         (let loop ((bs bs) (n stream-block-size) (out null))
+         (let loop ((bs bs) (n stream-block-size) (out #n))
             (cond
                ((eq? n 0)
                   (if (write-really (list->bytevector (reverse out)) fd)
-                     (loop bs stream-block-size null)
+                     (loop bs stream-block-size #n)
                      #false))
                ((pair? bs)
                   (loop (cdr bs) (- n 1) (cons (car bs) out)))
@@ -595,7 +595,7 @@
                   (loop (bs) n out)))))
 
       (define (byte-stream->lines ll)
-         (let loop ((ll ll) (out null))
+         (let loop ((ll ll) (out #n))
             (cond
                ((pair? ll)
                   (lets ((byte ll ll))
@@ -606,11 +606,11 @@
                                  (if (and (pair? out) (eq? #\return (car out)))
                                     (cdr out)
                                     out)))
-                           (loop ll null))
+                           (loop ll #n))
                         (loop ll (cons byte out)))))
                ((null? ll)
                   (if (null? out)
-                     null
+                     #n
                      (list
                         (list->string (reverse out)))))
                (else
@@ -621,7 +621,7 @@
          (byte-stream->lines
             (utf8-decoder
                (port->byte-stream fd)
-               (λ (self line ll) null))))
+               (λ (self line ll) #n))))
 
       (define (file->byte-stream path)
          (let ((fd (open-input-file path)))
@@ -643,7 +643,7 @@
       ;;; new io muxer thread
 
       (define (delelt lst x) ;; lst x →  lst' | #false if not there
-         (let loop ((lst lst) (out null))
+         (let loop ((lst lst) (out #n))
             (if (null? lst)
                out
                (lets ((a lst lst))
@@ -653,7 +653,7 @@
 
       ;; (... (x . foo) ...) x => (... ...) (x . foo)
       (define (grabelt lst x)
-         (let loop ((lst lst) (out null))
+         (let loop ((lst lst) (out #n))
             (if (null? lst)
                (values out #false)
                (let ((a (car lst)))
@@ -669,7 +669,7 @@
          (if (null? alarms)
             (begin
                (print-to stderr "ERROR: fd read with timeout had no matching alarm")
-               null)
+               #n)
             (let ((this (car alarms)))
                (if (eq? (cdr this) envelope)
                   (cdr alarms)
@@ -812,7 +812,7 @@
       (define (start-muxer . id)
          (thread
             (if (null? id) 'iomux (car id))
-            (muxer null null null)))
+            (muxer #n #n #n)))
 
       ;; start normally mandatory threads (apart form meta which will be removed later)
       (define (start-base-threads)

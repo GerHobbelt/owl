@@ -24,13 +24,13 @@
 
       (define (gensyms free n)
          (if (= n 0)
-            (values null free)
+            (values #n free)
             (lets ((gens next (gensyms (gensym free) (- n 1))))
                (values (cons free gens) next))))
 
       (define (alpha-list alpha exps env free)
          (if (null? exps)
-            (values null free)
+            (values #n free)
             (lets
                ((this free (alpha (car exps) env free))
                 (tail free (alpha-list alpha (cdr exps) env free)))

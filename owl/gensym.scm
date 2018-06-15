@@ -97,7 +97,7 @@
       (define (gensym exp)
          (lets
             ((id (+ 1 (if (tuple? exp) (max-ast-id exp 0) (max-gensym-id exp 0))))
-             (digits (cons 103 (render id null))))
+             (digits (cons 103 (render id #n))))
             (string->symbol (runes->string digits))))
 
       (define (fresh free)

@@ -37,7 +37,7 @@
          (let ((val (get usages reg #false)))
             (if val
                usages
-               (put usages reg null))))
+               (put usages reg #n))))
 
       ; set value to (reg) -> would be cool to have it in reg
 
@@ -47,7 +47,7 @@
       ; return a list of registers from uses (where the value has been moved to), or
       ; some list of low registers if this one is outside the available ones
       (define (use-list uses reg)
-         (let ((opts (filter (C < highest-register) (get uses reg null))))
+         (let ((opts (filter (C < highest-register) (get uses reg #n))))
             (cond
                ((< reg highest-register)
                   opts)

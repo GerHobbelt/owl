@@ -472,8 +472,8 @@
                      (λ () (ff-iterrate l tl)))))
             tl))
 
-      (define ff-iter (C ff-iterate null))
-      (define ff-iterr (C ff-iterrate null))
+      (define ff-iter (C ff-iterate #n))
+      (define ff-iterr (C ff-iterrate #n))
 
       ;; note: ff-map will switch argument order in the generic equivalent
       ;; fixme, also much faster if types are used directly
@@ -497,7 +497,7 @@
          (ff-foldr
             (λ (lst k v)
                (cons (cons k v) lst))
-            null ff))
+            #n ff))
 
 
       ;;;
@@ -640,7 +640,7 @@
             ((getf ff key) (get ff key #false))))
 
       (define (keys ff)
-         (ff-foldr (λ (out k v) (cons k out)) null ff))
+         (ff-foldr (λ (out k v) (cons k out)) #n ff))
 
       (let ((ff (list->ff '((a . 1) (b . 2) (c . 3)))))
          (example
@@ -650,8 +650,8 @@
             (ff->list (put ff 'd 42)) = '((a . 1) (b . 2) (c . 3) (d . 42))
             (ff->list (del ff 'a)) = '((b . 2) (c . 3))
             (ff->list (del ff 'x)) = '((a . 1) (b . 2) (c . 3))
-            (ff-fold (lambda (out k v) (cons v out)) null ff) = '(3 2 1)
-            (ff-foldr (lambda (out k v) (cons v out)) null ff) = '(1 2 3)
+            (ff-fold (lambda (out k v) (cons v out)) #n ff) = '(3 2 1)
+            (ff-foldr (lambda (out k v) (cons v out)) #n ff) = '(1 2 3)
             (keys ff) = '(a b c)
             (get ff 'a 0) = 1
             (get ff 'x 0) = 0

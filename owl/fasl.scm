@@ -105,7 +105,7 @@
       (define (objects-below obj)
          (ff-fold
             (λ (out obj _) (cons obj out))
-            null (object-closure obj)))
+            #n (object-closure obj)))
 
       (define (index-closure clos) ; carry (fp . clos)
          (cdr
@@ -187,7 +187,7 @@
       (define (encode obj cook)
          (if (allocated? obj)
             (encoder obj cook)
-            (enc-immediate obj null)))
+            (enc-immediate obj #n)))
 
       ; dump the data, but cook each allocated value with cook just before dumping
       ; (to allow for example changing code from functions without causing
@@ -206,10 +206,10 @@
             ((eq? n chunk-size)
                (cons
                   (list->bytevector (reverse buff))
-                  (chunk-stream bs 0 null)))
+                  (chunk-stream bs 0 #n)))
             ((null? bs)
                (if (null? buff)
-                  null
+                  #n
                   (list (list->bytevector (reverse buff)))))
             ((pair? bs)
                (lets ((n _ (fx+ n 1)))
@@ -218,7 +218,7 @@
                (chunk-stream (bs) n buff))))
 
       (define (fasl-encode-stream obj cook)
-         (chunk-stream (encode obj cook) 0 null))
+         (chunk-stream (encode obj cook) 0 #n))
 
       ;;;
       ;;; Decoder
@@ -282,7 +282,7 @@
                         (lets
                            ((ll type (grab ll fail))
                             (ll size (get-nat ll fail 0))
-                            (ll fields (get-fields ll got size fail null))
+                            (ll fields (get-fields ll got size fail #n))
                             (obj (listuple type size fields)))
                            ;; could just rcons obj to got, but some thigns are special when
                            ;; doing just partial heap transfers
@@ -308,7 +308,7 @@
                            ((ll type (grab ll fail))
                             (ll size (get-nat ll fail 0))
                             (foo (if (> size 65535) (fail "bad raw object size")))
-                            (ll rbytes (get-bytes ll size fail null))
+                            (ll rbytes (get-bytes ll size fail #n))
                             (obj (raw (reverse rbytes) type)))
                            (decoder ll (rcons obj got) fail)))
                      ((eq? kind 0) ;; fasl stream end marker
@@ -319,7 +319,7 @@
                            ((type (>> kind 2))
                             (ll size (get-nat ll fail 0))
                             (foo (if (> size 65535) (fail "bad raw object size")))
-                            (ll rbytes (get-bytes ll size fail null))
+                            (ll rbytes (get-bytes ll size fail #n))
                             (obj (raw (reverse rbytes) type)))
                            (decoder ll (rcons obj got) fail)))
                      (else
@@ -327,10 +327,10 @@
             (else
                (decoder (ll) got fail))))
 
-      (define (decode-or ll err) ; -> ll obj | null (err why)
+      (define (decode-or ll err) ; -> ll obj | #n (err why)
          (call/cc ; setjmp2000
             (λ (ret)
-               (lets ((fail (B (H ret null) err)))
+               (lets ((fail (B (H ret #n) err)))
                   (cond
                      ((null? ll) (fail enodata))
                      ((pair? ll)
@@ -360,7 +360,7 @@
                   (if (eq? ob failed)
                      (list err)
                      (pair ob (decode-stream ll err)))))
-            ((null? ll) null)
+            ((null? ll) ll)
             (else (decode-stream (ll) err))))
 
       (define fasl-decode decode)

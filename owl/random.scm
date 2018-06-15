@@ -122,10 +122,10 @@
                (cond
                   ((eq? d 0) ;; drop leading zeros
                      (nrev-fix ds))
-                  ((eq? ds null) ;; downgrade a single digit to fixnum
+                  ((null? ds) ;; downgrade a single digit to fixnum
                      d)
                   (else
-                     (nrev-iter ds (ncons d null)))))))
+                     (nrev-iter ds (ncons d #n)))))))
 
       (define word32 #xffffffff)
 
@@ -160,25 +160,25 @@
             ((eq? (type seed) type-fix+)
                ;; promote to bignum and random state
                (lets ((seed (* (+ seed 1) 11111111111111111111111)))
-                  (tuple #true (rand-walk rand-acc seed null) seed)))
+                  (tuple #true (rand-walk rand-acc seed #n) seed)))
             ((eq? (type seed) type-int+)
                ;; promote to random state
-               (tuple #true (rand-walk rand-acc seed null) seed))
+               (tuple #true (rand-walk rand-acc seed #n) seed))
             (else
                (lets ((st a b seed))
                   (cond
                      ((= a b)
                         ;; friends meet, we're going to need a bigger track
                         (let ((ap (ncons (if st rand-acc rand-mult)  a)))
-                           (tuple #true (rand-walk rand-acc ap null) ap)))
+                           (tuple #true (rand-walk rand-acc ap #n) ap)))
                      (st
                         ;; hare and tortoise
                         (tuple #false
-                           (rand-walk rand-acc a null)
-                           (rand-walk rand-acc b null)))
+                           (rand-walk rand-acc a #n)
+                           (rand-walk rand-acc b #n)))
                      (else
                         ;; just hare
-                        (tuple #true (rand-walk rand-acc a null) b)))))))
+                        (tuple #true (rand-walk rand-acc a #n) b)))))))
 
       ;;; Mersenne Twister (missing)
 
@@ -231,17 +231,17 @@
 
       (define (rand-big rs n)
          (if (null? n)
-            (values rs null #true)
+            (values rs #n #true)
             (lets
                ((rs head eq (rand-big rs (ncdr n)))
                 (this rs (uncons rs 0)))
                (if eq
                   (let ((val (remainder this (+ (ncar n) 1))))
                      (if (eq? val 0)
-                        (values rs (if (null? head) null (ncons 0 head)) (eq? (ncar n) 0))
+                        (values rs (if (null? head) #n (ncons 0 head)) (eq? (ncar n) 0))
                         (values rs (ncons val head) (eq? val (ncar n)))))
                   (if (eq? this 0)
-                     (values rs (if (null? head) null (ncons 0 head)) #false)
+                     (values rs (if (null? head) #n (ncons 0 head)) #false)
                      (values rs (ncons this head) #false))))))
 
       (define (rand-fixnum rs n)
@@ -266,7 +266,7 @@
             (rand-fixnum rs (+ n 1))))
 
       (define (rand-bignum rs n)
-         (let loop ((rs rs) (left n) (out null) (lower? #false))
+         (let loop ((rs rs) (left n) (out #n) (lower? #false))
             (lets ((digit left left))
                (if (null? left)
                   (if lower?
@@ -351,11 +351,11 @@
       ;; select with bits of a random number (to save some rands)
       (define (random-subset rs l)
          (if (null? l)
-            (values rs null)
+            (values rs #n)
             (lets
                ((n (length l))
                 (rs bits (rand-nbit rs (+ n 1))))
-               (values rs (reverse (select-members l bits 1 null))))))
+               (values rs (reverse (select-members l bits 1 #n))))))
 
       ;;;
       ;;; Reservoir sampler
@@ -395,12 +395,12 @@
       ; rs lst → rs' sublist, each element having 50% chance of being in the sublist
       (define (rand-subset rs l)
          (if (null? l)
-            (values rs null)
+            (values rs #n)
             (lets
                ((n (length l))
                 (rs bits (rand-nbit rs (+ n 1))))
                (values rs
-                  (reverse (select-members l bits 1 null))))))
+                  (reverse (select-members l bits 1 #n))))))
 
       ; a number with log_2(n) instead of n evenly distributed in range
       (define (rand-log rs n)
@@ -452,19 +452,19 @@
          (if (null? lst)
             (values rs tail)
             (lets
-               ((rs opts (fold2 shuffle-label rs null lst))
+               ((rs opts (fold2 shuffle-label rs #n lst))
                 (opts (sort carless opts)))
                (shuffle-merge rs opts tail shuffler))))
 
       (define (shuffle rs lst)
          (if (null? lst)
             (values rs lst)
-            (shuffler rs lst null)))
+            (shuffler rs lst #n)))
 
       (define random-permutation shuffle)
 
       (define (random-numbers rs bound count)
-         (let loop ((rs rs) (out null) (count count))
+         (let loop ((rs rs) (out #n) (count count))
             (if (= count 0)
                (values rs out)
                (lets ((rs n (rand rs bound)))
@@ -472,7 +472,7 @@
 
       ; grab directly low 8 bits of each rand (same would happend with (rand rs 256))
       (define (random-bvec rs n)
-         (let loop ((rs rs) (out null) (n n))
+         (let loop ((rs rs) (out #n) (n n))
             (if (eq? n 0)
                (values rs (raw (reverse out) type-bytevector)) ; reverses to keep order
                (lets

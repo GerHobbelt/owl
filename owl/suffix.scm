@@ -52,7 +52,7 @@
          (if (null? vs)
             (values tl bs)
             (lets
-               ((l vs (get-run (car (car vs)) vs null)) ; <- ie get a tree node
+               ((l vs (get-run (car (car vs)) vs #n)) ; <- ie get a tree node
                 (ln (length l))
                 (lid (+ n ln))
                 (bs (fold (λ (bs p) (iput bs p lid)) bs l))
@@ -86,14 +86,14 @@
          (if (pair? lst)
             (cons (cons (car lst) p)
                (add-poss (cdr lst) (+ p 1)))
-            null))
+            #n))
 
       (define (ssort-doubling lst)
          (lets
             ((sb (add-poss lst 0))
              (sb (cons (cons sentinel (length sb)) sb)) ; add sentinel
              (sb (sort carless sb))
-             (ls bs (chunk sb #empty null -1)))
+             (ls bs (chunk sb #empty #n -1)))
             (cdr (ssort-steps ls bs 1)))) ; drop the sentinel (is just length of list at car)
 
       (define suffix-list ssort-doubling)

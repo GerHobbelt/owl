@@ -125,7 +125,7 @@
       (define (mem-string-bytes ptr)
          (let ((this (peek-byte ptr)))
             (if (eq? this 0)
-               null
+               #n
                (cons this (mem-string-bytes (+ ptr 1))))))
 
       (define raw-string
@@ -144,7 +144,7 @@
                (let loop ((ptr ptr))
                   (let ((next (peek-word ptr)))
                      (if (eq? next 0)
-                        null
+                        #n
                         (cons
                            (func next)
                            (loop (+ ptr nb)))))))))
@@ -365,13 +365,13 @@
                (if (eq? #\. (ref this 0))
                   seen
                   (cons this seen)))
-            null path))
+            #n path))
 
       ;; everything reported by OS
       (define (dir->list-all path)
          (dir-fold
             (λ (seen this) (cons this seen))
-            null path))
+            #n path))
 
       ;;;
       ;;; Processes

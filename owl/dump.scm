@@ -54,18 +54,18 @@
                ((symbol? node)
                   (let ((trail (put trail node 1)))
                      (put trail tag
-                        (cons node (get trail tag null)))))
+                        (cons node (get trail tag #n)))))
                ((raw? node) trail)
                (else
                   (fold walk
                      (put trail node #true)
                      (tuple->list node)))))
          (define trail
-            (walk (put empty tag null) node))
+            (walk (put empty tag #n) node))
 
          (get
-            (walk (put empty tag null) node)
-            tag null))
+            (walk (put empty tag #n) node)
+            tag #n))
 
       ;; FIXME - fails with variable fixnum size and usual vectors
       (define (file->string path)
@@ -129,7 +129,7 @@
                (cons 10
                   (render-byte-array bytes 0)))
             ((null? (cdr bytes))
-               (render (car bytes) null))
+               (render (car bytes) #n))
             (else
                (let ((this (car bytes)))
                   (render this
@@ -167,7 +167,7 @@
 
       (define (render-native-ops nops)
          (runes->string
-            (foldr render null
+            (foldr render #n
                (ff-fold
                   (λ (tl func info)
                      (lets ((opcode new-func c-code info))
@@ -176,7 +176,7 @@
                            ;; all of these end to an implicit goto apply
                            (ilist "      case " opcode ":" c-code "break;\n" tl)
                            tl)))
-                  null nops))))
+                  #n nops))))
 
 
       ; nodes = ((func . #(opcode warpper src)) ...)
@@ -188,7 +188,7 @@
                (begin
                   ;(print " - no native instructions selected")
                   (list->ff all))
-               (let loop ((code 0) (obs all) (out null)) ;; <- can start at 0 after cleaning up the old code
+               (let loop ((code 0) (obs all) (out #n)) ;; <- can start at 0 after cleaning up the old code
                   (cond
                      ((null? obs)
                         (list->ff out))
@@ -284,12 +284,12 @@
       ; ob → ((nrefs . ob) ..)
       (define (all-code-refs ob)
          (lets ((refs this (code-refs empty ob)))
-            (ff-fold (λ (out x n) (cons (cons n x) out)) null this)))
+            (ff-fold (λ (out x n) (cons (cons n x) out)) #n this)))
 
       ;; _ → ((bytecode . bytecode) ...)
       (define (codes-of ob)
          (lets ((refs this (code-refs empty ob)))
-            (ff-fold (λ (out x n) (cons (cons x x) out)) null this)))
+            (ff-fold (λ (out x n) (cons (cons x x) out)) #n this)))
 
       ;; ob percent → (codevec ...)
       (define (most-linked-code ob perc)

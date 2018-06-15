@@ -101,14 +101,14 @@
       (define (grab-initial-words ll)
          (lets ((a ll (uncons ll #false)))
             (if a ;;something in stream
-               (let loop ((ll (cons a ll)) (ws null) (n 0))
+               (let loop ((ll (cons a ll)) (ws #n) (n 0))
                   (cond
                      ((= n 16)
                         (values ws ll))
                      (else
                         (lets ((x ll (grab-word ll)))
                            (loop ll (cons x ws) (+ n 1))))))
-               (values #false null))))
+               (values #f #n))))
 
       (define (xor-poss x n ps lst)
          (if (eq? n 1)
@@ -167,7 +167,7 @@
          (ilist d c b a tail)))
 
    (define (ws->bytes ws)
-      (foldr uint32->bytes null ws))
+      (foldr uint32->bytes #n ws))
 
    ;; silly version for now
    (define (hash-bytes->string bs)
@@ -175,7 +175,7 @@
          (foldr
             (λ (b tl)
                (append (cdr (string->list (number->string (+ #x100 b) 16))) tl))
-            null bs)))
+            #n bs)))
 
    (define sha1-format-result
       (B hash-bytes->string ws->bytes))

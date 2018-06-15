@@ -108,7 +108,7 @@
             (else
                (error "str-iter: not a string: " str))))
 
-      (define str-iter (C str-iter-any null))
+      (define str-iter (C str-iter-any #n))
 
       ;;; iterate backwards
 
@@ -145,7 +145,7 @@
             (else
                (error "str-iterr: not a string: " str))))
 
-      (define str-iterr (C str-iterr-any null))
+      (define str-iterr (C str-iterr-any #n))
 
       ;; string folds
 
@@ -156,7 +156,7 @@
 
       (define (hexencode cp tl)
          (ilist #\\ #\x
-            (append (render-number cp null 16)
+            (append (render-number cp #n 16)
                (cons #\; tl))))
 
       (define (maybe-hexencode char tl)
@@ -186,9 +186,9 @@
                (encode-point p tl))))
 
       ; note: it is assumed string construction has checked that all code points are valid and thus encodable
-      (define (string->bytes str)    (str-foldr encode-point null str))
+      (define (string->bytes str)    (str-foldr encode-point #n str))
       (define (render-string str tl) (str-foldr encode-point tl str))
-      (define (string->runes str)    (str-foldr cons null str))
+      (define (string->runes str)    (str-foldr cons #n str))
       (define (render-quoted-string str tl)
          (str-foldr encode-quoted-point tl str))
 
@@ -230,13 +230,13 @@
                   (reverse (cons (make-chunk out n ascii?) chu))))
             ; make 4Kb chunks by default
             ((eq? n 4096)
-               (stringify runes null 0 #true
+               (stringify runes #n 0 #t
                   (cons (make-chunk out n ascii?) chu)))
             ((pair? runes)
                (cond
                   ((and ascii? (< 128 (car runes)) (> n 256))
                      ; allow smaller leaf chunks
-                     (stringify runes null 0 #true
+                     (stringify runes #n 0 #t
                         (cons (make-chunk out n ascii?) chu)))
                   ((valid-code-point? (car runes))
                      (let ((rune (car runes)))
@@ -248,7 +248,7 @@
 
       ;; (codepoint ..) → string | #false
       (define (runes->string lst)
-         (stringify lst null 0 #true null))
+         (stringify lst #n 0 #t #n))
 
       (define bytes->string
          (B runes->string utf8-decode))
@@ -258,7 +258,7 @@
       ; FIXME: string-append is VERY temporary
       ; figure out how to handle balancing. 234-trees with occasional rebalance?
       (define (string-append . lst)
-         (bytes->string (foldr render-string null lst)))
+         (bytes->string (foldr render-string #n lst)))
 
       (define (string-eq-walk a b)
          (cond
@@ -339,7 +339,7 @@
                   (λ (in) (walk (append rval rout) in)))
                (else
                   (walk (cons (car in) rout) (cdr in)))))
-         (walk null lst))
+         (walk #n lst))
 
       (define (str-replace str pat val)
          (runes->string
@@ -411,7 +411,7 @@
                   (if (pair? cp)
                      (append cp (upcase ll))
                      (pair cp (upcase ll))))
-               null)))
+               #n)))
 
       (define (string-ci=? a b) (eq? 2 (str-compare upcase a b)))
 
