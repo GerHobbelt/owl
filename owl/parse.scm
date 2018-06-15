@@ -5,7 +5,7 @@
 (define-library (owl parse)
 
    (export
-      let-parses
+      parses
       byte
       imm
       seq
@@ -121,30 +121,30 @@
                      ((greedy-star-vals a (cons val vals))
                         (drop l bt) r ok))))))
 
-      (define-syntax let-parses
+      (define-syntax parses
          (syntax-rules (verify eval)
-            ((let-parses 42 l r ok ((val (eval term)) . rest) body)
+            ((parses 42 l r ok ((val (eval term)) . rest) body)
                (let ((val term))
-                  (let-parses 42 l r ok rest body)))
-            ((let-parses 42 l r ok ((val parser) . rest) body)
+                  (parses 42 l r ok rest body)))
+            ((parses 42 l r ok ((val parser) . rest) body)
                (parser l r
                   (λ (l r val)
-                     (let-parses 42 l r ok rest body))))
-            ((let-parses 42 l r ok () body)
+                     (parses 42 l r ok rest body))))
+            ((parses 42 l r ok () body)
                (ok l r body))
-            ((let-parses 42 l r ok ((verify term msg) . rest) body)
+            ((parses 42 l r ok ((verify term msg) . rest) body)
                (if term
-                  (let-parses 42 l r ok rest body)
+                  (parses 42 l r ok rest body)
                   (backtrack l r msg)))
-            ((let-parses ((a . b) ...) body)
+            ((parses ((a . b) ...) body)
                (λ (l r ok)
-                  (let-parses 42 l r ok ((a . b) ...) body)))))
+                  (parses 42 l r ok ((a . b) ...) body)))))
 
       (define greedy-star
          (C greedy-star-vals null))
 
       (define (greedy-plus a)
-         (let-parses
+         (parses
             ((first a)
              (rest (greedy-star a)))
             (cons first rest)))
@@ -173,20 +173,20 @@
             ((one-of a b . c) (either a (one-of b . c)))))
 
       (define (plus parser)
-         (let-parses
+         (parses
             ((a parser)
              (as (star parser)))
             (cons a as)))
 
       (define (byte-if pred)
-         (let-parses
+         (parses
             ((a byte)
              (verify (pred a) "checked"))
             a))
 
       ; #b10xxxxxx
       (define extension-byte
-         (let-parses
+         (parses
             ((b byte)
              (verify (eq? #b10000000 (fxband b #b11000000)) "Bad extension byte"))
             b))
@@ -200,24 +200,24 @@
       (define rune
          (one-of
             (byte-if (C lesser? 128))
-            (let-parses
+            (parses
                ((a (byte-between 127 224))
                 (verify (not (eq? a #b11000000)) "blank leading 2-byte char") ;; would be non-minimal
                 (b extension-byte))
                (two-byte-point a b))
-            (let-parses
+            (parses
                ((a (byte-between 223 240))
                 (verify (not (eq? a #b11100000)) "blank leading 3-byte char") ;; would be non-minimal
                 (b extension-byte) (c extension-byte))
                (three-byte-point a b c))
-            (let-parses
+            (parses
                ((a (byte-between 239 280))
                 (verify (not (eq? a #b11110000)) "blank leading 4-byte char") ;; would be non-minimal
                 (b extension-byte) (c extension-byte) (d extension-byte))
                (four-byte-point a b c d))))
 
       (define (rune-if pred)
-         (let-parses
+         (parses
             ((val rune)
              (verify (pred val) "bad rune"))
             val))

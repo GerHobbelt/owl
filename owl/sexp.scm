@@ -15,8 +15,8 @@
    (import
       (owl defmac)
       (owl eof)
-      (only (owl parse) fd->exp-stream let-parses one-of silent-syntax-fail try-parse)
-      (prefix (only (owl parse) byte byte-if either epsilon greedy-plus greedy-star imm rune rune-if star word) get-)
+      (only (owl parse) fd->exp-stream parses one-of silent-syntax-fail try-parse)
+      (prefix (only (owl parse) byte byte-if parses either epsilon greedy-plus greedy-star imm rune rune-if star word) get-)
       (owl math)
       (owl string)
       (owl list)
@@ -53,19 +53,19 @@
 
       (define get-symbol
          (get-either
-            (let-parses
+            (get-parses
                ((head (get-rune-if symbol-lead-char?))
                 (tail (get-greedy-star (get-rune-if symbol-char?)))
                 ;(next (peek get-byte))
                 ;(foo (assert (B not symbol-char?) next))
                 )
                (string->uninterned-symbol (runes->string (cons head tail))))
-            (let-parses
+            (get-parses
                ((skip (get-imm #\|))
                 (chars
                   (get-greedy-star
                      (get-either
-                        (let-parses ((skip (get-imm #\\)) (rune get-rune)) rune)
+                        (get-parses ((skip (get-imm #\\)) (rune get-rune)) rune)
                         (get-rune-if (B not (C eq? #\|))))))
                 (skip (get-imm #\|)))
                (string->uninterned-symbol (runes->string chars)))))
@@ -112,19 +112,19 @@
       ; fixme, # and cooked later
       (define get-base
          (one-of
-            (let-parses
+            (get-parses
                ((skip (get-imm #\#))
                 (char (get-byte-if (λ (x) (getf bases x)))))
                (getf bases char))
             (get-epsilon 10)))
 
       (define (get-natural base)
-         (let-parses
+         (get-parses
             ((digits (get-greedy-plus (get-byte-if (digit-char? base)))))
             (bytes->number digits base)))
 
       (define (get-integer base)
-         (let-parses
+         (get-parses
             ((sign-char get-sign) ; + / -, default +
              (n (get-natural base)))
             (if (eq? sign-char 43) n (- 0 n))))
@@ -132,25 +132,25 @@
       ;; → n, to multiply with
       (define (get-exponent base)
          (get-either
-            (let-parses
+            (get-parses
                ((skip (get-imm 101)) ; e
                 (pow (get-integer base)))
                (expt base pow))
             (get-epsilon 1)))
 
       (define get-signer
-         (let-parses ((char get-sign))
+         (get-parses ((char get-sign))
             (if (eq? char 43) self (H - 0))))
 
 
       ;; separate parser with explicitly given base for string->number
       (define (get-number-in-base base)
-         (let-parses
+         (get-parses
             ((sign get-signer) ;; default + <- could allow also an optional base here
              (num (get-natural base))
              (tail ;; optional after dot part be added
                (get-either
-                  (let-parses
+                  (get-parses
                      ((skip (get-imm 46))
                       (digits (get-greedy-star (get-byte-if (digit-char? base)))))
                      (/ (bytes->number digits base)
@@ -161,17 +161,17 @@
 
       ;; a sub-rational (other than as decimal notation) number
       (define get-number-unit
-         (let-parses
+         (get-parses
             ((base get-base) ;; default 10
              (val (get-number-in-base base)))
             val))
 
       ;; anything up to a rational
       (define get-rational
-         (let-parses
+         (get-parses
             ((n get-number-unit)
              (m (get-either
-                  (let-parses
+                  (get-parses
                      ((skip (get-imm 47))
                       (m get-number-unit)
                       (verify (not (eq? 0 m)) "zero denominator"))
@@ -180,7 +180,7 @@
             (/ n m)))
 
       (define get-imaginary-part
-         (let-parses
+         (get-parses
             ((sign (get-either (get-imm #\+) (get-imm #\-)))
              (imag (get-either get-rational (get-epsilon 1))) ; we also want 0+i
              (skip (get-imm #\i)))
@@ -189,7 +189,7 @@
                (- 0 imag))))
 
       (define get-number
-         (let-parses
+         (get-parses
             ((real get-rational) ;; typically this is it
              (imag (get-either get-imaginary-part (get-epsilon 0))))
             (if (eq? imag 0)
@@ -197,14 +197,14 @@
                (complex real imag))))
 
       (define get-rest-of-line
-         (let-parses
+         (get-parses
             ((chars (get-greedy-star (get-byte-if (B not (C eq? 10)))))
              (skip (get-imm 10))) ;; <- note that this won't match if line ends to eof
             chars))
 
       ;; #!<string>\n parses to '(hashbang <string>)
       (define get-hashbang
-         (let-parses
+         (get-parses
             ((hash (get-imm 35))
              (bang (get-imm 33))
              (line get-rest-of-line))
@@ -213,11 +213,11 @@
       ;; skip everything up to |#
       (define (get-block-comment)
          (get-either
-            (let-parses
+            (get-parses
                ((skip (get-imm #\|))
                 (skip (get-imm #\#)))
                'comment)
-            (let-parses
+            (get-parses
                ((skip get-byte)
                 (skip (get-block-comment)))
                skip)))
@@ -226,11 +226,11 @@
          (one-of
             ;get-hashbang   ;; actually probably better to make it a symbol as above
             (get-byte-if (C memq '(9 10 32 13)))
-            (let-parses
+            (get-parses
                ((skip (get-imm #\;))
                 (skip get-rest-of-line))
                'comment)
-            (let-parses
+            (get-parses
                ((skip (get-imm #\#))
                 (skip (get-imm #\|))
                 (skip (get-block-comment)))
@@ -240,15 +240,15 @@
       (define whitespace (get-greedy-plus get-a-whitespace))
 
       (define (get-list-of parser)
-         (let-parses
+         (get-parses
             ((lp (get-imm 40))
              (things
                (get-star parser))
              (skip maybe-whitespace)
              (tail
                (get-either
-                  (let-parses ((rp (get-imm 41))) null)
-                  (let-parses
+                  (get-parses ((rp (get-imm 41))) null)
+                  (get-parses
                      ((dot (get-imm 46))
                       (fini parser)
                       (skip maybe-whitespace)
@@ -269,14 +269,14 @@
               (#\\ . #x005c))))
 
       (define get-quoted-string-char
-         (let-parses
+         (get-parses
             ((skip (get-imm #\\))
              (char
                (get-either
-                  (let-parses
+                  (get-parses
                      ((char (get-byte-if (λ (byte) (getf quoted-values byte)))))
                      (getf quoted-values char))
-                  (let-parses
+                  (get-parses
                      ((skip (get-imm #\x))
                       (hexes (get-greedy-plus (get-byte-if (digit-char? 16))))
                       (skip (get-imm #\;)))
@@ -284,7 +284,7 @@
             char))
 
       (define get-string
-         (let-parses
+         (get-parses
             ((skip (get-imm #\"))
              (chars
                (get-star
@@ -298,10 +298,10 @@
          (list->ff '((39 . quote) (44 . unquote) (96 . quasiquote) (splice . unquote-splicing))))
 
       (define (get-quoted parser)
-         (let-parses
+         (get-parses
             ((type
                (get-either
-                  (let-parses ((_ (get-imm 44)) (_ (get-imm 64))) 'splice) ; ,@
+                  (get-parses ((_ (get-imm 44)) (_ (get-imm 64))) 'splice) ; ,@
                   (get-byte-if (λ (x) (get quotations x #false)))))
              (value parser))
             (list (get quotations type #false) value)))
@@ -320,7 +320,7 @@
 
       ;; fixme: add named characters #\newline, ...
       (define get-quoted-char
-         (let-parses
+         (get-parses
             ((skip (get-imm #\#))
              (skip (get-imm #\\))
              (codepoint (get-either get-named-char get-rune)))
@@ -330,7 +330,7 @@
       (define get-funny-word
          (one-of
             (get-word "..." '...)
-            (let-parses
+            (get-parses
                ((skip (get-imm #\#))
                 (val
                   (one-of
@@ -344,20 +344,20 @@
                      (get-word "T" #true)
                      (get-word "F" #false)
                      (get-word "e" #empty)
-                     (let-parses
+                     (get-parses
                         ((bang (get-imm #\!))
                          (line get-rest-of-line))
                         (list 'quote (list 'hashbang (list->string line)))))))
                val)))
 
       (define get-bytevector
-         (let-parses
+         (get-parses
             ((skip (get-imm #\#))
              (skip (get-imm #\u))
              (skip (get-imm #\8))
              (fields
                (get-list-of
-                  (let-parses
+                  (get-parses
                      ((skip maybe-whitespace)
                       (base get-base)
                       (val (get-natural base)))
@@ -365,7 +365,7 @@
             (raw fields type-bytevector)))
 
       (define (get-vector-of parser)
-         (let-parses
+         (get-parses
             ((skip (get-imm #\#))
              (fields (get-list-of parser)))
             (let ((fields (intern-symbols fields)))
@@ -405,7 +405,7 @@
                   (loop lst (put ff k v))))))
 
       (define (get-ff get-any)
-         (let-parses
+         (get-parses
             ((skip (get-imm #\@))
              (fields
                (get-list-of get-any))
@@ -413,7 +413,7 @@
             (lst->ff (intern-symbols fields))))
 
       (define (get-sexp)
-         (let-parses
+         (get-parses
             ((skip maybe-whitespace)
              (val
                (one-of
@@ -437,7 +437,7 @@
       (define (fail reason) (tuple 'fail reason))
 
       (define sexp-parser
-         (let-parses
+         (get-parses
             ((foo maybe-whitespace)
              (sexp (get-sexp))) ;; do not read trailing whitespace to avoid blocking when parsing a stream
             (intern-symbols sexp)))
@@ -447,7 +447,7 @@
 
       ;; whitespace at either end
       (define get-padded-sexps
-         (let-parses
+         (get-parses
             ((data get-sexps)
              (ws maybe-whitespace))
             data))

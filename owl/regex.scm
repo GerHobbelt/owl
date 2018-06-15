@@ -21,9 +21,8 @@
 
    (import
       (owl defmac)
-      (only (owl parse) let-parses one-of try-parse)
-      (prefix (only (owl parse) byte either epsilon imm) get-)
-      (prefix (only (owl parse) plus star) get-kleene-)
+      (only (owl parse) one-of try-parse)
+      (prefix (only (owl parse) byte either epsilon imm parses star plus) get-)
       (only (owl syscall) error)
       (owl io)
       (owl ff)
@@ -589,10 +588,10 @@
       ;;;
 
       (define get-dot  ;; .
-         (let-parses ((foo (get-imm 46))) dot))
+         (get-parses ((foo (get-imm 46))) dot))
 
       (define get-fini ;; $
-         (let-parses ((foo (get-imm 36))) fini))
+         (get-parses ((foo (get-imm 36))) fini))
 
       ;; maybe get a ?
       (define get-altp
@@ -603,22 +602,22 @@
          (get-imm #\/))
 
       ;; → (rex → rex')
-      (define get-star
-         (let-parses
+      (define get-rex-star
+         (get-parses
             ((skip (get-imm 42))
              (altp get-altp))
             (if altp alt-star star)))
 
       ;; a+ = aa*
-      (define get-plus
-         (let-parses
+      (define get-rex-plus
+         (get-parses
             ((skip (get-imm 43))
              (altp get-altp))
             (if altp alt-plus plus)))
 
       ;; a? = a{0,1} = (a|"")
       (define get-quest
-         (let-parses
+         (get-parses
             ((skip (get-imm 63))
              (altp get-altp))
             (if altp alt-quest quest)))
@@ -626,7 +625,7 @@
       (define special-chars '(40 41 124 46 47)) ;; kinda ugly. the parser should check for these first
 
       (define (imm-val imm val)
-         (let-parses ((d (get-imm imm))) val))
+         (get-parses ((d (get-imm imm))) val))
 
       (define digit? (λ (b) (and (lesser? 47 b) (lesser? b 58)))) ;; 0-9
       (define alpha? (λ (b) (and (lesser? 96 b) (lesser? b 123)))) ;; a-z
@@ -647,7 +646,7 @@
 
       ;; \<x>
       (define get-quoted-char
-         (let-parses
+         (get-parses
             ((skip (get-imm 92)) ; \
              (val
                (one-of
@@ -674,34 +673,34 @@
       ;; strings are already sequences of unicode code points, so no need to decode here
       ;; accept any non-special char
       (define get-plain-char
-         (let-parses
+         (get-parses
             ((val get-byte) ;; really get-code-point since the input is already decoded
              (verify (not (memq val special-chars)) "bad special char"))
             (imm val)))
 
       (define (quoted-imm val)
-         (let-parses
+         (get-parses
             ((quote (get-imm 92))
              (val (get-imm val)))
             val))
 
       (define get-reference ;; \0-\9
-         (let-parses
+         (get-parses
             ((skip (get-imm #\\))
              (d get-byte)
              (verify (< 47 d 58) "bad digit"))
             (matched (- d 48))))
 
       (define get-digit
-         (let-parses
+         (get-parses
             ((b get-byte)
              (verify (lesser? 47 b) #false)
              (verify (lesser? b 58) #false))
             (- b 48)))
 
       (define get-number
-         (let-parses
-            ((digits (get-kleene-plus get-digit)))
+         (get-parses
+            ((digits (get-plus get-digit)))
             (fold (λ (n d) (+ (* n 10) d)) 0 digits)))
 
       ;; \<suff> → code-point (not acceptor as in get-quoted-char)
@@ -715,19 +714,19 @@
             (else #false)))
 
       (define get-hex
-         (let-parses
+         (get-parses
             ((b get-byte)
              (verify (char->hex b) #false))
             (char->hex b)))
 
       (define get-8bit
-         (let-parses ((hi get-hex) (lo get-hex)) (bor (<< hi 4) lo)))
+         (get-parses ((hi get-hex) (lo get-hex)) (bor (<< hi 4) lo)))
 
       (define get-16bit
-         (let-parses ((hi get-8bit) (lo get-8bit)) (bor (<< hi 8) lo)))
+         (get-parses ((hi get-8bit) (lo get-8bit)) (bor (<< hi 8) lo)))
 
       (define get-32bit
-         (let-parses ((hi get-16bit) (lo get-16bit)) (bor (<< hi 16) lo)))
+         (get-parses ((hi get-16bit) (lo get-16bit)) (bor (<< hi 16) lo)))
 
       ;; todo: what is the quotation used for 32-bit \xhhhhhhhh?
       (define parse-quoted-char-body
@@ -744,11 +743,11 @@
             (get-imm 92)      ;; \\ = \
             (get-imm 93)      ;; \] = ]
             (get-imm 94)      ;; \^ = ^
-            (let-parses ((skip (get-imm 120)) (char get-8bit)) char)    ;; \xhh
-            (let-parses ((skip (get-imm 117)) (char get-16bit)) char))) ;; \uhhhh
+            (get-parses ((skip (get-imm 120)) (char get-8bit)) char)    ;; \xhh
+            (get-parses ((skip (get-imm 117)) (char get-16bit)) char))) ;; \uhhhh
 
       (define parse-quoted-char
-         (let-parses
+         (get-parses
             ((skip (get-imm 92)) ;; \
              (val parse-quoted-char-body))
             val))
@@ -758,18 +757,18 @@
       (define parse-char-class-char
          (get-either
             parse-quoted-char
-            (let-parses
+            (get-parses
                ((char get-byte)
                 (verify (not (eq? char 93)) #false))
                char)))
 
       ;; get a range or a single letter of a char class (treat single letter as ranges of length 1)
       (define char-class-elem
-         (let-parses
+         (get-parses
             ((b parse-char-class-char)
              (c
                (get-either
-                  (let-parses
+                  (get-parses
                      ((skip (get-imm 45)) ; -
                       (c parse-char-class-char)
                       (verify (<= b c) "bad range"))
@@ -783,10 +782,10 @@
             (get-epsilon #false)))
 
       (define get-char-class
-         (let-parses
+         (get-parses
             ((open (get-imm 91))
              (comp? get-maybe-caret)
-             (charss (get-kleene-plus char-class-elem)) ;; todo: [] might also be useful
+             (charss (get-plus char-class-elem)) ;; todo: [] might also be useful
              (close (get-imm 93)))
             (make-char-class comp?
                (foldr append null charss))))
@@ -808,13 +807,13 @@
                (error "make-repeater: bad range: " (list n 'to m)))))
 
       (define get-range
-         (let-parses
+         (get-parses
             ((skip (get-imm 123))   ; <{>...}
              (start
                (get-either get-number (get-epsilon 0))) ; <{[n]>...}
              (end
                (get-either
-                  (let-parses
+                  (get-parses
                      ((skip (get-imm 44)) ; <{[n],>
                       (val (get-either get-number (get-epsilon 'inf)))) ; <{[n],[n]>...}
                      val)
@@ -825,34 +824,34 @@
 
       ;; parse a sequence of regexp terms with implicit catenation
       (define (get-catn get-regex)
-         (let-parses
+         (get-parses
             ((regex ;; parse a single regexp thing
                (one-of
                   get-dot
                   get-fini
                   ;; todo: merge the parenthetical ones later
-                  (let-parses ;; (?:...), non-capturing submatch
+                  (get-parses ;; (?:...), non-capturing submatch
                      ((open (get-imm 40))
                       (skip (get-imm 63))
                       (skip (get-imm 58)) ;; read ?: explicitly while testing. there are really many more alternatives.
                       (rex (get-regex))
                       (close (get-imm 41)))
                      rex)
-                  (let-parses ;; (?=<regex>) → match if regex also would match
+                  (get-parses ;; (?=<regex>) → match if regex also would match
                      ((open (get-imm 40))
                       (skip (get-imm 63))
                       (skip (get-imm 61))
                       (rex (get-regex))
                       (close (get-imm 41)))
                      (lookahead rex))
-                  (let-parses ;; (?!<regex>) → match if regex would not match
+                  (get-parses ;; (?!<regex>) → match if regex would not match
                      ((open (get-imm 40))
                       (skip (get-imm 63))
                       (skip (get-imm 33))
                       (rex (get-regex))
                       (close (get-imm 41)))
                      (lookahead-not rex))
-                  (let-parses ;; (?<=<regex>) → match if regex matches on the left of current position
+                  (get-parses ;; (?<=<regex>) → match if regex matches on the left of current position
                      ((open (get-imm 40))
                       (skip (get-imm 63))
                       (skip (get-imm 60))
@@ -860,7 +859,7 @@
                       (rex (get-regex))
                       (close (get-imm 41)))
                      (lookback rex))
-                  (let-parses ;; (?<!<regex>) → match if regex matches on the left of current position, not
+                  (get-parses ;; (?<!<regex>) → match if regex matches on the left of current position, not
                      ((open (get-imm 40))
                       (skip (get-imm 63))
                       (skip (get-imm 60))
@@ -868,7 +867,7 @@
                       (rex (get-regex))
                       (close (get-imm 41)))
                      (lookback-not rex))
-                  (let-parses ;; (...) → match and store
+                  (get-parses ;; (...) → match and store
                      ((open (get-imm 40))
                       (rex (get-regex))
                       (close (get-imm 41)))
@@ -879,14 +878,14 @@
                   get-plain-char))
              (repetition
                (one-of
-                  get-star
-                  get-plus
+                  get-rex-star
+                  get-rex-plus
                   get-quest
                   get-range
                   (get-epsilon self)))
              (tail
                (one-of
-                  (let-parses ;; join tail of exp with implicit catenation
+                  (get-parses ;; join tail of exp with implicit catenation
                      ((tl (get-catn get-regex)))
                      (C rex-and tl))
                   (get-epsilon self)))) ;; nothing
@@ -894,13 +893,13 @@
 
       ;; get a sequence of regexps with zero or more | in between and merge them
       (define (get-regex)
-         (let-parses
+         (get-parses
             ((hd (get-catn get-regex))
-             (tl (get-kleene-star (let-parses ((skip (get-imm 124)) (rex (get-catn get-regex))) rex))))
+             (tl (get-star (get-parses ((skip (get-imm 124)) (rex (get-catn get-regex))) rex))))
             (fold rex-or hd tl)))
 
       (define get-matcher-regex
-         (let-parses
+         (get-parses
             ((skip (get-imm #\m)) ;; [m]atch
              (skip (get-imm 47))  ;; opening /
              (start? (get-either (get-imm 94) (get-epsilon #false))) ;; maybe get leading ^ (special)
@@ -910,11 +909,11 @@
 
       ;; a parser for terms like ab{1,3}a* with implicit ^ and $
       (define get-body-regex
-         (let-parses ((rex (get-regex)))
+         (get-parses ((rex (get-regex)))
             (make-matcher (rex-and rex fini) #true)))
 
       (define get-copy-matcher-regex
-         (let-parses
+         (get-parses
             ((skip (get-imm #\g)) ;; [g]rab
              (skip (get-imm 47))  ;; opening /
              (start? (get-either (get-imm 94) (get-epsilon #false))) ;; maybe get leading ^ (special)
@@ -923,7 +922,7 @@
             (make-copy-matcher rex start?)))
 
       (define get-cutter-regex
-         (let-parses
+         (get-parses
             ((skip (get-imm 99))  ;; [c]ut
              (skip (get-imm 47))  ;; opening /
              (start? (get-either (get-imm 94) (get-epsilon #false))) ;; maybe get leading ^ (special)
@@ -934,11 +933,11 @@
 
       (define get-replace-char
          (get-either
-            (let-parses ;; quoted
+            (get-parses ;; quoted
                ((skip (get-imm 92)) ;; \\
                 (char (get-imm 98)))
                char)
-            (let-parses ;; something other than /
+            (get-parses ;; something other than /
                ((char get-byte)
                 (verify (not (eq? char 47)) #false))
                char)))
@@ -949,19 +948,19 @@
             (get-epsilon #false)))
 
       (define get-replace-regex
-         (let-parses
+         (get-parses
             ((skip (get-imm 115))  ;; opening s
              (skip (get-imm 47))  ;; opening /
              (start? (get-either (get-imm 94) (get-epsilon #false))) ;; maybe get leading ^ (special)
              (rex (get-regex))
              (skip (get-imm 47))  ;; delimiting /
-             (rep (get-kleene-star get-replace-char))
+             (rep (get-star get-replace-char))
              (skip (get-imm 47)) ;; closing /
              (all? get-maybe-g)) ;; fixme: add other search/replace match than g
             (make-replacer rex rep all? start?)))
 
       (define get-full-match-regex
-         (let-parses
+         (get-parses
             ((skip (get-imm #\M))  ;; opening s
              (delim get-regex-delim)
              (rex (get-regex))     ;; delim not carried yet
