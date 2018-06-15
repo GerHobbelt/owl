@@ -49,6 +49,12 @@ Testing block comments. They could also be nested on second thought...
    ((1) => (lambda (x) (print (list 'bad x))))
    (else => (lambda (x) 42)))
 
+;; let-values
+((lambda (x) (if (not (= x 35)) (print (list 'let-values 'got x))))
+   (let-values
+      (((root rem) (exact-integer-sqrt 32)))
+      (* root rem)))
+
 ;; let*-values
 (let*-values
    (((a b) (values 11 22))

@@ -54,4 +54,4 @@
 	 (rst (seed->rands seed))
 	 (rst n (rand-range rst 4 15))
 	 (rst alpha (rand-nbit rst n)))
-	(work rst empty null (+ (time-ms) 100) alpha))
+	(work rst empty #n (+ (time-ms) 100) alpha))

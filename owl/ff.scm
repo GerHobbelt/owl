@@ -63,10 +63,10 @@
 ;;;
 ;;;   (ff-diff @(a 1 b 2 c 3) @(a 10 b 20)) → @(c 3)
 ;;;
-;;;   (ff-fold (λ (o k v) (cons (cons k v) o)) null @(foo 1 bar 2) →
+;;;   (ff-fold (λ (o k v) (cons (cons k v) o)) #n @(foo 1 bar 2) →
 ;;;      '((bar . 2) (foo . 1))
 ;;;
-;;;   (ff-foldr (λ (o k v) (cons (cons k v) o)) null @(foo 1 bar 2) →
+;;;   (ff-foldr (λ (o k v) (cons (cons k v) o)) #n @(foo 1 bar 2) →
 ;;;      '((foo . 1) (bar . 2))
 ;;;   (ff-map @(a 1 b 2 c 3) (λ (k v) (square v))) → @(a 1 b 4 c 9)
 ;;;
@@ -117,8 +117,8 @@
       (owl defmac)
       (owl list)
       (owl proof)
-      (only (owl syscall) error)
-      (only (owl tuple) tuple->list))
+      (only (owl primop) object-size)
+      (only (owl syscall) error))
 
    (begin
 
@@ -176,21 +176,21 @@
       (define (ff->sexp ff)
          (if (eq? ff #empty)
             ff
-            (case (size ff)
-               (2 (lets ((k v ff)) (list (color ff) k)))
-               (3 (lets ((k v x ff))
+            (case (object-size ff)
+               (3 (lets ((k v ff)) (list (color ff) k)))
+               (4 (lets ((k v x ff))
                   (if (right? ff)
                      (list (color ff) k '-> (ff->sexp x))
                      (list (color ff) (ff->sexp x) '<- k))))
-               (4 (lets ((k v l r ff))
+               (5 (lets ((k v l r ff))
                   (list (color ff) (ff->sexp l) '<- k '-> (ff->sexp r))))
                (else
                   (list 'BAD 'NODE ff)))))
 
       (define (explode node)
-         (case (size node)
-            (2 (lets ((k v node)) (values #empty k v #empty)))
-            (3 (lets ((k v x node))
+         (case (object-size node)
+            (3 (lets ((k v node)) (values #empty k v #empty)))
+            (4 (lets ((k v x node))
                   (if (right? node)
                      (values #empty k v x)
                      (values x k v #empty))))
@@ -249,19 +249,15 @@
                (ff-bind name (lambda (l k v r) . rest)))
             ))
 
-      ;; emulate former 'cast' primop
-      (define (cast-allocated obj type)
-         (listuple type (size obj) (tuple->list obj)))
-
-      ;; toggle redness, name of old prim
-      (define-syntax ff-toggle
-         (syntax-rules ()
-            ((ff-toggle node)
-               (cast-allocated node (fxbxor (type node) redness)))))
-
       ;; FIXME: misleading names!
-      (define-syntax color-black (syntax-rules () ((color-black x) (ff-toggle x))))
-      (define-syntax color-red   (syntax-rules () ((color-red x)   (ff-toggle x))))
+      (define-syntax color-black
+         (syntax-rules ()
+            ((color-black x)
+               (with-ff (x l k v r) (mkblack l k v r)))))
+      (define-syntax color-red
+         (syntax-rules ()
+            ((color-red x)
+               (with-ff (x l k v r) (mkred l k v r)))))
 
 
       ;;;
@@ -369,18 +365,18 @@
                      (ref ff 2))
                   ((lesser? key this-k)
                      ;; go left if possible
-                     (case (size ff)
-                        (4 (get (ref ff 3) key def))
-                        (2 def)
+                     (case (object-size ff)
+                        (5 (get (ref ff 3) key def))
+                        (3 def)
                         (else
                            (if (right? ff)
                               def
                               (get (ref ff 3) key def)))))
                   (else
                      ;; go right if possible
-                     (case (size ff)
-                        (4 (get (ref ff 4) key def))
-                        (2 def)
+                     (case (object-size ff)
+                        (5 (get (ref ff 4) key def))
+                        (3 def)
                         (else
                            (if (right? ff)
                               (get (ref ff 3) key def)
@@ -396,9 +392,9 @@
             (let ((this (ref ff 1)))
                (if (eq? key this)
                   (set ff 2 val) ;; key and value have fixed position
-                  (case (size ff)
-                     (2 (ff-update #empty key val)) ;; fail
-                     (3 (set ff 3 (ff-update (ref ff 3) key val))) ;; must be here due to contract
+                  (case (object-size ff)
+                     (3 (ff-update #empty key val)) ;; fail
+                     (4 (set ff 3 (ff-update (ref ff 3) key val))) ;; must be here due to contract
                      (else
                         (if (lesser? key this)
                            (set ff 3 (ff-update (ref ff 3) key val))
@@ -637,7 +633,7 @@
 
       ;; just one value? == is the root-node a black key-value pair
       (define (ff-singleton? ff)
-         (eq? (size ff) 2))
+         (eq? (object-size ff) 3))
 
       (define-syntax getf
          (syntax-rules ()

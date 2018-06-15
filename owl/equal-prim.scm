@@ -5,26 +5,26 @@
       simple-equal?)
 
    (import
-      (owl defmac))
+      (owl defmac)
+      (only (owl primop) object-size))
 
    (begin
 
-      (define (eq-fields a b eq pos)
-         (cond
-            ((eq? pos 0)
-               #true)
-            ((eq (ref a pos) (ref b pos))
-               (lets ((pos x (fx- pos 1)))
-                  (eq-fields a b eq pos)))
-            (else #false)))
+      (define (eq-fields a b cmp end)
+         (or
+            (eq? end 1)
+            (lets ((end _ (fx- end 1)))
+               (and
+                  (cmp (ref a end) (ref b end))
+                  (eq-fields a b cmp end)))))
 
-      (define (eq-bytes a b pos)
-         (if (eq? (ref a pos) (ref b pos))
-            (if (eq? pos 0)
-               #true
-               (receive (fx- pos 1)
-                  (λ (pos x) (eq-bytes a b pos))))
-            #false))
+      (define (eq-bytes a b end)
+         (or
+            (eq? end 0)
+            (lets ((end _ (fx- end 1)))
+               (and
+                  (eq? (ref a end) (ref b end))
+                  (eq-bytes a b end)))))
 
       (define (equal-prim? self a b)
          (if (eq? a b)
@@ -32,25 +32,19 @@
             (let ((ta (type a)))
                (if (eq? ta type-symbol)
                   #false ; would have been eq?, because they are interned
-                  (let ((sa (size a)))
+                  (let ((sa (object-size a)))
                      (cond
                         ; a is immediate -> would have been eq?
-                        ((not sa) #false)
+                        ((eq? sa 0) #f)
                         ; same size
-                        ((eq? sa (size b))
+                        ((eq? sa (object-size b))
                            ; check equal types
                            (if (eq? ta (type b))
-                              (if (raw? a)
+                              (if-lets ((ea (sizeb a)))
                                  ; equal raw objects, check bytes
-                                 (lets
-                                    ((ea (sizeb a)) ; raw objects may have padding bytes, so recheck the sizes
-                                     (eb (sizeb b)))
-                                    (if (eq? ea eb)
-                                       (if (eq? ea 0)
-                                          #true
-                                          (lets ((ea _ (fx- ea 1)))
-                                             (eq-bytes a b ea)))
-                                       #false))
+                                 (and
+                                    (eq? ea (sizeb b)) ; raw objects may have padding bytes, so recheck the sizes
+                                    (eq-bytes a b ea))
                                  ; equal ntuples, check fields
                                  (eq-fields a b self sa))
                               #false))

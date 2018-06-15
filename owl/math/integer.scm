@@ -1,0 +1,1427 @@
+;;;
+;;; Owl math module, first iteration
+;;;
+
+(define-library (owl math integer)
+
+   (export
+      fixnum? integer?
+      make-+
+      + - * =
+      << < <= = >= > >>
+      band bor bxor
+      quotient ediv truncate/
+      nat-succ big-bad-args negate
+      ncar ncdr
+      even? odd?
+      zero?
+      negative? positive?
+      rem mod
+      ncons ncar ncdr
+      big-digits-equal?
+      *max-fixnum* *fixnum-bits*
+      to-int- to-int+
+      to-fix+ to-fix-
+      add-big sub-big
+      )
+
+   (import
+      (owl defmac)
+      (owl list)
+      (owl syscall)
+      (owl ff)
+      (only (owl primop) create-type))
+
+   (begin
+
+      (define zero?
+         (C eq? 0))
+
+      ;; get the largest value the VM supports in fixnum
+      ;; idea is to allow the vm to be compiled with different ranges, initially fixed to 24
+      (define *max-fixnum*
+         (lets ((m _ (fx- 0 1)))
+            m))
+
+      ;; biggest before highest bit is set (needed in some bignum ops)
+      (define *pre-max-fixnum*
+         (lets ((f _ (fx>> *max-fixnum* 1)))
+            f))
+
+      ;; count the number of bits the VM supports in fixnum
+      (define *fixnum-bits*
+         (let loop ((f *max-fixnum*) (n 0))
+            (if (eq? f 0)
+               n
+               (lets
+                  ((f _ (fx>> f 1))
+                   (n _ (fx+ n 1)))
+                  (loop f n)))))
+
+      (define-syntax ncons
+         (syntax-rules ()
+            ((ncons a d) (mkt type-int+ a d))))
+
+      (define-syntax ncar
+         (syntax-rules ()
+            ((ncar n) (ref n 1))))
+
+      (define-syntax ncdr
+         (syntax-rules ()
+            ((ncdr n) (ref n 2))))
+
+      (define-syntax to-fix+
+         (syntax-rules ()
+            ((to-fix+ n) (fxbxor 0 n))))
+
+      (define to-fix-
+         (H fxbxor (create-type type-fix-)))
+
+      (define (to-int+ n)
+         (mkt type-int+ (ncar n) (ncdr n)))
+
+      (define (to-int- n)
+         (mkt type-int- (ncar n) (ncdr n)))
+
+      (define *big-one*
+         (ncons 1 null))
+
+      (define *first-bignum*
+         (ncons 0 *big-one*))
+
+      (define (fixnum? x)
+         (eq? (fxbor (type x) type-fix-) type-fix-))
+
+      (define (big-bad-args op a b)
+         (error "Bad math:" (list op a b)))
+
+      (define (big-unimplemented op a b)
+         (error "Math too high:" (list op a b)))
+
+      (define (negate num)
+         (case (type num)
+            (type-fix+
+               (if (eq? num 0)
+                  0
+                  (to-fix- num)))     ;; a -> -a
+            (type-fix- (to-fix+ num)) ;; -a -> a
+            (type-int+ (to-int- num)) ;; A -> -A
+            (type-int- (to-int+ num)) ;; -A -> A
+            (else
+               (big-bad-args 'negate num #false))))
+
+
+
+      ;;;
+      ;;; COMPARISON
+      ;;;
+
+      (define (big-digits-equal? a b)
+         (cond
+            ((eq? a b) #true)      ; shared tail or both empty
+            ((eq? a null) #false)
+            ((eq? b null) #false)
+            ((eq? (ncar a) (ncar b))
+               (big-digits-equal? (ncdr a) (ncdr b)))
+            (else #false)))
+
+      (define (big-less a b lower)
+         (cond
+            ((eq? a b)    ; both ended or shared tail
+               lower)
+            ((eq? a null) #true)
+            ((eq? b null) #false)
+            (else
+               (let ((ad (ncar a)) (bd (ncar b)))
+                  (cond
+                     ((lesser? ad bd)
+                        (big-less (ncdr a) (ncdr b) #true))
+                     ((eq? ad bd)
+                        (big-less (ncdr a) (ncdr b) lower))
+                     (else
+                        (big-less (ncdr a) (ncdr b) #false)))))))
+
+      ;; fixnum/integer <
+      (define (< a b)
+         (case (type a)
+            (type-fix+
+               (case (type b)
+                  (type-fix+   (lesser? a b))
+                  (type-int+ #true)
+                  (else #false)))
+            (type-fix-
+               (case (type b)
+                  (type-fix+ #true)
+                  (type-fix-
+                     (if (eq? a b)
+                        #false
+                        (lesser? b a)))
+                  (type-int+ #true)
+                  (else #false)))
+            (type-int+
+               (case (type b)
+                  (type-int+ (big-less a b #false))
+                  (else #false)))
+            (type-int-
+               (case (type b)
+                  (type-int-
+                     (if (big-less a b #false) #false #true))
+                  (else #true)))
+            (else
+               (big-bad-args '< a b))))
+
+      ;        =       (compare-numbers a b #false #true #false)
+      ;(define (> a b)  (compare-numbers a b #false #false #true))
+      ;(define (>= a b) (compare-numbers a b #false #true #true))
+      ;(define (< a b) (compare-numbers a b #true #false #false))
+      ;(define (<= a b) (compare-numbers a b #true #true #false))
+
+      (define (= a b)
+         (case (type a)
+            (type-fix+ (eq? a b))
+            (type-fix- (eq? a b))
+            (type-int+
+               (case (type b)
+                  (type-int+ (big-digits-equal? a b))
+                  (else #false)))
+            (type-int-
+               (case (type b)
+                  (type-int- (big-digits-equal? a b))
+                  (else #false)))
+            (else
+               (big-bad-args '= a b))))
+
+
+
+      (define (> a b) (< b a))
+
+      (define (<= a b)
+         (or (< a b) (= a b)))
+
+      (define (>= a b) (<= b a))
+
+
+
+
+      ;;;
+      ;;; ADDITION
+      ;;;
+
+      (define (nat-succ n)
+         (let ((t (type n)))
+            (cond
+               ((eq? t type-fix+)
+                  (if (eq? n *max-fixnum*)
+                     *first-bignum*
+                     (lets ((n _ (fx+ n 1))) n)))
+               ((eq? t type-int+)
+                  (let ((lo (ncar n)))
+                     (if (eq? lo *max-fixnum*)
+                        (ncons 0 (nat-succ (ncdr n)))
+                        (lets ((lo _ (fx+ lo 1)))
+                           (ncons lo (ncdr n))))))
+               ((eq? n null)
+                  *big-one*)
+               (else
+                  (big-bad-args 'inc n n)))))
+
+      (define (nlen n)
+         (cond
+            ((eq? (type n) type-fix+) 1)
+            ((eq? (type n) type-fix-) 1)
+            (else
+               (let loop ((n n) (i 0))
+                  (if (null? n)
+                     i
+                     (loop (ncdr n) (nat-succ i)))))))
+
+      (define (add-number-big a big)
+         (lets
+            ((b bs big)
+             (new overflow? (fx+ a b)))
+            (if overflow?
+               (if (eq? bs null)
+                  (ncons new *big-one*)
+                  (ncons new (add-number-big 1 bs)))
+               (ncons new bs))))
+
+      (define (add-big a b carry)
+         (cond
+            ((eq? a null)
+               (if (eq? b null)
+                  (if carry *big-one* null)
+                  (if carry (add-number-big 1 b) b)))
+            ((eq? b null)
+               (if carry (add-number-big 1 a) a))
+            (else
+               (lets ((r o (fx+ (ncar a) (ncar b))))
+                  (if carry
+                     (lets ((r o2 (fx+ r 1)))
+                        (cond
+                           (o (ncons r (add-big (ncdr a) (ncdr b) #true)))
+                           (o2 (ncons r (add-big (ncdr a) (ncdr b) #true)))
+                           (else (ncons r (add-big (ncdr a) (ncdr b) #false)))))
+                     (ncons r
+                        (add-big (ncdr a) (ncdr b) o)))))))
+
+      ;;;
+      ;;; SUBSTRACTION
+      ;;;
+
+      (define-syntax sub-small->pick-sign
+         (syntax-rules ()
+            ((sub-small->pick-sign a b)
+               (lets ((r uf? (fx- a b)))
+                  (if uf?
+                     (lets ((r _ (fx- b a))) ;; could also fix here by adding or bitwise
+                        (to-fix- r))
+                     r)))))
+
+      ; bignum - fixnum -> either
+      (define (sub-big-number a b leading?)
+         (lets ((r underflow? (fx- (ncar a) b)))
+            (cond
+               (underflow?
+                  (let ((tail (sub-big-number (ncdr a) 1 #false)))
+                     (cond
+                        (tail (ncons r tail))   ; otherwise tail went to 0
+                        (leading? r)
+                        ((eq? r 0) #false)
+                        (else (ncons r null)))))
+               ((eq? r 0)
+                  (let ((tail (ncdr a)))
+                     (if (eq? tail null)
+                        (if leading? r #false)
+                        (ncons r tail))))
+               (else
+                  (ncons r (ncdr a))))))
+
+      ; a - B = a + -B = -(-a + B) = -(B - a)
+
+      (define (sub-number-big a b first?)
+         (let ((res (sub-big-number b a #true)))
+            ; res is either fixnum or bignum
+            (case (type res)
+               (type-fix+ (to-fix- res))
+               (else (to-int- res)))))
+
+
+      ; substract from a, which must be bigger
+
+      (define (sub-digits a b borrow? leading?)
+         (cond
+            ((eq? a null)
+               #false)
+            ((eq? b null)
+               (if borrow?
+                  (sub-big-number a 1 leading?)
+                  a))
+            (else
+               (lets ((r u? (fx- (ncar a) (ncar b))))
+                  (if borrow?
+                     (lets ((r u2? (fx- r 1)))
+                        (let ((tail
+                           (cond
+                              (u? (sub-digits (ncdr a) (ncdr b) #true #false))
+                              (u2? (sub-digits (ncdr a) (ncdr b) #true #false))
+                              (else
+                                 (sub-digits (ncdr a) (ncdr b) #false #false)))))
+                           (cond
+                              (tail (ncons r tail))
+                              (leading? r)
+                              ((eq? r 0) #false)
+                              (else (ncons r null)))))
+
+                     (let ((tail (sub-digits (ncdr a) (ncdr b) u? #false)))
+                        (cond
+                           (tail (ncons r tail))
+                           (leading? r)
+                           ((eq? r 0) #false)
+                           (else (ncons r null)))))))))
+
+
+      ; A - B = -(B - A)
+
+      (define (sub-big a b)
+         (cond
+            ((big-less a b #false)
+               (let ((neg (sub-digits b a #false #true)))
+                  (cond
+                     ((eq? neg 0) neg)
+                     ((eq? (type neg) type-fix+) (to-fix- neg))
+                     (else (to-int- neg)))))
+            (else
+               (sub-digits a b #false #true))))
+
+      ; add bits, output is negative
+
+      (define (add-small->negative a b)
+         (lets ((r overflow? (fx+ a b)))
+            (if overflow?
+               (mkt type-int- r *big-one*)
+               (to-fix- r))))
+
+      ; for changing the (default positive) sign of unsigned operations
+      (define-syntax negative
+         (syntax-rules (if)
+            ((negative (op . args))
+               (let ((foo (op . args)))
+                  (negative foo)))
+            ((negative x)
+               (if (eq? (type x) type-fix+)
+                  (to-fix- x)
+                  (to-int- x)))))
+
+      (define-syntax add-small->positive
+         (syntax-rules ()
+            ((add-small->positive a b)
+               (lets ((r overflow? (fx+ a b)))
+                  (if overflow? (ncons r *big-one*) r)))))
+      
+      (define (subi a b)
+         (case (type a)
+            (type-fix+ ; a signed fixnum
+               (case (type b)
+                  (type-fix+   (sub-small->pick-sign a b))         ;; +a - +b -> as +a + -b
+                  (type-fix- (add-small->positive a b))         ;; +a - -b -> as +a + +b
+                  (type-int+ (sub-number-big a b #true))            ;; +a - +B -> as +a + -B
+                  (type-int-   (add-number-big a b))            ;; +a - -B -> as +a + +B
+                  (else (big-bad-args '- a b))))
+            (type-fix-
+               (case (type b)
+                  (type-fix+ (add-small->negative a b))            ;; -a - +b -> as -a + -b
+                  (type-fix- (sub-small->pick-sign b a))         ;; -a - -b -> as -a + +b
+                  (type-int+ (to-int- (add-number-big a b))) ;; -a - +B -> as -a + -B
+                  (type-int- (sub-big-number b a #true))         ;; -a - -B -> as -a + +B
+                  (else (big-bad-args '- a b))))
+            (type-int+
+               (case (type b)
+                  (type-fix+ (sub-big-number a b #true))            ;; +A - +b -> as +A + -b
+                  (type-fix- (add-number-big b a))               ;; +A - -b -> as +A + +b
+                  (type-int+ (sub-big a b))                     ;; +A - +B -> as +A + -B
+                  (type-int- (add-big a b #false))                  ;; +A - -B -> as +A + +B
+                  (else (big-bad-args '- a b))))
+            (type-int-
+               (case (type b)
+                  (type-fix+ (to-int- (add-number-big b a))) ;; -A - +b -> as -A + -b
+                  (type-fix- (sub-number-big b a #true))            ;; -A - -b -> as -A + +b
+                  (type-int+ (to-int- (add-big a b #false))) ;; -A - +B -> as -A + -B
+                  (type-int- (sub-big b a))                     ;; -A - -B -> as -A + +B
+                  (else (big-bad-args '- a b))))
+            (else
+               (big-bad-args '- a b))))
+
+
+      (define (make-+ no)
+         (λ (a b)
+            (case (type a)
+               (type-fix+ ; a signed fixnum
+                  (case (type b)
+                     (type-fix+ (add-small->positive a b))            ;; +a + +b -> c | C
+                     (type-fix- (sub-small->pick-sign a b))         ;; +a + -b -> +c | -c, underflow determines sign
+                     (type-int+ (add-number-big a b))               ;; +a + +B -> +C
+                     (type-int- (sub-number-big a b #true))         ;; +a + -B -> -c | -C
+                     (else (no b a))))
+               (type-fix-
+                  (case (type b)
+                     (type-fix+ (sub-small->pick-sign b a))         ;; -a + +b == +b + -a -> as above (no need to recurse)
+                     (type-fix- (add-small->negative a b))         ;; -a + -b -> -c | -C
+                     (type-int+ (sub-big-number b a #true))            ;; -a + +B == +B - +a -> sub-big-number
+                     (type-int- (to-int- (add-number-big a b))) ;; -a + -B == -C == -(a + B)
+                     (else (no b a))))
+               (type-int+
+                  (case (type b)
+                     (type-fix+ (add-number-big b a))               ;; +A + +b -> +C
+                     (type-fix- (sub-big-number a b #true))            ;; +A + -b == -b + +A -> as above
+                     (type-int+ (add-big a b #false))                  ;; +A + +B == +C
+                     (type-int- (sub-big a b))                     ;; +A + -B == +c | -c | +C | -C
+                     (else (no b a))))
+               (type-int-
+                  (case (type b)
+                     (type-fix+ (sub-number-big b a #true))            ;; -A + +b == +b + -A -> as above
+                     (type-fix- (to-int- (add-number-big b a))) ;; -A + -b == -b + -A = -C -> as above
+                     (type-int+ (sub-big b a))                     ;; -A + +B == +B + -A -> as above
+                     (type-int- (to-int- (add-big a b #false))) ;; -A + -B == -(A + B)
+                     (else (no b a))))
+               (else
+                  (no a b)))))
+
+      (define + (make-+ (λ (a b) (error "cannot: " (list '+ a b)))))
+
+      ;;;
+      ;;; DIVISION
+      ;;;
+
+      ; walk down a and compute each digit of quotient using the top 2 digits of a
+      (define (qr-bs-loop a1 as b out)
+         (if (null? as)
+            (if (null? (ncdr out))
+               (values (ncar out) a1)
+               (values out a1))
+            (lets
+               ((a2 as as)
+                (q1 q2 r (fxqr a1 a2 b)))
+               (if (eq? q1 0)
+                  (qr-bs-loop r as b (ncons q2 out))
+                  (qr-bs-loop r as b (ncons q2 (ncons q1 out)))))))
+
+      (define (nrev-walk num to)
+         (if (eq? num null)
+            to
+            (nrev-walk
+               (ncdr num)
+               (ncons (ncar num) to))))
+
+      (define-syntax nrev
+         (syntax-rules ()
+            ((nrev num)
+               (nrev-walk num null))))
+      
+      (define (qr-big-small a b) ; -> q r
+         (cond
+            ((eq? b 0)
+               (big-bad-args 'qr-big-small a b))
+            ;((null? (ncdr (ncdr a))) ; (al ah) b -> can use fxqr primop
+            ;   (let ((tl (ncdr a)))
+            ;      (fxqr (ncar tl) (ncar a) b)))
+            (else
+               (lets
+                  ((ra (nrev a))
+                   (a as ra))
+                  (qr-bs-loop a as b null)))))
+
+      ;;;
+      ;;; BITWISE OPERATIONS
+      ;;;
+
+      ; fxband, fxbor, fxbxor -> result
+      ; fx>> -> hi + lo
+
+      (define (shift-right-walk this rest n first?)
+         (if (eq? rest null)
+            (cond
+               (first?  this)
+               ((eq? this 0) #false)
+               (else
+                  (ncons this null)))
+            (let ((next (ncar rest)))
+               (lets ((hi lo (fx>> next n)))
+                  (lets
+                     ((this (fxbor this lo))
+                      (tail (shift-right-walk hi (ncdr rest) n #false)))
+                     (cond
+                        (tail (ncons this tail))
+                        ((eq? this 0)
+                           (if first? 0 #false))
+                        (else
+                           (if first? this
+                              (ncons this null)))))))))
+
+      (define (shift-right a n)
+         (if (eq? a null)
+            0
+            (lets ((hi lo (fx>> (ncar a) n)))
+               (shift-right-walk hi (ncdr a) n #true))))
+
+      ; words known to be fixnum
+      (define (drop-digits a words)
+         (cond
+            ((eq? words 0) a)
+            ((eq? a null) a)
+            (else
+               (lets ((words _ (fx- words 1)))
+                  (drop-digits (ncdr a) words)))))
+
+      ; optimize << and >> since they will be heavily used in subsequent ops
+
+      (define (>> a b)
+         (case (type b)
+            (type-fix+
+               (lets ((_ wor bits (fxqr 0 b *fixnum-bits*)))
+                  (if (eq? wor 0)
+                     (case (type a)
+                        (type-fix+ (receive (fx>> a bits) (lambda (hi lo) hi)))
+                        (type-fix- (receive (fx>> a bits) (lambda (hi lo) (if (eq? hi 0) 0 (negate hi)))))
+                        (type-int+ (shift-right a bits))
+                        (type-int- (negative (shift-right a bits)))
+                        (else (big-bad-args '>> a b)))
+                     (case (type a)
+                        (type-fix+ 0)
+                        (type-fix- 0)
+                        (type-int+ (shift-right (drop-digits a wor) bits))
+                        (type-int-
+                           (negative
+                              (shift-right (drop-digits a wor) bits)))
+                        (else (big-bad-args '>> a b))))))
+            (type-int+
+               ;; todo, use digit multiples instead or drop each digit
+               (if (eq? a 0)
+                  0 ;; terminate early if out of bits
+                  (>> (ncdr a) (subi b *fixnum-bits*))))
+            (else
+               (big-bad-args '>> a b))))
+
+      ; make a digit with last as low bits
+      (define (shift-left num n last)
+         (if (eq? num null)
+            (if (eq? last 0)
+               null
+               (ncons last null))
+            (lets ((hi lo (fx>> (ncar num) n)))
+               (ncons (fxbor last lo)
+                  (shift-left (ncdr num) n hi)))))
+
+      ; << quarantees n is a fixnum
+      (define (extend-digits num n)
+         (if (eq? n 0)
+            num
+            (lets ((n _ (fx- n 1)))
+               (extend-digits (ncons 0 num) n))))
+
+      ; fixme: a << b = a * 2^b for other numbers
+      ; thus #b0.0001 << 4 = 1
+
+      (define (<< a b)
+         (cond
+            ((eq? a 0) 0)
+            ((eq? (type b) type-fix+)
+               (lets
+                  ((_ words bits (fxqr 0 b *fixnum-bits*))
+                   (bits _ (fx- *fixnum-bits* bits))) ; convert shift width for fx>>
+                  (case (type a)
+                     (type-fix+
+                        (lets ((hi lo (fx>> a bits)))
+                           (if (eq? hi 0)
+                              (if (eq? words 0)
+                                 lo
+                                 (extend-digits (ncons lo null) words))
+                              (if (eq? words 0)
+                                 (ncons lo (ncons hi null))
+                                 (extend-digits
+                                    (ncons lo (ncons hi null))
+                                    words)))))
+                     (type-fix-
+                        (lets ((hi lo (fx>> a bits)))
+                           (if (eq? hi 0)
+                              (if (eq? words 0)
+                                 (to-fix- lo)
+                                 (to-int- (extend-digits (ncons lo null) words)))
+                              (to-int-
+                                 (extend-digits
+                                    (ncons lo (ncons hi null)) words)))))
+                     (type-int+
+                        (extend-digits (shift-left a bits 0) words))
+                     (type-int-
+                        (to-int- (extend-digits (shift-left a bits 0) words)))
+                     (else
+                        (big-bad-args '<< a b)))))
+            ((eq? (type b) type-int+)
+               ;; not likely to happen though
+               (<< (<< a *max-fixnum*) (subi b *max-fixnum*)))
+            (else
+               ;; could allow negative shift left to mean a shift right, but that is
+               ;; probably more likely an accident than desired behavior, so failing here
+               (big-bad-args '<< a b))))
+
+      (define (big-band a b)
+         (cond
+            ((eq? a null) 0)
+            ((eq? b null) 0)
+            (else
+               (lets
+                  ((this (fxband (ncar a) (ncar b)))
+                   (tail (big-band (ncdr a) (ncdr b))))
+                  (cond
+                     ((eq? tail 0) this)
+                     ((eq? (type tail) type-fix+)
+                        (ncons this (ncons tail null)))
+                     (else
+                        (ncons this tail)))))))
+
+      ;; answer is quaranteed to be a bignum
+      (define (big-bor a b)
+         (cond
+            ((eq? a null) b)
+            ((eq? b null) a)
+            (else
+               (lets
+                  ((this (fxbor (ncar a) (ncar b)))
+                   (tail (big-bor (ncdr a) (ncdr b))))
+                  (ncons this tail)))))
+
+      ;; → null | bignum
+      (define (big-bxor-digits a b)
+         (cond
+            ((null? a) b)
+            ((null? b) a)
+            (else
+               (lets
+                  ((this (fxbxor (ncar a) (ncar b)))
+                   (tail (big-bxor-digits (ncdr a) (ncdr b))))
+                  (if (null? tail)
+                     (if (eq? this 0)
+                        null
+                        (ncons this tail))
+                     (ncons this tail))))))
+
+      (define (big-bxor a b)
+         (let ((r (big-bxor-digits a b)))
+            (cond
+               ;; maybe demote to fixnum
+               ((null? r) 0)
+               ((null? (ncdr r)) (ncar r))
+               (else r))))
+
+      ; not yet defined for negative
+      (define (band a b)
+         (case (type a)
+            (type-fix+
+               (case (type b)
+                  (type-fix+ (fxband a b))
+                  (type-int+ (fxband a (ncar b)))
+                  (else
+                     (big-bad-args 'band a b))))
+            (type-int+
+               (case (type b)
+                  (type-fix+
+                     (fxband (ncar a) b))
+                  (type-int+
+                     (big-band a b))
+                  (else
+                     (big-bad-args 'band a b))))
+            (else
+               (big-bad-args 'band a b))))
+
+      (define (even? n) (eq? 0 (band n 1)))
+      (define (odd?  n) (eq? 1 (band n 1)))
+
+      (define (bor a b)
+         (case (type a)
+            (type-fix+
+               (case (type b)
+                  (type-fix+ (fxbor a b))
+                  (type-int+
+                     (ncons (fxbor a (ncar b))
+                        (ncdr b)))
+                  (else
+                     (big-bad-args 'bor a b))))
+            (type-int+
+               (case (type b)
+                  (type-fix+
+                     (ncons (fxbor b (ncar a))
+                        (ncdr a)))
+                  (type-int+
+                     (big-bor a b))
+                  (else
+                     (big-bad-args 'bor a b))))
+            (else
+               (big-bad-args 'bor a b))))
+
+      (define (bxor a b)
+         (case (type a)
+            (type-fix+
+               (case (type b)
+                  (type-fix+ (fxbxor a b))
+                  (type-int+
+                     (ncons (fxbxor a (ncar b)) (ncdr b)))
+                  (else
+                     (big-bad-args 'bxor a b))))
+            (type-int+
+               (case (type b)
+                  (type-fix+
+                     (ncons (fxbxor b (ncar a)) (ncdr a)))
+                  (type-int+
+                     (big-bxor a b))
+                  (else
+                     (big-bad-args 'bxor a b))))
+            (else
+               (big-bad-args 'bxor a b))))
+
+
+
+      ;;;
+      ;;; MULTIPLICATION
+      ;;;
+
+      ; O(n), basic multiply bignum b by fixnum a with carry
+
+      (define (mult-num-big a b carry)
+         (cond
+            ((eq? b null)
+               (if (eq? carry 0)
+                  null
+                  (ncons carry null)))
+            ((eq? carry 0)
+               (lets ((lo hi (fx* a (ncar b))))
+                  (ncons lo
+                     (mult-num-big a (ncdr b) hi))))
+            (else
+               (lets
+                  ((lo hi (fx* a (ncar b)))
+                   (lo o? (fx+ lo carry)))
+                  (if o?
+                     (lets ((hi _ (fx+ hi 1)))
+                        (ncons lo
+                           (mult-num-big a (ncdr b) hi)))
+                     (ncons lo
+                        (mult-num-big a (ncdr b) hi)))))))
+
+      ; O(1), fixnum multiply overflowing to bignum
+
+      ;(define (mult-fixnums a b)
+      ;   (receive (fx* a b)
+      ;      (lambda (lo hi)
+      ;         (if (eq? hi 0)
+      ;            lo
+      ;            (ncons lo (ncons hi #n))))))
+
+      (define-syntax mult-fixnums
+         (syntax-rules ()
+            ((mult-fixnums a b)
+               (lets ((lo hi (fx* a b)))
+                  (if (eq? hi 0)
+                     lo
+                     (ncons lo (ncons hi null)))))))
+
+
+      
+
+
+      ;;;
+      ;;; Big multiplication
+      ;;;
+
+      ; current approach: karatsuba + schoolboy algorithm for small numbers
+
+      ; ensure bigness
+      (define (bigen x)
+         (if (eq? (type x) type-fix+)
+            (ncons x null)
+            x))
+
+      ; a + (b << ex*16)
+      (define (add-ext a b ex)
+         (cond
+            ((eq? ex 0) (if (null? a) (bigen b) (+ a b)))
+            ((null? a)
+               (ncons 0
+                  (add-ext null b (subi ex 1))))
+            ((eq? (type a) type-fix+) (add-ext (ncons a null) b ex))
+            ((eq? (type ex) type-fix+)
+               (lets
+                  ((ex _ (fx- ex 1))
+                   (d ds a))
+                  (ncons d (add-ext ds b ex))))
+            (else
+               (ncons (ncar a)
+                  (add-ext (ncdr a) b (subi ex 1))))))
+
+      ; fixme, should just keep jumbo digits for for added versions and
+      ;        perform the carrying just once in a final pass. add merges
+      ;        and high parts (if any) of the digits are the carriables.
+      ; can be used for small bignums
+      (define (mul-simple a b)
+         (if (null? a)
+            null
+            (lets
+               ((digit (ncar a))
+                (head (ncons 0 (mul-simple (ncdr a) b)))
+                (this (mult-num-big digit b 0)))
+               (+ head this))))
+
+      ; downgrade to fixnum if length 1
+      (define (fix n)
+         (if (null? (ncdr n)) (ncar n) n))
+
+      ; drop leading zeros, reverse digits and downgrade to fixnum if possible
+      (define (fixr n)
+         (if (null? n)
+            0
+            (lets ((d ds n))
+               (cond
+                  ((null? ds) d)
+                  ((eq? d 0) (fixr ds))
+                  (else (nrev n))))))
+
+      ; cut numbers from the midpoint of smaller while counting length (tortoise and hare akimbo)
+      (define (splice-nums ah bh at bt rat rbt s? l)
+         (cond
+            ((null? ah)
+               (values (fix at) (fixr rat) (fix bt) (fixr rbt) l))
+            ((null? bh)
+               (values (fix at) (fixr rat) (fix bt) (fixr rbt) l))
+            (s?
+               (splice-nums (ncdr ah) (ncdr bh) at bt rat rbt #false l))
+            (else
+               (lets
+                  ((a at at)
+                   (b bt bt)
+                   (l _ (fx+ l 1))) ; fixme, no bignum len
+                  (splice-nums (ncdr ah) (ncdr bh)
+                     at bt (ncons a rat) (ncons b rbt) #true l)))))
+
+      (define (kara a b)
+         (cond
+            ;; O(1) leaf cases
+            ((eq? a 0) 0)
+            ((eq? b 0) 0)
+            ((eq? a 1) b)
+            ((eq? b 1) a)
+
+            ;; O(n) or O(1) leaf cases
+            ((eq? (type a) type-fix+) (if (eq? (type b) type-fix+) (mult-fixnums a b) (mult-num-big a b 0)))
+            ((eq? (type b) type-fix+) (mult-num-big b a 0))
+            ((null? (ncdr a))
+               (if (null? (ncdr b))
+                  (mult-fixnums (ncar a) (ncar b))
+                  (mult-num-big (ncar a) b 0)))
+            ((null? (ncdr b)) (mult-num-big (ncar b) a 0))
+
+            ;; otherwise divide et imperial troopers
+            (else
+               (lets
+                  ; 3O(n)
+                  ((ah at bh bt atl
+                     (splice-nums a b a b null null #true 0)))
+                  (if (lesser? atl 30)
+                     (mul-simple a b)
+                     (lets
+                         ; 3F(O(n/2)) + 2O(n/2)
+                        ((z2 (kara ah bh))
+                         (z0 (kara at bt))
+                         (z1a
+                           (lets ((a (+ ah at)) (b (+ bh bt)))
+                              (kara a b)))
+                         ; 2O(n)
+                         (z1 (subi z1a (+ z2 z0)))
+                         ; two more below
+                         (x (if (eq? z1 0) z0 (add-ext z0 z1 atl))))
+                        (if (eq? z2 0)
+                           x
+                           (add-ext x z2 (<< atl 1)))))))))
+
+      ;(define mult-big mul-simple)   ; for debugging only!
+      (define mult-big kara)
+
+      (define (muli a b)
+         (cond
+            ; are these actually useful?
+            ((eq? a 0) 0)
+            ;((eq? a 1) b)
+            ((eq? b 0) 0)
+            ;((eq? b 1) a)
+            (else
+               (case (type a)
+                  (type-fix+
+                     (case (type b)
+                        (type-fix+ (mult-fixnums a b))                  ; +a * +b
+                        (type-fix- (negative (mult-fixnums a b)))      ; +a * -b
+                        (type-int+ (mult-num-big a b 0))               ; +a * +B
+                        (type-int- (negative (mult-num-big a b 0)))   ; +a * -b
+                        (else (big-bad-args 'mul a b))))
+                  (type-fix-
+                     (case (type b)
+                        (type-fix+ (negative (mult-fixnums a b)))      ; -a * +b -> -c | -C
+                        (type-fix- (mult-fixnums a b))                  ; -a * -b -> +c | +C
+                        (type-int+ (to-int- (mult-num-big a b 0))) ; -a * +B -> -C
+                        (type-int- (mult-num-big a b 0))            ; -a * -B -> +C
+                        (else (big-bad-args 'mul a b))))
+                  (type-int+
+                     (case (type b)
+                        (type-fix+ (mult-num-big b a 0))            ; +A * +b -> +C
+                        (type-fix- (to-int- (mult-num-big b a 0))) ; +A * -b -> -C
+                        (type-int+ (mult-big a b))               ; +A * +B -> +C
+                        (type-int- (to-int- (mult-big a b)))       ; +A * -B -> -C
+                        (else (big-bad-args 'mul a b))))
+                  (type-int-
+                     (case (type b)
+                        (type-fix+ (to-int- (mult-num-big b a 0))) ; -A * +b -> -C
+                        (type-fix- (mult-num-big b a 0))               ; -A * -b -> +C
+                        (type-int+ (to-int- (mult-big a b)))       ; -A * +B -> -C
+                        (type-int- (mult-big a b))                  ; -A * -B -> +C
+                        (else (big-bad-args 'mul a b))))
+                  (type-rational
+                     (case (type b)
+                        (type-rational  (big-bad-args 'mul a b))         ; handle this before mul for now
+                        (else (muli b a))))                  ; otherwise use other branches
+                  (else (big-bad-args 'mul a b))))))
+
+      ;;; comparison (rationals need mul)
+
+
+      ; decrease b
+      (define (shift-local-down a b n)
+         (cond
+            ((eq? n 0) 0)
+            ((eq? a b) (subi n 1))
+            ((lesser? b a) n)
+            (else
+               (lets ((b over (fx>> b 1)))
+                  (shift-local-down a b (subi n 1))))))
+
+      ; increase b
+      (define (shift-local-up a b n)
+         (cond
+            ((eq? a b) (subi n 1))
+            ((lesser? a b) (subi n 1))
+            (else
+               (lets ((b overflow? (fx+ b b)))
+                  (if overflow?
+                     (subi n 1)
+                     (shift-local-up a b (nat-succ n)))))))
+
+
+
+      (define (div-shift a b n)
+         (if (eq? (type a) type-fix+)
+            0
+            (let ((na (ncdr a)) (nb (ncdr b)))
+               (cond
+                  ((null? na)
+                     (if (null? nb)
+                        (let ((b-lead (ncar b)))
+                           (if (eq? b-lead *max-fixnum*)
+                              (if (eq? n 0)
+                                 0
+                                 (shift-local-down (ncar a) *pre-max-fixnum* (subi n 1)))
+                              (let ((aa (ncar a)) (bb (+ b-lead 1)))
+                                 ; increment b to ensure b'000.. > b....
+                                 (cond
+                                    ((lesser? aa bb)
+                                       (shift-local-down aa bb n))
+                                    (else
+                                       (shift-local-up aa bb n))))))
+                        ; divisor is larger
+                        0))
+                  ((null? nb)
+                     (div-shift (ncdr a) b (+ n *fixnum-bits*)))
+                  (else
+                     (div-shift (ncdr a) (ncdr b) n))))))
+
+      (define (negative? a)
+         (case (type a)
+            (type-fix+ #false)
+            (type-fix- #true)
+            (type-int+ #false)
+            (type-int- #true)
+            (type-rational ;; fixme - move elsewhere
+               (case (type (ncar a))
+                  (type-fix+ #false)
+                  (type-fix- #true)
+                  (type-int+ #false)
+                  (type-int- #true)
+                  (else (error "Bad number: " a))))
+            (else (error 'negative? a))))
+
+      (define positive?
+         (B not negative?))
+
+      (define (integer? a)
+         (case (type a)
+            (type-fix+ #true)
+            (type-fix- #true)
+            (type-int+ #true)
+            (type-int- #true)
+            (else #false)))
+
+
+      (define (nat-quotrem-finish a b out)
+         (let ((next (subi a b)))
+            (if (negative? next)
+               (values out a)
+               (nat-quotrem-finish next b (nat-succ out)))))
+
+      (define (nat-quotrem a b)
+         (let loop ((a a) (out 0))
+            (let ((s (div-shift a b 0)))
+               (cond
+                  ; hack warning, -1 0 1 are lesser of 2, but not -2
+                  ; (tag bits including sign are low)
+                  ((lesser? s 2)
+                     (nat-quotrem-finish a b out))
+                  (else
+                     (let ((this (<< b s)))
+                        (loop (subi a this) (+ out (<< 1 s)))))))))
+
+      (define (div-big->negative a b)
+         (lets ((q r (nat-quotrem a b)))
+            (negate q)))
+
+      ;; fixme: big division is ugly and slow
+      (define (div-big-qr a b)
+         (lets ((q r (nat-quotrem a b))) q))
+
+      (define (truncate/ a b)
+         (if (eq? b 0)
+            (big-bad-args 'truncate/ a b)
+            (case (type a)
+               (type-fix+
+                  (case (type b)
+                     (type-fix+ (receive (fxqr 0 a b) (lambda (_ q r) (values q r))))
+                     (type-int+ (values 0 a))
+                     (type-fix- (receive (fxqr 0 a b) (lambda (_ q r) (values (negate q) r))))
+                     (type-int- (values 0 a))
+                     (else (big-bad-args 'truncate/ a b))))
+               (type-int+
+                  (case (type b)
+                     (type-fix+ (receive (qr-big-small a b) (lambda (q r) (values q r))))
+                     (type-int+ (nat-quotrem a b))
+                     (type-fix- (receive (qr-big-small a b) (lambda (q r) (values (negate q) r))))
+                     (type-int- (receive (nat-quotrem a (negate b))
+                              (lambda (q r) (values (negate q) r))))
+                     (else (big-bad-args 'truncate/ a b))))
+               (type-fix-
+                  (case (type b)
+                     (type-fix+
+                        (receive (fxqr 0 a b) (lambda (_ q r) (values (negate q) (negate r)))))
+                     (type-fix- (receive (fxqr 0 a b) (lambda (_ q r) (values q (negate r)))))
+                     (type-int+ (values 0 a))
+                     (type-int- (values 0 a))
+                     (else (big-bad-args 'truncate/ a b))))
+               (type-int-
+                  (case (type b)
+                     (type-fix+
+                        (lets ((q r (qr-big-small a b)))
+                           (values (negate q) (negate r))))
+                     (type-fix- (receive (qr-big-small a b) (lambda (q r) (values q (negate r)))))
+                     (type-int+ (receive (nat-quotrem (negate a) b)
+                              (lambda (q r) (values (negate q) (negate r)))))
+                     (type-int- (receive (nat-quotrem (negate a) (negate b))
+                              (lambda (q r) (values q (negate r)))))
+                     (else (big-bad-args 'truncate/ a b))))
+               (else
+                  (big-bad-args 'truncate/ a b)))))
+
+      ;;;
+      ;;; REMAINDER
+      ;;;
+
+      ;; mainly manually partial evaling remainder separately, since a fast one is needed for now for gcd and rational math
+
+      (define (nat-rem-finish a b)
+         (let ((ap (subi a b)))
+            (if (negative? ap)
+               a
+               (nat-rem-finish ap b))))
+
+      ;; substract large b*2^n's until a < b
+      (define (nat-rem-simple a b)
+         (let loop ((a a))
+            (let ((s (div-shift a b 0)))
+               (cond
+                  ; hack warning, -1 0 1 are lesser of 2, but not -2
+                  ; (tag bits including sign are low)
+                  ((lesser? s 2)
+                     (nat-rem-finish a b))
+                  (else
+                     (loop (subi a (<< b s))))))))
+
+      ;; reverse number remainder
+
+      (define (rsub a b) ; -> a' borrow|null
+         (cond
+            ((null? b) (values a #false)) ; ok if borrowable
+            ((null? a) (values a null)) ; fail
+            (else
+               (lets
+                  ((d (subi (ncar a) (ncar b))) ; fix+ or fix-
+                   (tl dr (rsub (ncdr a) (ncdr b))))
+                  (cond
+                     ((null? dr) (values tl dr)) ; failed below
+                     (dr
+                        (let ((d (subi d 1))) ; int- (of was -*max-fixnum*), fix- or fix+
+                           (if (negative? d)
+                              (values (ncons (+ d *first-bignum*) tl) #true) ; borrow
+                              (values (ncons d tl) #false))))
+                     ((eq? (type d) type-fix-) ; borrow
+                        (values (ncons (+ d *first-bignum*) tl) #true))
+                     (else
+                        (values (ncons d tl) #false)))))))
+
+      (define (drop-zeros n)
+         (cond
+            ((null? n) n)
+            ((eq? 0 (ncar n)) (drop-zeros (ncdr n)))
+            (else n)))
+
+      (define (rev-sub a b) ; bignum format a' | #false
+         (lets ((val fail? (rsub a b)))
+            (if fail?
+               #false
+               (drop-zeros val))))
+
+      ;; reverse number multiplication by digit
+
+      (define (rmul n d) ; tl x carry-up
+         (if (null? n)
+            (values null 0)
+            (lets
+               ((x tl n)
+                (lo hi (fx* x d))
+                (tl carry (rmul (ncdr n) d))
+                (lo over (fx+ lo carry)))
+               (if over
+                  (lets ((hi _ (fx+ hi 1)))
+                     (values (ncons lo tl) hi))
+                  (values (ncons lo tl) hi)))))
+
+      (define (rmul-digit n d) ; -> bignum
+         (cond
+            ((eq? d 0) (ncons 0 null))
+            ((eq? d 1) n)
+            (else
+               (lets ((tl carry (rmul n d)))
+                  (if (eq? carry 0)
+                     tl
+                     (ncons carry tl))))))
+
+      (define (rrem a b) ; both should be scaled to get a good head for b
+         (cond
+            ((null? a) a)
+            ((null? (ncdr a)) a)
+            ((lesser? (ncar b) (ncar a))
+               (lets
+                  ((h _ (fx+ (ncar b) 1))
+                   (_ f r (fxqr 0 (ncar a) h))
+                   (bp (rmul-digit b f))
+                   (ap (rev-sub a bp)))
+                  (if ap (rrem ap b) a)))
+            ((rev-sub a b) => (C rrem b))
+            (else
+               (lets
+                  ((h _ (fx+ (ncar b) 1))
+                   (f r (qr-big-small (ncons (ncar (ncdr a)) (ncons (ncar a) null)) h)) ; FIXME, use fxqr instead
+                   )
+                  (if (eq? (type f) type-fix+)
+                     (lets
+                        ((bp (rmul-digit b f))
+                         (ap (rev-sub a bp))
+                         (ap (or ap (rev-sub a (ncons 0 bp)))))
+                        (if ap (rrem ap b) a))
+                     (lets
+                        ((f (cadr f))
+                         (bp (rmul-digit b f))
+                         ;(ap (rev-sub a bp))
+                         (ap #false)
+                         (ap (or ap (rev-sub a (ncons 0 bp)))))
+                        (if ap (rrem ap b) a)))))))
+
+      (define (nat-rem-reverse a b)
+         (if (< a b)
+            a
+            (lets ((rb (nrev b)))
+               (if (lesser? #b000000111111111111111111 (ncar rb))
+                  ; scale them to get a more fitting head for b
+                  ; and also get rid of the special case where it is *max-fixnum*
+                  (>> (nat-rem-reverse (<< a 12) (<< b 12)) 12)
+                  (let ((r (rrem (nrev a) rb)))
+                     (cond
+                        ((null? r) 0)
+                        ((null? (ncdr r)) (ncar r))
+                        (else (nrev r))))))))
+
+
+      (define nat-rem nat-rem-simple)    ; better for same sized numers
+      ;(define nat-rem nat-rem-reverse)    ; better when b is smaller ;; FIXME - not yet for variable sized fixnums
+
+
+      ;;;
+      ;;; Exact division
+      ;;;
+
+      ;; this algorithm is based on the observation that the lowest digit of
+      ;; the quotient in division, when the remainder will be 0, depends only
+      ;; on the lowest bits of the divisor and quotient, which allows the
+      ;; quotient to be built bottom up using only shifts and substractions.
+
+      ; bottom up exact division, base 2
+
+      (define (div-rev st out)
+         (if (null? st) out
+            (div-rev (ncdr st) (ncons (ncar st) out))))
+
+      (define (div-finish n)
+         (cond
+            ((null? (ncdr n)) (ncar n))
+            ((eq? (ncar n) 0) (div-finish (ncdr n)))
+            (else (div-rev n null))))
+
+      ; fixme, postpone and merge shifts and substraction
+
+      ; later (sub-shifted a b s) in 1-bit positions
+      ; b is usually shorter, so shift b right and then substract instead
+      ; of moving a by s
+
+      (define last-bit (subi *fixnum-bits* 1))
+
+      (define (divex bit bp a b out)
+         (cond
+            ((eq? (type a) type-fix-) #false) ;; not divisible
+            ((eq? (type a) type-int-) #false) ;; not divisible
+            ((eq? a 0) (div-finish out))
+            ((eq? (band a bit) 0) ; O(1)
+               (if (eq? bp last-bit)
+                  (lets
+                     ((a (ncdr a))
+                      (a (if (null? (ncdr a)) (ncar a) a)))
+                     (divex 1 0 a b (ncons 0 out)))
+                  (lets
+                     ((bit _ (fx+ bit bit))
+                      (bp _  (fx+ bp 1)))
+                     (divex bit bp a b out))))
+            (else ; shift + substract = amortized O(2b) + O(log a)
+               (divex bit bp (subi a (<< b bp))
+                  b (ncons (fxbor bit (ncar out)) (ncdr out))))))
+
+      (define divex-start (ncons 0 null))
+
+      ; FIXME: shifts are O(a+b), switch to bit walking later to get O(1)
+
+      (define (nat-divide-exact a b)
+         (if (eq? (band b 1) 0)
+            (if (eq? (band a 1) 0)
+               ;; drop a powers of two from both and get 1 bit to bottom of b
+               (nat-divide-exact (>> a 1) (>> b 1))
+               #false) ;; not divisible
+            (divex 1 0 a b divex-start)))
+
+      (define (maybe-negate a)
+         (if a (negate a) a))
+
+      ; int nat -> int | #false
+      (define (divide-exact a b)
+         (case (type a)
+            (type-fix- (maybe-negate (divide-exact (negate a) b)))
+            (type-int- (maybe-negate (divide-exact (negate a) b)))
+            (else (nat-divide-exact a b))))
+
+      (define ediv divide-exact)
+
+
+      ;; the same can be generalized for base B, where 2^16 is convenient given that it is the
+      ;; base in which bignums are represented in owl. the lowest digit will have
+
+      ;; fixme, add ^
+
+
+      ;;; alternative division
+
+      (define (div-big-exact a b) (ediv (subi a (nat-rem a b)) b))
+
+      (define div-big div-big-exact)
+
+      ;;; continue old general division
+
+      (define (div-fixnum->negative a b)
+         (lets ((_ q r (fxqr 0 a b)))
+            (if (eq? q 0)
+               q
+               (to-fix- q))))
+
+      (define (div-big-num->negative a b)
+         (lets ((q r (qr-big-small a b)))
+            (case (type q)
+               (type-fix+ (to-fix- q))
+               (else (to-int- q)))))
+
+      ; todo, drop this and use just truncate/
+      (define (quotient a b)
+         (if (eq? b 0)
+            (big-bad-args 'quotient a b)
+            (case (type a)
+               (type-fix+
+                  (case (type b)
+                     (type-fix+ (lets ((_ q r (fxqr 0 a b))) q))   ; +a / +b -> +c
+                     (type-fix- (div-fixnum->negative a b))                  ; +a / -b -> -c | 0
+                     (type-int+ 0)                                             ; +a / +B -> 0
+                     (type-int- 0)                                             ; +a / -B -> 0
+                     (else (big-bad-args 'quotient a b))))
+               (type-fix-
+                  (case (type b)
+                     (type-fix+ (div-fixnum->negative a b))                  ; -a / +b -> -c | 0
+                     (type-fix- (lets ((_ q r (fxqr 0 a b))) q))             ; -a / -b -> +c
+                     (type-int+ 0)                                           ; -a / +B -> 0
+                     (type-int- 0)                                             ; -a / -B -> 0
+                     (else (big-bad-args 'quotient a b))))
+               (type-int+
+                  (case (type b)
+                     (type-fix+ (lets ((q r (qr-big-small a b))) q))   ; +A / +b -> +c | +C
+                     (type-fix- (div-big-num->negative a b))            ; +A / -b -> -c | -C
+                     (type-int+ (div-big a b))                           ; +A / +B -> 0 | +c | +C
+                     (type-int- (div-big->negative a (negate b)))      ; +A / -B -> 0 | -c | -C
+                     (else (big-bad-args 'quotient a b))))
+               (type-int-
+                  (case (type b)
+                     (type-fix+ (div-big-num->negative a b))            ; -A / +b -> -c | -C
+                     (type-fix- (lets ((q r (qr-big-small a b))) q))    ; -A / -b -> +c | +C
+                     (type-int+ (div-big->negative (negate a) b))                     ; -A / +B -> 0 | -c | -C
+                     (type-int- (div-big (negate a) (negate b)))                              ; -A / -B -> 0 | +c | +C
+                     (else (big-bad-args 'quotient a b))))
+               (else (big-bad-args 'quotient a b)))))
+
+      (define-syntax fx%
+         (syntax-rules ()
+            ((fx% a b)
+               (lets ((q1 q2 r (fxqr 0 a b))) r))))
+
+      (define (rem a b)
+         (case (type a)
+            (type-fix+
+               (case (type b)
+                  (type-fix+ (fx% a b))
+                  (type-fix- (fx% a b))
+                  (type-int+ a)
+                  (type-int- a)
+                  (else (big-bad-args 'remainder a b))))
+            (type-fix-
+               (case (type b)
+                  (type-fix+ (negate (fx% a b)))
+                  (type-fix- (negate (fx% a b)))
+                  (type-int+ a)
+                  (type-int- a)
+                  (else (big-bad-args 'remainder a b))))
+            (type-int+
+               (case (type b)
+                  (type-fix+ (receive (qr-big-small a b) (lambda (q r) r)))
+                  (type-fix- (receive (qr-big-small a b) (lambda (q r) r)))
+                  (type-int+ (nat-rem a b))
+                  (type-int- (nat-rem a (negate b)))
+                  (else (big-bad-args 'remainder a b))))
+            (type-int-
+               (case (type b)
+                  (type-fix+
+                     (receive (qr-big-small a b)
+                        (lambda (q r) (negate r))))
+                  (type-fix-
+                     (receive (qr-big-small a b)
+                        (lambda (q r) (negate r))))
+                  (type-int+ (negate (nat-rem (negate a) b)))
+                  (type-int- (negate (nat-rem (negate a) (negate b))))
+                  (else (big-bad-args 'remainder a b))))
+            (else (big-bad-args 'remainder a b))))
+
+      ; required when (truncate/ a b) -> q,r and b != 0
+      ;   a = q*b + r
+      ;    |r| < |b|
+      ;    -a/b = a/-b = -(a/b)
+
+      ; note: remainder has sign of a, modulo that of b
+
+      (define (mod a b)
+         (if (negative? a)
+            (if (negative? b)
+               (rem a b)
+               (let ((r (rem a b)))
+                  (if (eq? r 0)
+                     r
+                     (+ b r))))
+            (if (negative? b)
+               (let ((r (rem a b)))
+                  (if (eq? r 0)
+                     r
+                     (+ b r)))
+               (rem a b))))
+
+      (define * muli)
+      (define - subi)
+))

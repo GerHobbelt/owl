@@ -39,7 +39,7 @@
 (define *interactive* #false) ;; be verbose
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
 (define *owl-names* #empty)
-(define *owl-version* "0.1.16")
+(define *owl-version* "0.1.17")
 
 (import
    (owl intern)
@@ -120,7 +120,7 @@
 (define about-owl
 "Owl Lisp -- a functional scheme
 Copyright (c) Aki Helin
-Check out https://github.com/owl-lisp/owl for more information.")
+Check out https://gitlab.com/owl-lisp/owl for more information.")
 
 
 (define usual-suspects
@@ -135,7 +135,6 @@ Check out https://github.com/owl-lisp/owl for more information.")
          ; suffix-array bisect
          fold foldr map reverse length zip append unfold
          list-ref lset iota
-         ;vec-ref vec-len vec-fold vec-foldr
          ;print
          mail interact
          take filter remove

@@ -36,7 +36,6 @@
       fasl-decode          ; (byte ...) -> obj, input can be lazy
       decode-or            ; (byte ...) fail → object | (fail reason)
       encode               ; obj -> (byte ... 0), n-alloc-objs (mainly for bootstrapping)
-      tuple->list          ; ; TEMPORARILY HERE
       objects-below        ; obj -> (obj ...), all allocated objects below obj
       decode-stream        ; ll failval → (ob ...) | (ob .. failval)
       sub-objects          ; obj wanted? -> ((obj . n-occurrences) ...)
@@ -44,7 +43,7 @@
 
    (import
       (owl defmac)
-      (owl vector)
+      (owl bytevector)
       (owl math)
       (owl primop)
       (owl ff)
@@ -53,20 +52,12 @@
       (only (owl syscall) error)
       (owl proof)
       (owl list)
+      (owl tuple)
       (owl rlist))
 
    (begin
 
       (define enodata #false) ;; reason to fail if out of data (progressive readers want this)
-
-      (define (read-tuple tuple pos lst)
-         (if (= pos 0)
-            lst
-            (read-tuple tuple (- pos 1)
-               (cons (ref tuple pos) lst))))
-
-      (define (tuple->list tuple)
-         (read-tuple tuple (size tuple) null))
 
       ;;;
       ;;; Encoder
@@ -161,7 +152,7 @@
                            (copy-bytes out val (- bs 1)))))
                   (lets
                      ((t (type-byte-of val))
-                      (s (size val)))
+                      (s (tuple-length val)))
                      ; options for optimization
                      ; t and s fit in 6 bits -> pack (seems to be only about 1/20 compression)
                      ; t fits in 6 bits -> (+ (<< t 2) 3) (ditto)
@@ -214,12 +205,12 @@
          (cond
             ((eq? n chunk-size)
                (cons
-                  (list->byte-vector (reverse buff))
+                  (list->bytevector (reverse buff))
                   (chunk-stream bs 0 null)))
             ((null? bs)
                (if (null? buff)
                   null
-                  (list (list->byte-vector (reverse buff)))))
+                  (list (list->bytevector (reverse buff)))))
             ((pair? bs)
                (lets ((n _ (fx+ n 1)))
                   (chunk-stream (cdr bs) n (cons (car bs) buff))))
@@ -249,7 +240,7 @@
          (lets
             ((ll type (grab ll fail))
              (ll val  (get-nat ll fail 0)))
-            (values ll (cast-immediate val type))))
+            (values ll (fxbxor (create-type type) val)))) ; cast via fxbxor
 
       (define nan "not here") ; eq?-unique
 
@@ -322,7 +313,7 @@
                            (decoder ll (rcons obj got) fail)))
                      ((eq? kind 0) ;; fasl stream end marker
                         ;; object done
-                        (values ll (rcar got)))
+                        (values ll (rget got 0 #f)))
                      ((eq? (band kind 3) 3) ; shortcut allocated
                         (lets
                            ((type (>> kind 2))
@@ -346,7 +337,7 @@
                         ; a leading 0 is special and means the stream has no allocated objects, just one immediate one
                         (if (eq? (car ll) 0)
                            (decode-immediate (cdr ll) fail)
-                           (decoder ll null fail)))
+                           (decoder ll rnull fail)))
                      (else (decode-or (ll) err)))))))
 
       ;; decode a full (possibly lazy) list of data, and succeed only if it exactly matches a fasl-encoded object

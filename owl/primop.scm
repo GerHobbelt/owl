@@ -18,7 +18,8 @@
       apply
       call/cc
       lets/cc
-      cast-immediate
+      create-type
+      object-size
       len
       )
 
@@ -81,14 +82,12 @@
       (define sys-prim    (func '(5 63 4 5 6 7 8 24 8)))
       (define sys         (func '(4 27 4 5 6 7 24 7)))
       (define sizeb       (func '(2 28 4 5 24 5)))
-      (define raw         (func '(3 37 4 5 6 24 6)))
+      (define raw         (func '(3 59 4 5 6 24 6)))
       (define eq?         (func '(3 54 4 5 6 24 6)))
       (define fxband      (func '(3 55 4 5 6 24 6)))
       (define fxbor       (func '(3 56 4 5 6 24 6)))
       (define fxbxor      (func '(3 57 4 5 6 24 6)))
-
       (define type        (func '(2 15 4 5 24 5)))
-      (define size        (func '(2 36 4 5 24 5)))
       (define ref         (func '(3 47 4 5 6 24 6)))
 
       ;; make thread sleep for a few thread scheduler rounds
@@ -103,12 +102,72 @@
       (define (special-bind-primop? op)
          (or (eq? op 32) (eq? op 49)))
 
-      (define primops-1
+      (define set (func '(4 45 4 5 6 7 24 7)))
+      (define lesser? (func '(3 44 4 5 6 24 6)))
+      (define listuple (func '(4 35 4 5 6 7 24 7)))
+      (define mkblack (func '(5 48 4 5 6 7 8 24 8)))
+      (define mkred (func '(5 176 4 5 6 7 8 24 8)))
+
+      (define null '())
+
+      (define apply-error "implementation restriction: please fold a long list instead of applying a function")
+
+      (define apply
+         (case-lambda
+            ((fn l)
+               (if (eq? l null) (fn)
+                  (lets ((a l l))
+                     (if (eq? l null) (fn a)
+                        (lets ((b l l))
+                           (if (eq? l null) (fn a b)
+                              (lets ((c l l))
+                                 (if (eq? l null) (fn a b c)
+                                    (lets ((d l l))
+                                       (if (eq? l null) (fn a b c d)
+                                          (lets ((e l l))
+                                             (if (eq? l null) (fn a b c d e)
+                                                (car apply-error)))))))))))))
+            ((fn a l)
+               (if (eq? l null) (fn a)
+                  (lets ((b l l))
+                     (if (eq? l null) (fn a b)
+                        (lets ((c l l))
+                           (if (eq? l null) (fn a b c)
+                              (lets ((d l l))
+                                 (if (eq? l null) (fn a b c d)
+                                    (lets ((e l l))
+                                       (if (eq? l null) (fn a b c d e)
+                                          (car apply-error)))))))))))
+            ((fn a b l)
+               (if (eq? l null) (fn a b)
+                  (lets ((c l l))
+                     (if (eq? l null) (fn a b c)
+                        (lets ((d l l))
+                           (if (eq? l null) (fn a b c d)
+                              (lets ((e l l))
+                                 (if (eq? l null) (fn a b c d e)
+                                    (car apply-error)))))))))
+            ((fn a b c l)
+               (if (eq? l null) (fn a b c)
+                  (lets ((d l l))
+                     (if (eq? l null) (fn a b c d)
+                        (lets ((e l l))
+                           (if (eq? l null) (fn a b c d e)
+                              (car apply-error)))))))
+            ((fn a b c d l)
+               (if (eq? l null) (fn a b c d)
+                  (lets ((e l l))
+                     (if (eq? l null) (fn a b c d e)
+                        (car apply-error)))))
+            (x
+               (car apply-error))))
+
+      (define primops
          (list
-            ;;; input arity includes a continuation
+            ;; input arity includes a continuation
             (tuple 'sys          27 4 1 sys)
-            (tuple 'sizeb        28 1 1 sizeb)   ;; raw-obj -> numbe of bytes (fixnum)
-            (tuple 'raw          37 2 1 raw)   ;; make raw object, and *add padding byte count to type variant*
+            (tuple 'sizeb        28 1 1 sizeb) ;; raw-obj -> number of bytes (fixnum)
+            (tuple 'raw          59 2 1 raw) ;; make a raw object
             (tuple 'cons         51 2 1 cons)
             (tuple 'car         105 1 1 car) ;; opcode: 1 << 6 | 41
             (tuple 'cdr         169 1 1 cdr) ;; opcode: 2 << 6 | 41
@@ -117,43 +176,23 @@
             (tuple 'fxbor        56 2 1 fxbor)
             (tuple 'fxbxor       57 2 1 fxbxor)
             (tuple 'type         15 1 1 type)
-            (tuple 'size         36 1 1 size)  ;;  get object size (- 1)
-            (tuple 'ref          47 2 1 ref)   ;;
-            (tuple 'mkt          23 'any 1 mkt))) ;; mkt type v0 .. vn t
-
-      (define set (func '(4 45 4 5 6 7 24 7)))
-      (define lesser? (func '(3 44 4 5 6 24 6)))
-      (define listuple (func '(4 35 4 5 6 7 24 7)))
-      (define mkblack (func '(5 42 4 5 6 7 8 24 8)))
-      (define mkred (func '(5 43 4 5 6 7 8 24 8)))
-      (define fxqr (func '(4 26))) ;; <- placeholder
-      (define fx+ (func '(4 38 4 5 6 7 24 7)))
-      (define fx- (func '(4 40 4 5 6 7 24 7)))
-      (define fx>> (func '(4 58 4 5 6 7 24 7)))
-
-      (define apply (bytes->bytecode '(60))) ;; <- no arity, just call 60
-      (define apply-cont (bytes->bytecode '(124))) ;; 64 | 60
-
-      (define primops-2
-         (list
+            (tuple 'ref          47 2 1 ref)
+            (tuple 'mkt          23 'any 1 mkt) ;; mkt type v0..vn t
             (tuple 'bind         32 1 #false bind)  ;; (bind thing (lambda (name ...) body)), fn is at CONT so arity is really 1
             (tuple 'set          45 3 1 set)   ;; (set tuple pos val) -> tuple'
             (tuple 'lesser?      44 2 1 lesser?)  ;; (lesser? a b)
             (tuple 'listuple     35 3 1 listuple)  ;; (listuple type size lst)
-            (tuple 'mkblack      42 4 1 mkblack)   ; (mkblack l k v r)
-            (tuple 'mkred        43 4 1 mkred)   ; ditto
+            (tuple 'mkblack      48 4 1 mkblack) ;; (mkblack l k v r)
+            (tuple 'mkred       176 4 1 mkred)   ;; ditto, opcode: FFRED << 6 | 48
             (tuple 'ff-bind      49 1 #false ff-bind)  ;; SPECIAL ** (ffbind thing (lambda (name ...) body))
+            (tuple 'fxsub        21 2 2 'fxsub) ;; (fxsub a b) -> lo u
+            (tuple 'fxadd        22 2 2 'fxadd) ;; (fxadd a b) -> lo hi
             (tuple 'fxqr         26 3 3 'fxqr)   ;; (fxdiv ah al b) -> qh ql r
-            (tuple 'fx+          38 2 2 fx+)   ;; (fx+ a b)      ;; 2 out
+            (tuple 'fx+          38 2 2 fx+) ; FIXME: remove after fasl update
             (tuple 'fx*          39 2 2 fx*)   ;; (fx* a b)      ;; 2 out
-            (tuple 'fx-          40 2 2 fx-)   ;; (fx- a b)       ;; 2 out
+            (tuple 'fx-          40 2 2 fx-) ; FIXME: remove after fasl update
             (tuple 'fx>>         58 2 2 fx>>)   ;; (fx>> a b) -> hi lo, lo are the lost bits
-            (tuple 'set-ticker   62 1 1 set-ticker)
             (tuple 'sys-prim     63 4 1 sys-prim)))
-
-      (define primops
-         (app primops-1
-              primops-2))
 
       ;; special things exposed by the vm
       (define (set-memory-limit n) (sys-prim 7 n #f #f))
@@ -173,9 +212,14 @@
             (λ (k f)
                (f k
                   (case-lambda
-                     ((c a) (k a))
-                     ((c a b) (k a b))
-                     ((c . x) (apply-cont k x)))))))
+                     ((_ a) (k a))
+                     ((_ a b) (k a b))
+                     ((_ a b c) (k a b c))
+                     ((_ a b c d) (k a b c d))
+                     ((_ a b c d e) (k a b c d e))
+                     (x
+                        (car "implementation restriction: add more values to continuation handling")
+                        ))))))
 
       (define-syntax lets/cc
          (syntax-rules (call/cc)
@@ -184,13 +228,17 @@
             ((lets/cc var . body)
                (call/cc (λ (var) (lets . body))))))
 
-      (define cast-immediate
-         (let ((get-header (raw '(1 4 0 5 24 5) type-bytecode)))
-            (λ (x type)
-               (fxbxor
-                  (let ((hdr (get-header (raw '() type))))
-                     (fxbxor hdr hdr))
-                  x))))
+      ;; unsafe function - not to be exported!
+      (define get-header (bytes->bytecode '(1 4 0 5 24 5)))
+
+      (define (create-type type)
+         (let ((hdr (get-header (raw '() type))))
+            (fxbxor hdr hdr)))
+
+      (define (object-size obj)
+         (if (immediate? obj)
+            0
+            (lets ((s _ (fx>> (get-header obj) 8))) s))) ; 8 == SPOS - IPOS
 
       ;; non-primop instructions that can report errors
       (define (instruction-name op)

@@ -1,8 +1,7 @@
 # Owl Lisp
 
 Builds:
-master [![Build Status](https://travis-ci.org/owl-lisp/owl.svg?branch=master)](https://travis-ci.org/owl-lisp/owl),
-dev [![Build Status](https://travis-ci.org/owl-lisp/owl.svg?branch=develop)](https://travis-ci.org/owl-lisp/owl)
+[![pipeline status](https://gitlab.com/owl-lisp/owl/badges/develop/pipeline.svg)](https://gitlab.com/owl-lisp/owl/commits/develop)
 
 ## Overview
 
@@ -34,13 +33,14 @@ Alternatively you can try it out with
 
 ## Files
 
+```
    bin/ol      - the owl interpreter/compiler
    c/ovm.c     - the virtual machine / shared owl lisp runtime
    owl/*.scm   - implementation of owl repl and compiler
    fasl/*.fasl - bytecode images for bin/vm used during boot
    bin/vm      - plain VM used during boot
    c/ol.c      - combined VM and REPL heap image
-
+```
 
 ## Usage
 
@@ -86,4 +86,4 @@ functions. To make programs run faster, one can use for example:
 
 For further documentation and updates, see:
 
-  https://github.com/owl-lisp/owl
+  https://gitlab.com/owl-lisp/owl

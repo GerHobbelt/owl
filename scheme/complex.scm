@@ -4,7 +4,7 @@
    (import
       (scheme base)
       (only (owl defmac) lets)
-      (only (owl math-extra) sqrt)
+      (only (owl math extra) sqrt)
       (only (owl syscall) error))
 
    (export angle imag-part magnitude make-polar make-rectangular real-part)

@@ -15,13 +15,13 @@
 (define (child infd outfd)
    (write-bytes outfd
       (cons 42
-         (vector->list (get-block infd #xffff)))))
+         (bytevector->list (read-bytevector #xffff infd)))))
 
 (define (main sub in out)
    (let ((data (string->bytes (date-str (time)))))
       (write-bytes out data)
-      (if (equal? (list->vector (cons 42 data))
-                  (get-block in #xffff))
+      (if (equal? (list->bytevector (cons 42 data))
+                  (read-bytevector #xffff in))
          (begin
             (print "Subprocess echo with star ok")
             (print "Closing parent end of port " (close-port out))

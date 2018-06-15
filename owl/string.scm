@@ -52,6 +52,7 @@
       (owl unicode)
       (owl list)
       (owl list-extra)
+      (owl tuple)
       (owl lazy)
       (owl math))
 
@@ -69,7 +70,7 @@
       (define (string-length str)
          (case (type str)
             (type-string          (sizeb str))
-            (type-string-wide     (size str))
+            (type-string-wide     (tuple-length str))
             (type-string-dispatch (ref str 1))
             (else (error "string-length: not a string: " str))))
 
@@ -79,14 +80,14 @@
          (if (eq? pos end)
             tl
             (pair (ref str pos)
-               (lets ((pos u (fx+ pos 1)))
+               (lets ((pos _ (fx+ pos 1)))
                   (str-iter-leaf str tl pos end)))))
 
       (define (str-iter-wide-leaf str tl pos)
-         (if (eq? pos (size str))
+         (if (eq? pos (tuple-length str))
             (cons (ref str pos) tl)
             (pair (ref str pos)
-               (lets ((pos o (fx+ pos 1)))
+               (lets ((pos _ (fx+ pos 1)))
                   (str-iter-wide-leaf str tl pos)))))
 
       (define (str-iter-any str tl)
@@ -100,7 +101,7 @@
                (str-iter-wide-leaf str tl 1))
             (type-string-dispatch
                (let loop ((pos 2))
-                  (if (eq? pos (size str))
+                  (if (eq? pos (tuple-length str))
                      (str-iter-any (ref str pos) tl)
                      (str-iter-any (ref str pos)
                         (lambda () (loop (+ pos 1)))))))
@@ -115,14 +116,14 @@
          (if (eq? pos 0)
             (cons (ref str pos) tl)
             (pair (ref str pos)
-               (lets ((pos u (fx- pos 1)))
+               (lets ((pos _ (fx- pos 1)))
                   (str-iterr-leaf str tl pos)))))
 
       (define (str-iterr-wide-leaf str tl pos)
          (if (eq? pos 1)
             (cons (ref str pos) tl)
             (pair (ref str pos)
-               (lets ((pos u (fx- pos 1)))
+               (lets ((pos _ (fx- pos 1)))
                   (str-iterr-wide-leaf str tl pos)))))
 
       (define (str-iterr-any str tl)
@@ -133,9 +134,9 @@
                      tl
                      (str-iterr-leaf str tl (- len 1)))))
             (type-string-wide
-               (str-iterr-wide-leaf str tl (size str)))
+               (str-iterr-wide-leaf str tl (tuple-length str)))
             (type-string-dispatch
-               (let loop ((pos (size str)))
+               (let loop ((pos (tuple-length str)))
                   (if (eq? pos 2)
                      (str-iterr-any (ref str 2) tl)
                      (str-iterr-any (ref str pos)

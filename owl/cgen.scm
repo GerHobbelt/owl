@@ -14,41 +14,21 @@
 (define-library (owl cgen)
    (export
       compile-to-c            ;; obj extras → #false | c-code-string
-      code->bytes             ;; obj extras → #false | (byte ...)
    )
 
    (import
-      (owl list)
       (owl defmac)
+      (owl list)
       (owl list-extra)
       (owl math)
       (owl function)
       (owl ff)
       (owl string)
-      (owl primop)
+      (only (owl primop) call/cc)
       (owl render)
-      (only (owl syscall) error)
-      (scheme cxr))
+      (only (owl syscall) error))
 
    (begin
-
-      (define alloc-types
-         (list->ff
-            '((1 . pair))))
-
-      ;; represent some immediate as a string in C
-      (define (represent val fail)
-         (cond
-            ((eq? val null) "INULL")
-            ((eq? val #true) "ITRUE")
-            ((eq? val #false) "IFALSE")
-            ((and (eq? (type val) type-fix+) (< val 256))
-               (bytes->string
-                  (foldr render null
-                     (list "F(" val ")"))))
-            (else
-               ;(print "represent: cannot yet handle " val)
-               (fail))))
 
       ; -> list of bytes | #false
       (define (code->bytes code extras)
@@ -56,7 +36,7 @@
             (let ((bytes (map (H ref code) (iota 0 1 (sizeb code)))))
                (if (eq? (car bytes) 0) ;; (0 <hi8> <lo8>) == call extra instruction
                   (lets
-                     ((opcode (+ (<< (cadr bytes) 8) (car (cddr bytes))))
+                     ((opcode (fxbor (<< (cadr bytes) 8) (car (cddr bytes))))
                       (bytecode (get extras opcode #false)))
                      (if bytecode
                         (code->bytes bytecode extras) ;; <- vanilla bytecode (modulo boostrap bugs)
@@ -116,22 +96,12 @@
                (list "R["ret"]=prim_sys(R["op"],R["a1"],R["a2"],R["a3"]);")
                bs (del regs ret))))
 
-      (define (cify-type bs regs fail)
-         (error "deprecated type instruction used" 10))
-
       ;; lraw lst-reg type-reg flipp-reg to
       (define (cify-sizeb bs regs fail)
          (lets ((ob to bs (get2 (cdr bs))))
             (values
-               (list "if(immediatep(R["ob"])){R["to"]=IFALSE;}else{word h=V(R["ob"]);R["to"]=rawp(h)?F(payl_len(h)):IFALSE;}")
+               (list "if(immediatep(R["ob"])){R["to"]=IFALSE;}else{hval h=V(R["ob"]);R["to"]=rawp(h)?F(payl_len(h)):IFALSE;}")
                bs (put regs to 'fixnum)))) ;; output is always a fixnum
-
-      ;; lraw lst-reg type-reg flipp-reg to
-      (define (cify-size bs regs fail)
-         (lets ((ob to bs (get2 (cdr bs))))
-            (values
-               (list "R["to"]=(immediatep(R["ob"]))?IFALSE:F(hdrsize(V(R["ob"]))-1);")
-               bs (put regs to 'fixnum))))
 
       ;; lraw lst-reg type-reg flipp-reg to
       (define (cify-lraw bs regs fail)
@@ -150,7 +120,7 @@
          (lets ((a b r o bs (get4 (cdr bs))))
             (values
                ;; res is shifted down, so there is room for an overflow bit
-               (list "{word res=immval(R["a"])+immval(R["b"]);R["o"]=BOOL(1<<FBITS&res);R["r"]=F(res&FMAX);}")
+               (list "{hval res=immval(R["a"])+immval(R["b"]);R["o"]=BOOL(1<<FBITS&res);R["r"]=F(res);}")
                bs (put (put regs r 'fixnum) o 'bool))))
 
       ; fxband a b r
@@ -175,35 +145,35 @@
       (define (cify-fxmul bs regs fail)
          (lets ((a b l h bs (get4 (cdr bs))))
             (values
-               (list "{uint64_t p=(uint64_t)immval(R["a"])*immval(R["b"]);R["l"]=F(p&FMAX);R["h"]=F(p>>FBITS);}")
+               (list "{uint64_t p=(uint64_t)immval(R["a"])*immval(R["b"]);R["l"]=F(p);R["h"]=F(p>>FBITS);}")
                bs (put (put regs h 'fixnum) l 'fixnum))))
 
       ; fx- a b r u?
       (define (cify-fxsub bs regs fail)
          (lets ((a b r u bs (get4 (cdr bs))))
             (values
-               (list "{word r=immval(R["a"])-immval(R["b"]);R["u"]=BOOL(1<<FBITS&r);R["r"]=F(r&FMAX);}")
+               (list "{hval r=immval(R["a"])-immval(R["b"]);R["u"]=BOOL(1<<FBITS&r);R["r"]=F(r);}")
                bs (put (put regs r 'fixnum) u 'bool))))
 
       ; fx>> x n hi lo
       (define (cify-fxright bs regs fail)
          (lets ((x n hi lo bs (get4 (cdr bs))))
             (values
-               (list "{word x=immval(R["x"]);unsigned int n=immval(R["n"]);R["hi"]=F(x>>n);R["lo"]=F(x<<(FBITS-n)&FMAX);}")
+               (list "{hval x=immval(R["x"]);uint n=immval(R["n"]);R["hi"]=F(x>>n);R["lo"]=F(x<<(FBITS-n));}")
                bs (put (put regs lo 'fixnum) hi 'fixnum))))
 
       ; fxqr ah al b qh ql rem, for (ah<<16 | al) = (qh<<16 | ql)*b + rem
       (define (cify-fxqr bs regs fail)
          (lets ((ah al b qh ql rem bs (get6 (cdr bs))))
             (values
-               (list "{uint64_t a=(uint64_t)immval(R["ah"])<<FBITS|immval(R["al"]);word b=immval(R["b"]);uint64_t q=a/b;R["qh"]=F(q>>FBITS);R["ql"]=F(q&FMAX);R["rem"]=F(a-q*b);}")
+               (list "{uint64_t a=(uint64_t)immval(R["ah"])<<FBITS|immval(R["al"]);hval b=immval(R["b"]);uint64_t q=a/b;R["qh"]=F(q>>FBITS);R["ql"]=F(q);R["rem"]=F(a-q*b);}")
                bs (-> regs (put qh 'fixnum) (put ql 'fixnum) (put rem 'fixnum)))))
 
-      ; fxqr ah al b qh ql rem, for (ah<<16 | al) = (qh<<16 | ql)*b + rem
-      (define (cifyer-mkff type)
+      ; mkblack, mkred
+      (define (cifyer-mkff color)
          (λ (bs regs fail)
             (lets ((l k v r to bs (get5 (cdr bs))))
-               (values (list "R["to"]=prim_mkff("type",R["l"],R["k"],R["v"],R["r"]);") bs
+               (values (list "R["to"]=prim_mkff(TFF"color",R["l"],R["k"],R["v"],R["r"]);") bs
                   (put regs to 'alloc)))))
 
       ; bind tuple n r0 .. rn
@@ -212,9 +182,9 @@
             ((ob n bs (get2 (cdr bs)))
              (targets bs (split-at bs n)))
             (values
-               (ilist "{word*ob=(word*)R["ob"];word hdr;"
+               (ilist "{word*ob=(word*)R["ob"];hval hdr;"
                   (assert-alloc regs ob "IFALSE"
-                     (ilist "hdr=*ob;assert_not(rawp(hdr)||hdrsize(hdr)!="(+ 1 n)",ob,IFALSE);"
+                     (ilist "hdr=*ob;assert_not(rawp(hdr)||objsize(hdr)!="(+ 1 n)",ob,IFALSE);"
                         (foldr
                            (λ (n tl) ;; n = (reg . pos)
                               (ilist "R[" (car n) "]=ob[" (cdr n) "];" tl))
@@ -230,7 +200,7 @@
             (values ;; would probably be a bad idea to use prim_withff(&l, &r, ...), as those have at
                     ;; least earlier caused an immense slowdown in compiled code
                (assert-alloc regs n 1049
-                  (list "{word*ob=(word*)R["n"];word hdr=*ob;R["k"]=ob[1];R["v"]=ob[2];switch(hdrsize(hdr)){case 3:R["l"]=R["r"]=IEMPTY;break;case 4:if(1<<TPOS&hdr){R["l"]=IEMPTY;R["r"]=ob[3];}else{R["l"]=ob[3];R["r"]=IEMPTY;};break;default:R["l"]=ob[3];R["r"]=ob[4];}}"))
+                  (list "{word*ob=(word*)R["n"];hval hdr=*ob;R["k"]=ob[1];R["v"]=ob[2];switch(objsize(hdr)){case 3:R["l"]=R["r"]=IEMPTY;break;case 4:if(1<<TPOS&hdr){R["l"]=IEMPTY;R["r"]=ob[3];}else{R["l"]=ob[3];R["r"]=IEMPTY;};break;default:R["l"]=ob[3];R["r"]=ob[4];}}"))
                bs
                (fold del regs (list l k v r)))))
 
@@ -242,7 +212,7 @@
              (to bs bs))
             (values
                (ilist "*fp=make_header("(+ nfields 1)","type");"
-                   (foldr ; <- fixme: switch to foldr to write in-order
+                  (foldr ; <- fixme: switch to foldr to write in-order
                      (λ (p tl) ; <- (pos . reg)
                         (ilist "fp[" (car p) "]=R[" (cdr p) "];" tl))
                      (list "R[" to "]=(word)fp;fp+=" (+ nfields 1) ";")
@@ -259,7 +229,7 @@
                 (to bs bs))
                (values
                   (ilist "*fp=make_header("size","type");fp[1]=G(R["litp"],"litoff");"
-                      (fold
+                     (fold
                         (λ (tl p) ; <- (pos . reg)
                            (ilist "fp[" (car p) "]=R[" (cdr p) "];" tl))
                         (list "R[" to "]=(word)fp;fp+=" size ";")
@@ -289,8 +259,15 @@
          (λ (bs regs fail)
             (lets
                ((a lo8 hi8 bs (get3 (cdr bs)))
-                (jump-len (bor (<< hi8 8) lo8)))
-               (values 'branch (tuple (list "R[" a "]==" (represent val fail)) (drop bs jump-len) regs bs regs) regs))))
+                (jump-len (fxbor (<< hi8 8) lo8)))
+               (values 'branch (tuple (list "R["a"]=="val) (drop bs jump-len) regs bs regs) regs))))
+
+      (define (cify-load-imm val)
+         (λ (bs regs fail)
+            (lets
+               ((hi to bs (get2 (cdr bs)))
+                (val (fxbor (<< hi 2) val)))
+               (values (list "R["to"]=128*"val"+258;") bs (put regs to 'fixnum)))))
 
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       ;; translator function dispatch ff
@@ -302,7 +279,7 @@
                   (λ (bs regs fail)
                      (lets ((from offset to bs (get3 (cdr bs))))
                         (values (list "R["to"]=G(R["from"],"offset");") bs (del regs to)))))
-               (cons 2 ;; goto <rator> <nargs>
+               (cons 3 ;; goto <rator> <nargs>
                   (λ (bs regs fail)
                      (lets ((rator nargs bs (get2 (cdr bs))))
                         (let ((code (list "ob=(word*)R[" rator "];acc=" nargs ";" )))
@@ -323,25 +300,24 @@
                   (λ (bs regs fail)
                      (lets
                         ((a b lo8 hi8 bs (get4 (cdr bs)))
-                         (jump-len (bor (<< hi8 8) lo8)))
+                         (jump-len (fxbor (<< hi8 8) lo8)))
                         (values 'branch (tuple (list "R[" a "]==R[" b "]") (drop bs jump-len) regs bs regs) regs))))
                (cons 9 ;; move to from
                   (λ (bs regs fail)
                      (lets ((from to bs (get2 (cdr bs))))
                         (cond ;                                                        .--> note, maybe have #false value set
                            (else (values (list "R[" to "]=R[" from "];") bs (put regs to (get regs from #false))))))))
-               (cons 10 cify-type)
                ;; 13=ldi, see higher ops
-               (cons 14 ;; ldfix <n> <to>
-                  (λ (bs regs fail)
-                     (lets ((n to bs (get2 (cdr bs))))
-                        (values (list "R["to"]=onum((int8_t)("n"),1);") bs (put regs to 'fixnum)))))
+               (cons 10 (cify-load-imm 0)) ;; ldfix <n> <to>
+               (cons 74 (cify-load-imm 1))
+               (cons 138 (cify-load-imm 2))
+               (cons 202 (cify-load-imm 3))
                ;; 15=type-byte o r
                (cons 15
                   (λ (bs regs fail)
                      (lets ((o r bs (get2 (cdr bs))))
                         (values
-                           (list "{word ob=R["o"];if(allocp(ob))ob=V(ob);R["r"]=F(imm_type(ob));}")
+                           (list "{word ob=R["o"];if(allocp(ob))ob=V(ob);R["r"]=F((hval)ob>>TPOS&63);}")
                            bs
                            (put regs r 'fixnum)))))
                (cons 17 ;; arity-fail
@@ -360,7 +336,7 @@
                ;   (λ (bs regs fail)
                ;      (lets
                ;         ((arity hi8 lo8 bs (get3 (cdr bs)))
-               ;          (jump-len (bor (<< hi8 8) lo8)))
+               ;          (jump-len (fxbor (<< hi8 8) lo8)))
                ;          (values 'branch
                ;            (tuple
                ;               (list "acc>=" arity)
@@ -374,20 +350,16 @@
                   (λ (bs regs fail)
                      (lets
                         ((arity hi8 lo8 bs (get3 (cdr bs)))
-                         (jump-len (bor (<< hi8 8) lo8)))
+                         (jump-len (fxbor (<< hi8 8) lo8)))
                          (values 'branch
                            (tuple
                               (list "acc==" arity)
                               bs regs
                               (drop bs jump-len) regs)
-			   regs))))
-               (cons 36 cify-size)
-               (cons 37 cify-lraw)
+                           regs))))
                (cons 38 cify-fxadd)
                (cons 39 cify-fxmul)
                (cons 40 cify-fxsub)
-               (cons 42 (cifyer-mkff "TFF"))
-               (cons 43 (cifyer-mkff "TFF|FFRED"))
                (cons 44 ;; less a b r
                   (λ (bs regs fail)
                      (lets ((a b to bs (get3 (cdr bs))))
@@ -398,6 +370,8 @@
                         (values (list "R["to"]=prim_set(R["ob"],R["pos"],R["val"]);") bs
                            (put regs to (get regs ob 'alloc))))))
                (cons 47 cify-ref)
+               (cons 48 (cifyer-mkff ""))
+               (cons 176 (cifyer-mkff "|FFRED"))
                (cons 49 cify-bindff)
                (cons 51 ;; cons car cdr to
                   (λ (bs regs fail)
@@ -412,18 +386,18 @@
                          (known-type (get regs from #false)))
                         (cond
                            ((eq? 'pair known-type)
-                              ;(print " >>> omitting pair check from car <<< ")
+                              ;(print " >>> omitting pair check from car <<<")
                               (values (list "R[" to "]=G(R[" from "],1);") bs (del regs to)))
                            ((eq? 'alloc known-type)
-                              ;(print " >>> omitting immediate check from car  <<< ")
+                              ;(print " >>> omitting immediate check from car <<<")
                               (values
-                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],1105);R[" to "]=G(R[" from "],1);")
+                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],105);R[" to "]=G(R[" from "],1);")
                                  bs (del (put regs from 'pair) to))) ;; upgrade to pair
                            (else
-                              ;(if known-type (print " >>> car on unknown type <<< " known-type))
+                              ;(if known-type (print " >>> car on unknown type <<<" known-type))
                               ;; check that it is a pointer and an object of correct type
                               (values
-                                 (list "assert(pairp(R[" from "]),R[" from "],1105);R[" to "]=G(R[" from "],1);")
+                                 (list "assert(pairp(R[" from "]),R[" from "],105);R[" to "]=G(R[" from "],1);")
                                  bs (del (put regs from 'pair) to)))))))
                (cons 169 ;; cdr ob to
                   (λ (bs regs fail)
@@ -432,18 +406,18 @@
                          (known-type (get regs from #false)))
                         (cond
                            ((eq? 'pair known-type)
-                              ;(print " >>> omitting pair check from cdr <<< ")
+                              ;(print " >>> omitting pair check from cdr <<<")
                               (values (list "R[" to "]=G(R[" from "],2);") bs (del regs to)))
                            ((eq? 'alloc known-type)
-                              ;(print " >>> omitting immediate check from cdr  <<< ")
+                              ;(print " >>> omitting immediate check from cdr <<<")
                               (values
-                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],1169);R[" to "]=G(R[" from "],2);")
+                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],169);R[" to "]=G(R[" from "],2);")
                                  bs (del (put regs from 'pair) to))) ;; upgrade to pair
                            (else
-                              ;(if known-type (print " >>> cdr on unknown type <<< " known-type))
+                              ;(if known-type (print " >>> cdr on unknown type <<<" known-type))
                               ;; check that it is a pointer and an object of correct type
                               (values
-                                 (list "assert(pairp(R[" from "]),R[" from "],1169);R[" to "]=G(R[" from "],2);")
+                                 (list "assert(pairp(R[" from "]),R[" from "],169);R[" to "]=G(R[" from "],2);")
                                  bs (del (put regs from 'pair) to)))))))
                (cons 54 ;; eq a b to
                   (λ (bs regs fail)
@@ -451,20 +425,21 @@
                         (values
                            (list "R["to"]=BOOL(R["a"]==R["b"]);")
                            bs regs))))
-               (cons (+ 16 (<< 0 6)) (cify-jump-imm 0))
-               (cons (+ 16 (<< 1 6)) (cify-jump-imm null))
-               (cons (+ 16 (<< 2 6)) (cify-jump-imm #true))
-               (cons (+ 16 (<< 3 6)) (cify-jump-imm #false))
+               (cons 16 (cify-jump-imm "F(0)"))
+               (cons 80 (cify-jump-imm "INULL"))
+               (cons 144 (cify-jump-imm "ITRUE"))
+               (cons 208 (cify-jump-imm "IFALSE"))
                (cons 55 cify-fxband)
                (cons 56 cify-fxbor)
                (cons 57 cify-fxbxor)
                (cons 58 cify-fxright)
+               (cons 59 cify-lraw)
                (cons 63 cify-sysprim)
                ;; below are lower primop + extra info (like 13=ldi<what>)
                (cons 13 ;; ldz r
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))
-                        (values (list "R["res"]=F(0);") (cddr bs) (put regs res 'null)))))
+                        (values (list "R["res"]=F(0);") (cddr bs) (put regs res 'fixnum)))))
                (cons 77 ;; ldn r
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))

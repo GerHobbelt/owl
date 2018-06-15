@@ -33,8 +33,7 @@
       type-pair
       type-vector-dispatch
       type-vector-leaf
-      type-vector-raw
-      type-ff-black-leaf
+      type-bytevector
       type-tuple
       type-symbol
       type-const
@@ -231,24 +230,20 @@
       ;; let sequence
       (define-syntax lets
          (syntax-rules (<=)
-            ((lets ((var val) . rest-bindings) exp . rest-exps)
-               ;; (var val) ≡ ((λ (var) ...) val)
-               ((lambda (var) (lets rest-bindings exp . rest-exps)) val))
-            ((lets ((var ... (op . args)) . rest-bindings) exp . rest-exps)
+            ((lets ((name val) . bindings) exp . exps)
+               ;; (name val) ≡ ((λ (name) ...) val)
+               ((lambda (name) (lets bindings exp . exps)) val))
+            ((lets (((name . names) <= val) . bindings) exp . exps)
+               (bind val
+                  (lambda (name . names) (lets bindings exp . exps))))
+            ((lets ((name1 name2 ... (op . args)) . bindings) exp . exps)
                ;; (v1 v2 .. vn (op a1 .. an)) ≡ call-with-values, this is a generalization of the above
                (receive (op . args)
-                  (lambda (var ...)
-                     (lets rest-bindings exp . rest-exps))))
-            ((lets ((var ... node) . rest-bindings) exp . rest-exps)
-               (bind node
-                  (lambda (var ...)
-                     (lets rest-bindings exp . rest-exps))))
-            ((lets (((name ...) <= value) . rest) . code)
-               (bind value
-                  (lambda (name ...)
-                     (lets rest . code))))
-            ((lets ()) exp)
-            ((lets () exp . rest) (begin exp . rest))))
+                  (lambda (name1 name2 ...) (lets bindings exp . exps))))
+            ((lets ((name1 name2 ... val) . bindings) exp . exps)
+               (bind val
+                  (lambda (name1 name2 ...) (lets bindings exp . exps))))
+            ((lets () exp . exps) (begin exp . exps))))
 
       ;; the internal one is handled by begin. this is just for toplevel.
       (define-syntax define-values
@@ -413,8 +408,7 @@
       (define type-pair              1)
       (define type-vector-dispatch  15)
       (define type-vector-leaf      11)
-      (define type-vector-raw       19) ;; see also TBVEC in c/ovm.c
-      (define type-ff-black-leaf     8)
+      (define type-bytevector       19) ;; see also TBVEC in c/ovm.c
       (define type-symbol            4)
       (define type-tuple             2)
       (define type-rlist-node       14)
@@ -446,8 +440,8 @@
       ;; (size  x)         n                       n               #false
       ;; (sizeb x)       #false                    n               #false
 
-      (define (immediate? obj) (eq? (size obj) #f))
-      (define allocated? size)
+      (define (immediate? obj) (eq? (fxband obj 0) 0))
+      (define (allocated? obj) (lesser? (fxbor 0 obj) obj))
       (define raw? sizeb)
       (define (record? x) (eq? type-record (type x)))
 

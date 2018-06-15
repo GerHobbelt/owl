@@ -6,7 +6,7 @@
 (define (index lst)
    (let loop ((lst lst) (ff empty))
       (if (null? lst)
-         null
+         #n
          (lets
             ((x lst lst)
              (n (get ff x 0)))

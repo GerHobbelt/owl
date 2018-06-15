@@ -55,10 +55,9 @@
       write
       writer-to         ;; names → (port val → bool + io)
       write-to          ;; port val → bool
-      write-bytes       ;; port byte-list   → bool
-      write-byte-vector ;; port byte-vector → bool
-      get-block         ;; fd n → bvec | eof | #false
-      write-really
+      write-bytes       ;; port byte-list  → bool
+      write-bytevector  ;; bytevector port → bool
+      read-bytevector   ;; n port → bvec | eof | #false
       try-get-block     ;; fd n block? → bvec | eof | #false=error | #true=block
       byte-stream->lines ;; (byte ...) → null | ll of string, read error is just null, each [\r]\n removed
       lines              ;; fd → null | ll of string, read error is just null, each [\r]\n removed
@@ -81,6 +80,7 @@
       (prefix (owl sys) sys-)
       (owl ff)
       (owl equal)
+      (owl bytevector)
       (owl vector)
       (owl render)
       (owl list)
@@ -97,10 +97,6 @@
    (begin
 
       ;;; Writing
-
-      ;; #[0 1 .. n .. m] n → #[n .. m]
-      (define (bvec-tail bvec n)
-         (raw (map (H ref bvec) (iota n 1 (sizeb bvec))) type-vector-raw))
 
       (define (try-write-block fd bvec len)
          ;; stdio ports are in blocking mode, so poll always
@@ -121,7 +117,7 @@
                            (interact 'iomux (tuple 'write fd))
                            (loop))
                         (wrote ;; partial write
-                           (write-really (bvec-tail bvec wrote) fd))
+                           (write-really (bytevector-copy bvec wrote) fd))
                         (else #false))))))) ;; write error or other failure
 
       ;; how many bytes (max) to add to output buffer before flushing it to the fd
@@ -167,22 +163,20 @@
                res))) ;; is #false, eof or bvec
 
       ;; get a block of size up to block size
-      (define (get-block fd block-size)
-         (try-get-block fd block-size #true))
+      (define read-bytevector
+         (case-lambda
+            ((size)
+               (try-get-block stdin size #t))
+            ((size port)
+               (try-get-block port size #t))))
 
       (define (maybe-get-block fd block-size)
          (try-get-block fd block-size #false))
 
-      (define (bvec-append a b)
-         (list->byte-vector
-            (append
-               (vector->list a)
-               (vector->list b))))
-
       ;; get a block of size block-size, wait more if less is available and not eof
       ;; fd n → eof-seen? eof|#false|bvec
       (define (get-whole-block fd block-size)
-         (let ((this (get-block fd block-size)))
+         (let ((this (read-bytevector block-size fd)))
             (cond
                ((eof-object? this) (values #true this))
                ((not this) (values #false this))
@@ -199,7 +193,7 @@
                                  ;; reads, but block size is tiny in file->vector making this
                                  ;; irrelevant
                                  (values eof-seen?
-                                    (bvec-append this tail)))))))))))
+                                    (bytevector-append this tail)))))))))))
 
       ;;; TCP sockets
 
@@ -260,7 +254,7 @@
          (cond
             ((not (eq? (type port) type-fix+))
                #false)
-            ((and (eq? (type ip) type-vector-raw) (eq? 4 (sizeb ip))) ;; silly old formats
+            ((and (bytevector? ip) (eq? (bytevector-length ip) 4)) ;; silly old formats
                (sys-port->non-blocking (sys-prim 29 ip port socket-type-tcp)))
             (else
                ;; note: could try to autoconvert formats to be a bit more user friendly
@@ -288,7 +282,7 @@
          (let loop ((ll ll) (n 0))
             (cond
                ((pair? ll)
-                  (if (byte-vector? (car ll))
+                  (if (bytevector? (car ll))
                      (if (write-really (car ll) fd)
                         (loop (cdr ll) (+ n (sizeb (car ll))))
                         (values ll n))
@@ -348,17 +342,25 @@
          (cond
             ((eq? len output-buffer-size)
                (and
-                  (write-really (raw (reverse out) type-vector-raw) fd)
+                  (write-really (list->bytevector (reverse out)) fd)
                   (printer lst 0 null fd)))
             ((null? lst)
-               (write-really (raw (reverse out) type-vector-raw) fd))
+               (write-really (list->bytevector (reverse out)) fd))
             (else
                ;; avoid dependency on generic math in IO
                (lets ((len _ (fx+ len 1)))
                   (printer (cdr lst) len (cons (car lst) out) fd)))))
 
-      (define (write-byte-vector port bvec)
-         (write-really bvec port))
+      (define write-bytevector
+         (case-lambda
+            ((vec)
+               (write-really vec stdout))
+            ((vec port)
+               (write-really vec port))
+            ((vec port top)
+               (write-really (bytevector-copy vec top) port))
+            ((vec port top end)
+               (write-really (bytevector-copy vec top end) port))))
 
       (define (write-bytes port byte-list)
          (printer byte-list 0 null port))
@@ -428,23 +430,14 @@
                   (read-blocks port
                      (cons val buff))))))
 
-      (define (explode-block block tail)
-         (let ((end (sizeb block)))
-            (if (eq? end 0)
-               tail
-               (let loop ((pos (- end 1)) (tail tail))
-                  (if (eq? pos -1)
-                     tail
-                     (loop (- pos 1) (cons (ref block pos) tail)))))))
-
       (define (read-blocks->list port buff)
-         (let ((block (get-block port 4096)))
+         (let ((block (read-bytevector 4096 port)))
             (cond
                ((eof-object? block)
-                  (foldr explode-block null (reverse buff)))
+                  (bytevectors->list (reverse buff)))
                ((not block)
                   ;; read error
-                  (foldr explode-block null (reverse buff)))
+                  (bytevectors->list (reverse buff)))
                (else
                   (read-blocks->list port (cons block buff))))))
 
@@ -483,7 +476,7 @@
          (let loop ((ll (vec-leaves vec)))
             (cond
                ((pair? ll)
-                  (write-byte-vector port (car ll))
+                  (write-really (car ll) port)
                   (loop (cdr ll)))
                ((null? ll) #true)
                (else (loop (ll))))))
@@ -504,7 +497,7 @@
       (define (stream-chunk buff pos tail)
          (if (eq? pos 0)
             (cons (ref buff pos) tail)
-            (lets ((next x (fx- pos 1)))
+            (lets ((next _ (fx- pos 1)))
                (stream-chunk buff next
                   (cons (ref buff pos) tail)))))
 
@@ -513,7 +506,7 @@
 
       (define (block-stream fd tail?)
          (λ ()
-            (let ((block (get-block fd stream-block-size)))
+            (let ((block (read-bytevector stream-block-size fd)))
                (cond
                   ((eof-object? block)
                      (if tail?
@@ -589,7 +582,7 @@
          (let loop ((bs bs) (n stream-block-size) (out null))
             (cond
                ((eq? n 0)
-                  (if (write-really (list->byte-vector (reverse out)) fd)
+                  (if (write-really (list->bytevector (reverse out)) fd)
                      (loop bs stream-block-size null)
                      #false))
                ((pair? bs)
@@ -743,8 +736,7 @@
          (quotient (sys-clock_gettime (sys-CLOCK_REALTIME)) 1000000))
 
       (define (_poll2 rs ws timeout)
-         (let ((res (sys-prim 43 rs ws timeout)))
-            (values (car res) (cdr res))))
+         (sys-prim 43 rs ws timeout))
 
       (define (muxer-add rs ws alarms mail)
          (tuple-case (ref mail 2)
@@ -770,7 +762,7 @@
                      (muxer rs ws alarms))
                   (lets
                      ((timeout (if (single-thread?) #false 0))
-                      (waked x (_poll2 rs ws timeout)))
+                      ((waked x) <= (_poll2 rs ws timeout)))
                      (cond
                         (waked
                            (lets ((rs ws alarms (wakeup rs ws alarms waked x)))
@@ -789,7 +781,7 @@
                         (lets
                            ((timeout
                               (if (single-thread?) (min *max-fixnum* (- (caar alarms) now)) 0))
-                            (waked x (_poll2 rs ws timeout)))
+                            ((waked x) <= (_poll2 rs ws timeout)))
                            (cond
                               (waked
                                  (lets ((rs ws alarms (wakeup rs ws alarms waked x)))

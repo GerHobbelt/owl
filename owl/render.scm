@@ -13,13 +13,13 @@
       (owl ff)
       (owl tuple)
       (owl function)
-      (owl rlist)
       (owl syscall)
       (owl lazy)
       (owl math)
       (owl port)
       (only (owl symbol) render-symbol symbol?)
-      (only (owl vector) byte-vector? vector? vector->list)
+      (only (owl bytevector) bytevector? bytevector->list)
+      (only (owl vector) vector? vector->list)
       (only (owl math) render-number number?)
       (only (owl string) render-string string?))
 
@@ -68,12 +68,11 @@
                ((symbol? obj)
                   (render-symbol obj tl))
 
-               ;; these are a subclass of vectors in owl
-               ;((byte-vector? obj)
-               ;   (ilist #\# #\u #\8 (render (vector->list obj) tl)))
-
                ((vector? obj)
-                  (cons #\# (render (vector->list obj) tl)))
+                  (cons #\#
+                     (if (bytevector? obj)
+                        (ilist #\u #\8 (render (bytevector->list obj) tl))
+                        (render (vector->list obj) tl))))
 
                ((function? obj)
                   ;; anonimas
@@ -90,7 +89,7 @@
                         (fold
                            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
                            (cons #\] tl)
-                           (iota (size obj) -1 1)))))
+                           (iota (tuple-length obj) -1 1)))))
 
                ((record? obj)
                   (ilist #\# #\{
@@ -98,10 +97,7 @@
                         (fold
                            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
                            (cons #\} tl)
-                           (iota (size obj) -1 1)))))
-
-               ((rlist? obj) ;; fixme: rlist not parsed yet
-                  (ilist #\# #\r (render (rlist->list obj) tl)))
+                           (iota (tuple-length obj) -1 1)))))
 
                ((eq? obj #empty) ;; don't print as #()
                   (ilist #\# #\e #\m #\p #\t #\y tl))
@@ -203,7 +199,9 @@
 
                ((vector? obj)
                   (cons #\#
-                     (ser sh (vector->list obj) k))) ;; <- should convert incrementally!
+                     (if (bytevector? obj)
+                        (ilist #\u #\8 (ser sh (bytevector->list obj) k))
+                        (ser sh (vector->list obj) k)))) ;; <- should convert incrementally!
 
                ((function? obj)
                   (let ((name (getf names obj)))
@@ -221,10 +219,7 @@
                ;         (fold
                ;            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
                ;            (cons 41 tl)
-               ;            (iota (size obj) -1 1)))))
-
-               ((rlist? obj) ;; fixme: rlist not parsed yet
-                  (ilist #\# #\r (ser sh (rlist->list obj) k)))
+               ;            (iota (tuple-length obj) -1 1)))))
 
                ((eq? obj #empty) ;; @() is also valid
                   (ilist #\# #\e #\m #\p #\t #\y (delay (k sh))))

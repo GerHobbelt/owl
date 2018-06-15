@@ -38,7 +38,7 @@
       (values rst (if (eq? vec 0) hd (list->vector hd)) tl)))
 
 (define (explode bvec tail)
-   (append (vec->list bvec) tail))
+   (append (vector->list bvec) tail))
 
 ;; send a stream of known data in chunks, while receiving and and flushing randomly and asynchronously
 ;; fd rst data → (bvec ...)
@@ -58,7 +58,7 @@
                       (reqs (- reqs 1)))
                      (if (eof-object? msg)
                         (io fd rst data left reqs)
-                        (explode msg (io fd rst data (- left (vec-len msg)) reqs))))
+                        (explode msg (io fd rst data (- left (vector-length msg)) reqs))))
                   ;; you have no new email
                   (io fd rst data left reqs))))
          ((and (eq? n 2) (pair? data));; send some data, if left
@@ -72,7 +72,7 @@
          ((and (null? data) (= left 0)) ;; all sent and enough received
             (let loop ((reqs reqs)) ;; read responses to remaining requests
                (if (= reqs 0)
-                  null ;; all done
+                  #n ;; all done
                   (let ((env (wait-mail)))
                      (if (eof-object? (ref env 2)) ;; check that we get an eof now
                         (loop (- reqs 1))

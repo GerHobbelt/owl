@@ -24,7 +24,7 @@
 ;            (tuple vec start end)))
 ;      (liter rand-succ (lets ((ss ms (clock))) (+ (* ss 1000) ms))))
 ;   (λ (t) (lets ((v s e t)) (force (vec-iter-range v s e))))
-;   (λ (t) (lets ((v s e t)) (map (H vec-ref v) (iota s 1 e)))))
+;   (λ (t) (lets ((v s e t)) (map (H vector-ref v) (iota s 1 e)))))
 ;(test ;; vector fold[r]
 ;   (lmap
 ;      (λ (rst)
@@ -33,5 +33,5 @@
 ;             (vec (list->vector (random-numbers rst n n))))
 ;            vec))
 ;      (liter rand-succ (lets ((ss ms (clock))) (+ (* ss 1000) ms))))
-;   (λ (v) (vec-foldr cons null v))
-;   (λ (v) (reverse (vec-fold (λ (a b) (cons b a)) null v))))
+;   (λ (v) (vec-foldr cons #n v))
+;   (λ (v) (reverse (vec-fold (λ (a b) (cons b a)) #n v))))

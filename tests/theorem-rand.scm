@@ -28,21 +28,21 @@
 ; f :: ? → _, keys
 (define (domain x)
    (cond
-      ((rlist? x)  (iota 0 1 (rlen x)))
+      ;((rlist? x)  (iota 0 1 (rlen x)))
       ((list? x)   (iota 0 1 (length x)))
       ((string? x) (iota 0 1 (string-length x)))
-      ((vector? x) (iota 0 1 (vec-len x)))
+      ((vector? x) (iota 0 1 (vector-length x)))
       ((ff? x)     (keys x))
       (else (error "domain: what is " x))))
 
 ; f :: _ → ?, values
 (define (range x)
    (cond
-      ((rlist? x)  (rlist->list x))
+      ;((rlist? x)  (rlist->list x))
       ((list? x)   x)
       ((string? x) (string->list x))
       ((vector? x) (vector->list x))
-      ((ff? x)     (ff-fold (λ (out k v) (cons v out)) null x))
+      ((ff? x)     (ff-fold (λ (out k v) (cons v out)) #n x))
       (else (error "range: what is " x))))
 
 ;; rs (thing_1 ...) def → rs' thing_i | rs def
@@ -95,7 +95,7 @@
              (env (append env-a env-b)))
             (values rs env (if ar br (not br)))))
       ((translate rs a = b)
-         (values rs null (equal? a b)))
+         (values rs #n (equal? a b)))
       ((translate rs ∀ var ∊ gen . rest)
          (lets
             ((rs var (gen rs))
@@ -107,7 +107,7 @@
              (rs env res (translate rs ∀ next ... ∊ gen . rest)))
             (values rs (cons (cons (quote var) var) env) res)))
       ((translate rs term)
-         (values rs null term))))
+         (values rs #n term))))
 
 #| theorem name:
  |   ...
@@ -192,7 +192,7 @@
    (λ (rs)
       (lets ((rs n (rand rs elem-ip)))
          (if (eq? n 0)
-            (values rs null)
+            (values rs #n)
             (lets
                ((rs head (thing rs))
                 (rs tail ((List-of thing) rs)))
@@ -202,7 +202,7 @@
    (λ (rs)
       (lets ((rs n (rand rs elem-ip)))
          (if (eq? n 0)
-            (values rs null)
+            (values rs rnull)
             (lets
                ((rs head (thing rs))
                 (rs tail ((Rlist-of thing) rs)))
@@ -236,7 +236,7 @@
    (C rand #xffff))
 
 (define (String rs)
-   (let loop ((rs rs) (out null))
+   (let loop ((rs rs) (out #n))
       (lets ((rs n (rand rs elem-ip)))
          (if (eq? n 0)
             (values rs (list->string out))
@@ -337,11 +337,11 @@
 
       theorem reverse-fold
          ∀ l ∊ List
-            (reverse l) = (fold (λ (a b) (cons b a)) null l)
+            (reverse l) = (fold (λ (a b) (cons b a)) #n l)
 
       theorem foldr-copy
          ∀ l ∊ List
-            l = (foldr cons null l)
+            l = (foldr cons #n l)
 
       theorem zip-map
          ∀ l ∊ List
@@ -378,7 +378,7 @@
 
       theorem ff-fold-foldr
          ∀ f ∊ (Ff-of Short)
-            (ff-foldr (λ (out k v) (cons k out)) null f) = (reverse (ff-fold (λ (out k v) (cons k out)) null f))
+            (ff-foldr (λ (out k v) (cons k out)) #n f) = (reverse (ff-fold (λ (out k v) (cons k out)) #n f))
 
       theorem sqrt-square
          ∀ a ∊ Nat
@@ -428,21 +428,21 @@
          ∀ a ∊ Byte ∀ r ∊ Rlist
             a = (rcar (rcons a r))
 
-      theorem rlist-rfoldr-copy
-         ∀ r ∊ Rlist
-            r = (rfoldr rcons null r)
+      ;theorem rlist-rfoldr-copy
+      ;   ∀ r ∊ Rlist
+      ;      r = (rfoldr rcons #n r)
 
-      theorem rlist-rfold-reverse
-         ∀ r ∊ Rlist
-            r = (rrev (rfold (λ (o x) (rcons x o)) null r))
+      ;theorem rlist-rfold-reverse
+      ;   ∀ r ∊ Rlist
+      ;      r = (rrev (rfold (λ (o x) (rcons x o)) #n r))
 
-      theorem rlist-set-get-map
-         ∀ r ∊ (Rlist-of Byte)
-            (rmap (λ (x) (+ x 1)) r)
-             = (fold
-                  (lambda (rp i) (rset rp i (+ 1 (rget rp i 'bad))))
-                  r
-                  (iota 0 1 (rlen r)))
+      ;theorem rlist-set-get-map
+      ;   ∀ r ∊ (Rlist-of Byte)
+      ;      (rmap (λ (x) (+ x 1)) r)
+      ;       = (fold
+      ;            (lambda (rp i) (rset rp i (+ 1 (rget rp i 'bad))))
+      ;            r
+      ;            (iota 0 1 (rlen r)))
 
       theorem rlist-convert
          ∀ l ∊ List
@@ -475,7 +475,7 @@
 
       theorem lazy-3
          ∀ n ∊ Byte
-            (reverse (iota 0 1 n)) = (lfoldr cons null (liota 0 1 n))
+            (reverse (iota 0 1 n)) = (lfoldr cons #n (liota 0 1 n))
 
       theorem str-1
          ∀ l ∊ (List-of Short)
@@ -512,10 +512,7 @@
 ))
 
 (define tests
-   (foldr append null
-      (list
-         tests-1
-         tests-2)))
+   (foldr append #n (list tests-1 tests-2)))
 
 
 ;; Practice
@@ -523,7 +520,7 @@
 (define (random-seed)
    (let ((fd (open-input-file "/dev/urandom"))) ;; #false if not there
       (if fd
-         (let ((data (get-block fd 16)))
+         (let ((data (read-bytevector 16 fd)))
             (close-port fd)
             (if (vector? data)
                (vec-fold (λ (n d) (+ d (<< n 8))) 0 data)
@@ -531,7 +528,7 @@
          (time-ms))))
 
 (define (failures rs)
-   (let loop ((rs rs) (tests tests) (failed null))
+   (let loop ((rs rs) (tests tests) (failed #n))
       (if (null? tests)
          (values rs failed)
          (lets ((rs env ok ((cdar tests) rs)))

@@ -14,7 +14,7 @@
 (define sock (car sp))
 (define port (cdr sp))
 
-(define message (render "hello there" null))
+(define message (render "hello there" #n))
 
 (thread 'socket-thread
    (let ((cli (interact sock 'accept)))

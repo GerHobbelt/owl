@@ -6,7 +6,6 @@
 
    (export
       build-closures
-      small-value?
       uncompiled-closure?)
 
    (import
@@ -18,19 +17,11 @@
       (owl tuple)
       (owl list-extra)
       (owl env)
-      (only (owl io) print)
       (owl assemble))
 
    (begin
       (define (ok exp env) (tuple 'ok exp env))
       (define (fail reason) (tuple 'fail reason))
-
-      (define (small-value? val)
-         (or
-            (and (fixnum? val) (< -129 val 128))
-            (eq? val #true)
-            (eq? val #false)
-            (eq? val null)))
 
       (define (value-primop val)
          (and (tuple? val)
@@ -79,19 +70,13 @@
             ((value val)
                (values exp used))
             ((var sym)
-               (if (memq sym used)
-                  (values exp used)
-                  (values exp (cons sym used))))
+               (values exp (if (memq sym used) used (cons sym used))))
             ((branch kind a b then else)
                ; type 4 (binding compare) branches do not closurize then-case
                (lets
                   ((a used (closurize a used #true))
                    (b used (closurize b used #true))
-                   (then used
-                     (closurize then used
-                        (if (eq? 4 kind)
-                           (begin (print "Not closurizing " then) #false)
-                           #true)))
+                   (then used (closurize then used (not (eq? 4 kind))))
                    (else used (closurize else used #true)))
                   (values
                      (tuple 'branch kind a b then else)
@@ -100,8 +85,7 @@
                (closurize-call closurize rator rands used))
             ((lambda formals body)
                (lets
-                  ((body bused
-                     (closurize body null #true))
+                  ((body bused (closurize body null #true))
                    (clos (diff bused formals)))
                   (values
                      (if close?
@@ -110,8 +94,7 @@
                      (union used clos))))
             ((lambda-var fixed? formals body)
                (lets
-                  ((body bused
-                     (closurize body null #true))
+                  ((body bused (closurize body null #true))
                    (clos (diff bused formals)))
                   (values
                      (if close?
@@ -154,8 +137,7 @@
                (if (value-primop rator)
                   (values rator used)
                   (literalize rator used)))
-             (rands used
-               (literalize-list literalize rands used)))
+             (rands used (literalize-list literalize rands used)))
             (values (mkcall rator rands) used)))
 
       (define closure-tag (list 'uncompiled-closure))
@@ -233,6 +215,4 @@
                (ok (cdar lits) env)
                (error "Bad closurize output: "
                   (list 'exp exp 'lits lits)))))
-
 ))
-

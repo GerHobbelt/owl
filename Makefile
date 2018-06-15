@@ -1,10 +1,12 @@
-DESTDIR?=
-PREFIX?=/usr
-BINDIR?=/bin
-MANDIR?=/share/man
-INSTALL?=install
-CFLAGS?=-Wall -O2
-CC?=gcc
+.POSIX:
+
+DESTDIR =
+PREFIX = /usr
+BINDIR = /bin
+MANDIR = /share/man
+INSTALL = install
+CFLAGS = -Wall -O2
+CC = gcc
 
 # owl needs just a single binary
 all owl: bin/ol
@@ -17,72 +19,65 @@ simple-ol: bin/vm
 
 fasl/boot.fasl: fasl/init.fasl
 	# start bootstrapping with the bundled init.fasl image
-	cp fasl/init.fasl fasl/boot.fasl
+	cp $? $@
 
-fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm scheme/*.scm tests/*.scm tests/*.sh
+fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm scheme/*.scm tests/*.scm tests/*.sh owl/*/*.scm
 	# selfcompile boot.fasl until a fixed point is reached
 	@bin/vm fasl/init.fasl -e '(time-ms)' >.start
 	bin/vm fasl/boot.fasl --run owl/ol.scm -s none -o fasl/bootp.fasl
 	@bin/vm fasl/init.fasl -e '(str"bootstrap: "(-(time-ms)(read(open-input-file".start")))"ms\nfasl: "(file-size"fasl/bootp.fasl")"b")'
 	# check that the new image passes tests
-	CC="$(CC)" sh tests/run all bin/vm fasl/bootp.fasl
+	CC='$(CC)' sh tests/run all bin/vm fasl/bootp.fasl
 	# copy new image to ol.fasl if it is a fixed point, otherwise recompile
-	if cmp -s fasl/boot.fasl fasl/bootp.fasl; then mv fasl/bootp.fasl fasl/ol.fasl; else mv fasl/bootp.fasl fasl/boot.fasl && exec make fasl/ol.fasl; fi
+	if cmp -s fasl/boot.fasl fasl/bootp.fasl; then mv fasl/bootp.fasl $@; else mv fasl/bootp.fasl fasl/boot.fasl && exec make $@; fi
 
 ## building just the virtual machine to run fasl images
 
 bin/vm: c/vm.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/vm c/vm.c
-
-bin/diet-vm: c/vm.c
-	diet $(CC) -Os -o bin/diet-vm c/vm.c
-	strip bin/diet-vm
-
-bin/diet-ol: c/diet-ol.c
-	diet $(CC) -O2 -o bin/diet-ol c/diet-ol.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $?
 
 c/_vm.c: c/ovm.c
 	# remove comments and most white-space
-	sed -f bin/compact.sed c/ovm.c >c/_vm.c
+	sed -f bin/compact.sed $? >$@
 
 c/vm.c: c/_vm.c
 	# make a vm without a bundled heap
-	echo 'static void *heap = 0;' | cat - c/_vm.c >c/vm.c
+	echo 'static void *heap = 0;' | cat - $? >$@
 
 manual.md: doc/manual.md owl/*.scm scheme/*.scm
-	bin/find-documentation.sh | cat doc/manual.md - >manual.md
+	bin/find-documentation.sh | cat doc/manual.md - >$@
+
+manual.man: manual.md
+	pandoc $? -s -t man > $@
 
 manual.pdf: manual.md
-	pandoc --latex-engine xelatex -o manual.pdf manual.md
+	pandoc --latex-engine xelatex -o $@ $?
 
 ## building standalone image out of the fixed point fasl image
 
 c/ol.c: fasl/ol.fasl
 	# compile the repl using the fixed point image
-	bin/vm fasl/ol.fasl --run owl/ol.scm -s some -o c/ol.c
-
-c/diet-ol.c: fasl/ol.fasl
-	bin/vm fasl/ol.fasl --run owl/ol.scm -s none -o c/diet-ol.c
+	bin/vm fasl/ol.fasl --run owl/ol.scm -s some -o $@
 
 bin/ol: c/ol.c
 	# compile the real owl repl binary
-	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/olp c/ol.c
-	CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" sh tests/run all bin/olp
-	test -f bin/ol && mv bin/ol bin/ol-old || true
-	mv bin/olp bin/ol
+	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/olp $?
+	CC='$(CC)' CFLAGS='$(CFLAGS)' LDFLAGS='$(LDFLAGS)' sh tests/run all bin/olp
+	test '!' -f $@ || mv $@ bin/ol-old
+	mv bin/olp $@
 
 
 ## running unit tests manually
 
 fasltest: bin/vm fasl/ol.fasl
-	CC="$(CC)" sh tests/run all bin/vm fasl/ol.fasl
+	CC='$(CC)' sh tests/run all bin/vm fasl/ol.fasl
 
 test: bin/ol
-	CC="$(CC)" sh tests/run all bin/ol
+	CC='$(CC)' sh tests/run all bin/ol
 
 random-test: bin/vm bin/ol fasl/ol.fasl
-	CC="$(CC)" sh tests/run random bin/vm fasl/ol.fasl
-	CC="$(CC)" sh tests/run random bin/ol
+	CC='$(CC)' sh tests/run random bin/vm fasl/ol.fasl
+	CC='$(CC)' sh tests/run random bin/ol
 
 
 ## data
@@ -95,10 +90,10 @@ owl/unicode-char-folds.scm:
 ## meta
 
 doc/ol.1.gz: doc/ol.1
-	gzip -9n <doc/ol.1 >doc/ol.1.gz
+	gzip -9n <$? >$@
 
 doc/ovm.1.gz: doc/ovm.1
-	gzip -9n <doc/ovm.1 >doc/ovm.1.gz
+	gzip -9n <$? >$@
 
 install: bin/ol bin/vm doc/ol.1.gz doc/ovm.1.gz
 	-mkdir -p $(DESTDIR)$(PREFIX)$(BINDIR)
@@ -121,14 +116,7 @@ clean:
 	-rm -f tmp/* .start
 	-rm -f bin/ol bin/ol-old bin/vm
 
-# make a standalone binary against dietlibc for release
-standalone: c/ol.c c/vm.c
-	diet gcc -O2 -o bin/vm c/vm.c
-	strip --strip-all bin/vm
-	diet gcc -O2 -o bin/ol c/ol.c
-	strip --strip-all bin/ol
-
 fasl-update: fasl/ol.fasl
 	cp fasl/ol.fasl fasl/init.fasl
 
-.PHONY: all clean fasl-update fasltest install owl random-test simple-ol standalone test uninstall
+.PHONY: all clean fasl-update fasltest install owl random-test simple-ol test uninstall

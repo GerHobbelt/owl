@@ -250,7 +250,8 @@
       (only (owl variable) link-variable)
       (owl string)
       (owl primop)
-      (owl math-extra)
+      (owl math extra)
+      (owl bytevector)
       (owl vector)
       (owl port)
       (only (owl symbol) string->symbol symbol? symbol=? symbol->string)
@@ -305,17 +306,12 @@
       ;; just for compatibility, as lists are always immutable in owl
       (define list-copy self)
 
-      ;; a silly non-primitive apply
-      ;(define (apply func l)
-      ;   (if (null? l)
-      ;      (func)
-      ;      (lets ((a l l)) (if (null? l) (func a)
-      ;      (lets ((b l l)) (if (null? l) (func a b)
-      ;      (lets ((c l l)) (if (null? l) (func a b c)
-      ;      (lets ((d l l)) (if (null? l) (func a b c d)
-      ;      (lets ((e l l)) (if (null? l) (func a b c d e)
-      ;      (lets ((f l l)) (if (null? l) (func a b c d e f)
-      ;         (error "apply: too many arguments: " (ilist a b c d e f l))))))))))))))))
+      (define make-bytevector
+         (case-lambda
+            ((n)
+               (list->bytevector (make-list n 0)))
+            ((n val)
+               (list->bytevector (make-list n val)))))
 
       (define floor-remainder modulo)
       (define truncate-quotient quotient)
@@ -363,7 +359,7 @@
       (define textual-port? port?)
 
       (define (newline . port)
-         (write-really '#(#\newline) (if (null? port) stdout (car port))))
+         (write-bytevector (bytevector #\newline) (if (null? port) stdout (car port))))
 
       (define-syntax call-with-values
          (syntax-rules ()
@@ -396,6 +392,10 @@
             ((let*-values () . rest)
                (begin . rest))))
 
+      (define-syntax let-values
+         (syntax-rules ()
+            ((let-values . stuff) (let*-values . stuff))))
+
       (define-syntax let*
          (syntax-rules ()
             ((let* . stuff) (lets . stuff))))
@@ -403,10 +403,8 @@
       (define-missing-bad write-u8)
       (define-missing-bad write-string)
       (define-missing-bad write-char)
-      (define-missing-bad write-bytevector)
       (define-missing-bad with-exception-handler)
       (define-missing-bad vector-set!)
-      (define-missing-bad vector-map)
       (define-missing-bad vector-for-each)
       (define-missing-bad vector-fill!)
       (define-missing-bad vector-copy!)
@@ -429,7 +427,6 @@
       (define-missing-bad read-error?)
       (define-missing-bad read-char)
       (define-missing-bad read-bytevector!)
-      (define-missing-bad read-bytevector)
       (define-missing-bad raise-continuable)
       (define-missing-bad raise)
       (define-missing-bad peek-u8)
@@ -442,10 +439,8 @@
       (define-missing-bad open-input-string)
       (define-missing-bad open-input-bytevector)
       (define-missing-bad make-parameter)
-      (define-missing-bad make-bytevector)
       (define-missing-bad list-set!)
       (define-missing-bad letrec-syntax)
-      (define-missing-bad let-values)
       (define-missing-bad let-syntax)
       (define-missing-bad input-port?)
       (define-missing-bad input-port-open?)
@@ -466,12 +461,6 @@
       (define-missing-bad close-input-port)
       (define-missing-bad char-ready?)
       (define-missing-bad call-with-port)
-      (define-missing-bad bytevector?)
       (define-missing-bad bytevector-u8-set!)
-      (define-missing-bad bytevector-u8-ref)
-      (define-missing-bad bytevector-length)
       (define-missing-bad bytevector-copy!)
-      (define-missing-bad bytevector-copy)
-      (define-missing-bad bytevector-append)
-      (define-missing-bad bytevector)
 ))
