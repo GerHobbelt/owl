@@ -200,18 +200,18 @@
          (let loop ((rl rl) (d 0) (dp 1) (pos pos))
             (node-case rl
                ((snd tree rl)
-                  (lets ((posp u (fx- pos d)))
-                     (if u
-                        (pick tree pos d)
-                        (loop rl d dp posp))))
+                  (lets ((posp u (fxsub pos d)))
+                     (if (eq? u 0)
+                        (loop rl d dp posp)
+                        (pick tree pos d))))
                ((fst tree rl)
                   (lets
                      ((d dp)
                       (dp _ (fx+ dp dp))
-                      (posp u (fx- pos d)))
-                     (if u
-                        (pick tree pos d)
-                        (loop rl d dp posp))))
+                      (posp u (fxsub pos d)))
+                     (if (eq? u 0)
+                        (loop rl d dp posp)
+                        (pick tree pos d))))
                ((null) def))))
 
       ;; rset is rget + path copying
@@ -228,19 +228,18 @@
          (let loop ((rl rl) (d 0) (dp 1) (pos pos))
             (node-case rl
                ((snd tree rl)
-                  (lets ((posp u (fx- pos d)))
-                     (if u
-                        (snd (set tree pos d val) rl)
-                        (snd tree
-                           (loop rl d dp posp)))))
+                  (lets ((posp u (fxsub pos d)))
+                     (if (eq? u 0)
+                        (snd tree (loop rl d dp posp))
+                        (snd (set tree pos d val) rl))))
                ((fst tree rl)
                   (lets
                      ((d dp)
                       (dp _ (fx+ dp dp))
-                      (posp u (fx- pos d)))
-                     (if u
-                        (fst (set tree pos d val) rl)
-                        (fst tree (loop rl d dp posp)))))
+                      (posp u (fxsub pos d)))
+                     (if (eq? u 0)
+                        (fst tree (loop rl d dp posp))
+                        (fst (set tree pos d val) rl))))
                ((null) rl))))
 
       ;;; fold from left

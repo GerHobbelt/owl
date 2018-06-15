@@ -97,10 +97,8 @@
       ;; walk over raw string using primops and look for bytes > 127
       (define (high-point? str pos)
          (if (lesser? (ref str pos) 128)
-            (lets ((pos underflow? (fx- pos 1)))
-               (if underflow?
-                  #false
-                  (high-point? str pos)))
+            (lets ((pos underflow (fxsub pos 1)))
+               (and (eq? underflow 0) (high-point? str pos)))
             #true))
 
       ;; utf-8 decode if necessary (avoids some constant overhead, which is useful if there are 2 quadriollion args)

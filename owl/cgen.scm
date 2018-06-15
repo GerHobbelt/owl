@@ -120,7 +120,7 @@
          (lets ((a b r o bs (get4 (cdr bs))))
             (values
                ;; res is shifted down, so there is room for an overflow bit
-               (list "{hval r=immval(R["a"])+immval(R["b"]);R["o"]=BOOL(r>>FBITS);R["r"]=F(r);}")
+               (list "{hval r=immval(R["a"])+immval(R["b"]);R["o"]=F(r>>FBITS);R["r"]=F(r);}")
                bs (put (put regs r 'fixnum) o 'bool))))
 
       ; fxband a b r
@@ -152,7 +152,7 @@
       (define (cify-fxsub bs regs fail)
          (lets ((a b r u bs (get4 (cdr bs))))
             (values
-               (list "{hval r=immval(R["a"])-immval(R["b"]);R["u"]=BOOL(1<<FBITS&r);R["r"]=F(r);}")
+               (list "{hval r=immval(R["a"])-immval(R["b"]);R["u"]=F(r>>FBITS&1);R["r"]=F(r);}")
                bs (put (put regs r 'fixnum) u 'bool))))
 
       ; fx>> x n hi lo
@@ -325,6 +325,7 @@
                      (values
                         (list "error(17,ob,F(acc));")
                         null regs)))
+               (cons 21 cify-fxsub)
                (cons 22 cify-fxadd)
                (cons 23 cify-mkt)
                (cons 24 ;; ret r == call R3 with 1 argument at Rr
@@ -359,7 +360,6 @@
                               (drop bs jump-len) regs)
                            regs))))
                (cons 39 cify-fxmul)
-               (cons 40 cify-fxsub)
                (cons 44 ;; less a b r
                   (λ (bs regs fail)
                      (lets ((a b to bs (get3 (cdr bs))))

@@ -267,18 +267,18 @@
       (define-syntax sub-small->pick-sign
          (syntax-rules ()
             ((sub-small->pick-sign a b)
-               (lets ((r uf? (fx- a b)))
-                  (if uf?
+               (lets ((r u (fxsub a b)))
+                  (if (eq? u 0)
+                     r
                      (lets ((r _ (fx- b a))) ;; could also fix here by adding or bitwise
-                        (to-fix- r))
-                     r)))))
+                        (to-fix- r)))))))
 
       ; bignum - fixnum -> either
       (define (sub-big-number a b leading?)
-         (lets ((r underflow? (fx- (ncar a) b)))
+         (lets ((r underflow (fxsub (ncar a) b)))
             (cond
-               (underflow?
-                  (let ((tail (sub-big-number (ncdr a) 1 #false)))
+               ((not (eq? underflow 0))
+                  (let ((tail (sub-big-number (ncdr a) underflow #f)))
                      (cond
                         (tail (ncons r tail))   ; otherwise tail went to 0
                         (leading? r)
@@ -304,31 +304,26 @@
 
       ; substract from a, which must be bigger
 
-      (define (sub-digits a b borrow? leading?)
+      (define (sub-digits a b borrow leading?)
          (cond
             ((eq? a null)
                #false)
             ((eq? b null)
-               (if borrow?
-                  (sub-big-number a 1 leading?)
-                  a))
+               (if (eq? borrow 0)
+                  a
+                  (sub-big-number a borrow leading?)))
             (else
-               (lets ((r u? (fx- (ncar a) (ncar b))))
-                  (if borrow?
-                     (lets ((r u2? (fx- r 1)))
-                        (let ((tail
-                           (cond
-                              (u? (sub-digits (ncdr a) (ncdr b) #true #false))
-                              (u2? (sub-digits (ncdr a) (ncdr b) #true #false))
-                              (else
-                                 (sub-digits (ncdr a) (ncdr b) #false #false)))))
+               (lets ((r u (fxsub (ncar a) (ncar b))))
+                  (if (not (eq? borrow 0))
+                     (lets ((r u2 (fxsub r 1)))
+                        (let ((tail (sub-digits (ncdr a) (ncdr b) (fxbor u u2) #f)))
                            (cond
                               (tail (ncons r tail))
                               (leading? r)
                               ((eq? r 0) #false)
                               (else (ncons r null)))))
 
-                     (let ((tail (sub-digits (ncdr a) (ncdr b) u? #false)))
+                     (let ((tail (sub-digits (ncdr a) (ncdr b) u #f)))
                         (cond
                            (tail (ncons r tail))
                            (leading? r)
@@ -341,13 +336,13 @@
       (define (sub-big a b)
          (cond
             ((big-less a b #false)
-               (let ((neg (sub-digits b a #false #true)))
+               (let ((neg (sub-digits b a 0 #t)))
                   (cond
                      ((eq? neg 0) neg)
                      ((eq? (type neg) type-fix+) (to-fix- neg))
                      (else (to-int- neg)))))
             (else
-               (sub-digits a b #false #true))))
+               (sub-digits a b 0 #t))))
 
       ; add bits, output is negative
 
