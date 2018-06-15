@@ -97,6 +97,14 @@
                      (+ (* n base) d))))
             0 digits))
 
+      (define get-exactness ;; just for Scheme compatibility
+         (get-either
+            (get-parses
+               ((skip (get-imm #\#))
+                (skip (get-either (get-imm #\e) (get-imm #\i))))
+               #t)
+            (get-epsilon #f)))
+
       (define get-sign
          (one-of (get-imm 43) (get-imm 45) (get-epsilon 43)))
 
@@ -108,14 +116,17 @@
                (cons #\d 10)
                (cons #\x 16))))
 
-      ; fixme, # and cooked later
-      (define get-base
-         (one-of
-            (get-parses
-               ((skip (get-imm #\#))
-                (char (get-byte-if (λ (x) (getf bases x)))))
-               (getf bases char))
-            (get-epsilon 10)))
+      (define get-exactness-base
+         (get-parses
+            ((skip get-exactness)
+             (base (get-either
+               (get-parses
+                  ((skip (get-imm #\#))
+                   (char (get-byte-if (λ (x) (getf bases x)))))
+                  (getf bases char))
+               (get-epsilon 10)))
+             (skip get-exactness))
+            base))
 
       (define (get-natural base)
          (get-parses
@@ -161,7 +172,7 @@
       ;; a sub-rational (other than as decimal notation) number
       (define get-number-unit
          (get-parses
-            ((base get-base) ;; default 10
+            ((base get-exactness-base) ;; default 10
              (val (get-number-in-base base)))
             val))
 
@@ -327,7 +338,7 @@
 
       ;; most of these are to go via type definitions later
       (define get-funny-word
-         (one-of
+         (get-either
             (get-word "..." '...)
             (get-parses
                ((skip (get-imm #\#))
@@ -357,7 +368,7 @@
                (get-list-of
                   (get-parses
                      ((skip maybe-whitespace)
-                      (base get-base)
+                      (base get-exactness-base)
                       (val (get-natural base)))
                      val))))
             (raw fields type-bytevector)))
