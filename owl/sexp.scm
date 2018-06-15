@@ -77,12 +77,11 @@
 
       (define digit-values
          (list->ff
-            (foldr append null
-               (list
-                  (map (lambda (d) (cons d (- d 48))) (iota 48 1 58))  ;; 0-9
-                  (map (lambda (d) (cons d (- d 55))) (iota 65 1 71))  ;; A-F
-                  (map (lambda (d) (cons d (- d 87))) (iota 97 1 103)) ;; a-f
-                  ))))
+            (append
+               (map (λ (d) (cons d (- d 48))) (iota 48 1 58))  ;; 0-9
+               (map (λ (d) (cons d (- d 55))) (iota 65 1 71))  ;; A-F
+               (map (λ (d) (cons d (- d 87))) (iota 97 1 103)) ;; a-f
+               )))
 
       (define (digit-char? base)
          (if (eq? base 10)
@@ -92,7 +91,7 @@
       (define (bytes->number digits base)
          (fold
             (λ (n digit)
-               (let ((d (get digit-values digit #false)))
+               (let ((d (getf digit-values digit)))
                   (if (or (not d) (>= d base))
                      (error "bad digit " digit)
                      (+ (* n base) d))))
@@ -247,7 +246,7 @@
              (skip maybe-whitespace)
              (tail
                (get-either
-                  (get-parses ((rp (get-imm 41))) null)
+                  (get-parses ((rp (get-imm 41))) #n)
                   (get-parses
                      ((dot (get-imm 46))
                       (fini parser)
@@ -302,9 +301,9 @@
             ((type
                (get-either
                   (get-parses ((_ (get-imm 44)) (_ (get-imm 64))) 'splice) ; ,@
-                  (get-byte-if (λ (x) (get quotations x #false)))))
+                  (get-byte-if (λ (x) (getf quotations x)))))
              (value parser))
-            (list (get quotations type #false) value)))
+            (list (getf quotations type) value)))
 
       (define get-named-char
          (one-of
@@ -336,14 +335,13 @@
                   (one-of
                      (get-word "true" #true)    ;; get the longer ones first if present
                      (get-word "false" #false)
-                     (get-word "null" '())
+                     (get-word "null" #null)
                      (get-word "empty" #empty)
-                     (get-word "n" '())
+                     (get-word "n" #null)
                      (get-word "t" #true)
                      (get-word "f" #false)
                      (get-word "T" #true)
                      (get-word "F" #false)
-                     (get-word "e" #empty)
                      (get-parses
                         ((bang (get-imm #\!))
                          (line get-rest-of-line))
