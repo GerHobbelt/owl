@@ -1077,7 +1077,7 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          A2 = G(A0, ip[1]);
          NEXT(3);
       case 34: /* FIXME: remove after fasl update */
-      case 2: /* jmp-nargs a hi li */
+      case 2: /* jmp-nargs a hi lo */
          if (acc != *ip)
             ip += ip[1] << 8 | ip[2];
          NEXT(3);
@@ -1104,7 +1104,9 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          if (A0 == A1)
             ip += ip[3] << 8 | ip[2];
          NEXT(4);
-      case 9: A1 = A0; NEXT(2);
+      case 9:
+         A1 = A0;
+         NEXT(2);
       case 10: /* ldfix n to, encoding: nnnnnnnn nsoooooo (num-1/sign/op) */
          A1 = ((hval)*ip << 9) + (op << 1) + F(1) - 20;
          NEXT(2);
