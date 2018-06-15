@@ -7,7 +7,8 @@
       zip fold foldr map for-each
       memq assq last
       fold-map foldr-map
-      append reverse
+      append concatenate
+      reverse
       filter remove
       every any
       unfold
@@ -137,25 +138,25 @@
          (last '(1 2 3) 'a) = 3
          (last '() 'a) = 'a)
 
-      (define (app a b app)
+      (define (append2 a b)
          (if (null? a)
             b
-            (cons (car a) (app (cdr a) b app))))
+            (cons (car a) (append2 (cdr a) b))))
 
-      (define (appl l appl)
-         (if (null? (cdr l))
-            (car l)
-            (app (car l) (appl (cdr l) appl) app)))
+      ;; list-of-lists -> list, SRFI-1
+      (define (concatenate lst)
+         (if (pair? lst)
+            (if (null? (cdr lst))
+               (car lst) ; don't recurse down the list just to append nothing
+               (append2 (car lst) (concatenate (cdr lst))))
+            lst))
 
       ;; append list ... -> list', join lists
       ;;    (append '(1) '() '(2 3)) = '(1 2 3)
       (define append
          (case-lambda
-            ((a b) (app a b app))
-            ((a b . cs) (app a (app b (appl cs appl) app) app))
-            ((a) a)
-            (() #n)))
-
+            ((a b) (append2 a b))
+            (lst (concatenate lst))))
 
       (example
          (append '(1 2 3) '(a b c)) = '(1 2 3 a b c))
