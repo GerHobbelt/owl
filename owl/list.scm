@@ -1,7 +1,7 @@
 (define-library (owl list)
 
    (export
-      null pair? null?
+      pair? null?
       caar cadr cdar cddr
       list?
       zip fold foldr map for-each
@@ -25,9 +25,6 @@
       (only (owl syscall) error))
 
    (begin
-
-      ;; constants are always inlined, so you pay just one byte of source for readability
-      (define null '())
 
       ;; any -> bool
       (define (pair? x) (eq? type-pair (type x)))

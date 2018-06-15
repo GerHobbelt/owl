@@ -24,7 +24,7 @@
             found)
          (else
             #false)))
-   (let ((res (walk exp pat null)))
+   (let ((res (walk exp pat #n)))
       (if res
          (list->tuple res)
          #false)))
@@ -64,7 +64,7 @@
       (maybe-put 'examples (examples prev-comments))))
 
 (define (add-comment-metadatas meta path)
-   (let loop ((ls (lines (open-input-file path))) (cs null) (metas meta))
+   (let loop ((ls (lines (open-input-file path))) (cs #n) (metas meta))
       (lets ((line ls (uncons ls #false)))
          (if line
             (cond
@@ -72,7 +72,7 @@
                   (loop ls (cons (s/^ *;; // line) cs) metas))
                ((m/^ *\(define / line) ;) happy paren balancer
                   (let ((name (s/^ *\(define \(?([^ ]+).*/\1/ line))) ; ))
-                     (loop ls null
+                     (loop ls #n
                         (lets
                             ((name (string->symbol name))
                              (info (getf metas name)))
@@ -81,7 +81,7 @@
                                   (metadata-entry info name line (reverse cs)))
                                metas)))))
                (else
-                  (loop ls null metas)))
+                  (loop ls #n metas)))
             metas))))
 
 (define safe-chars
@@ -100,7 +100,7 @@
                ((<= #\A char #\Z) (cons char tl))
                ((getf safe-chars char) (cons char tl))
                (else (render (str "&#" char ";") tl))))
-         null
+         #n
          (string->list s))))
 
 (define (export? x)
@@ -126,7 +126,7 @@
             (lambda (ff exp)
                (put ff exp (put #empty 'name exp)))
              #empty exps)))
-      (fold add-defn-metadata meta (or body null))))
+      (fold add-defn-metadata meta (or body #n))))
 
 ;; sexp -> #f | (libname . initial-metadata-ff)
 (define (maybe-tada-module sexp)
@@ -149,7 +149,7 @@
 
 (define (meta-of sym ms)
    (cond
-      ((null? ms) null)
+      ((null? ms) ms)
       ((equal? (symbol->string sym) (caar ms))
          (cdar ms))
       (else
@@ -178,7 +178,7 @@
             (lambda (_ name info)
                (lets
                   ((args (getf info 'args))
-                   (examples (get info 'examples null))
+                   (examples (get info 'examples #n))
                    (desc (getf info 'description)))
                   (print
                      (html-safe
@@ -194,5 +194,5 @@
                       examples)))
             #f (cdr node))
          (print))
-      (reverse (fold tada-add null (cdr args))))
+      (reverse (fold tada-add #n (cdr args))))
    0)
