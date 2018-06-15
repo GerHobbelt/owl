@@ -186,13 +186,13 @@
          (let loop ((rl rl) (d 0) (dp 1) (n 0))
             (node-case rl
                ((snd tree rl)
-                  (lets ((n o (fx+ n d)))
+                  (lets ((n _ (fx+ n d)))
                      (loop rl d dp n)))
                ((fst tree rl)
                   (lets
                      ((d dp)
                       (dp _ (fx+ dp dp))
-                      (n o (fx+ n d)))
+                      (n _ (fx+ n d)))
                      (loop rl d dp n)))
                ((null) n))))
 
@@ -236,7 +236,7 @@
                ((fst tree rl)
                   (lets
                      ((d dp)
-                      (dp o (fx+ dp dp))
+                      (dp _ (fx+ dp dp))
                       (posp u (fx- pos d)))
                      (if u
                         (fst (set tree pos d val) rl)

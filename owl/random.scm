@@ -80,8 +80,8 @@
       ;;;
 
       ;; code assumes this fixnum size
-      (lets ((a b (fx+ #xffffff 1)))
-         (if (not (and (eq? a 0) (eq? b #true)))
+      (lets ((a b (fxadd #xffffff 1)))
+         (if (not (and (eq? a 0) (eq? b 1)))
             (error "unexpected fixnum size" a)))
 
       ; random data generators implement an infinite stream of positive fixnums,

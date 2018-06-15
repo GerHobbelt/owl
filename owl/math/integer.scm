@@ -238,31 +238,27 @@
       (define (add-number-big a big)
          (lets
             ((b bs big)
-             (new overflow? (fx+ a b)))
-            (if overflow?
+             (new overflow (fxadd a b)))
+            (if (eq? overflow 0)
+               (ncons new bs)
                (if (eq? bs null)
                   (ncons new *big-one*)
-                  (ncons new (add-number-big 1 bs)))
-               (ncons new bs))))
+                  (ncons new (add-number-big overflow bs))))))
 
       (define (add-big a b carry)
          (cond
             ((eq? a null)
                (if (eq? b null)
-                  (if carry *big-one* null)
-                  (if carry (add-number-big 1 b) b)))
+                  (if (eq? carry 0) #n *big-one*)
+                  (if (eq? carry 0) b (add-number-big carry b))))
             ((eq? b null)
-               (if carry (add-number-big 1 a) a))
+               (if (eq? carry 0) a (add-number-big carry a)))
             (else
-               (lets ((r o (fx+ (ncar a) (ncar b))))
-                  (if carry
-                     (lets ((r o2 (fx+ r 1)))
-                        (cond
-                           (o (ncons r (add-big (ncdr a) (ncdr b) #true)))
-                           (o2 (ncons r (add-big (ncdr a) (ncdr b) #true)))
-                           (else (ncons r (add-big (ncdr a) (ncdr b) #false)))))
-                     (ncons r
-                        (add-big (ncdr a) (ncdr b) o)))))))
+               (lets ((r o (fxadd (ncar a) (ncar b))))
+                  (if (eq? carry 0)
+                     (ncons r (add-big (ncdr a) (ncdr b) o))
+                     (lets ((r o2 (fxadd r carry)))
+                        (ncons r (add-big (ncdr a) (ncdr b) (fxbor o o2)))))))))
 
       ;;;
       ;;; SUBSTRACTION
@@ -356,10 +352,10 @@
       ; add bits, output is negative
 
       (define (add-small->negative a b)
-         (lets ((r overflow? (fx+ a b)))
-            (if overflow?
-               (mkt type-int- r *big-one*)
-               (to-fix- r))))
+         (lets ((r overflow (fxadd a b)))
+            (if (eq? overflow 0)
+               (to-fix- r)
+               (mkt type-int- r *big-one*))))
 
       ; for changing the (default positive) sign of unsigned operations
       (define-syntax negative
@@ -375,9 +371,9 @@
       (define-syntax add-small->positive
          (syntax-rules ()
             ((add-small->positive a b)
-               (lets ((r overflow? (fx+ a b)))
-                  (if overflow? (ncons r *big-one*) r)))))
-      
+               (lets ((r overflow (fxadd a b)))
+                  (if (eq? overflow 0) r (ncons r *big-one*))))))
+
       (define (subi a b)
          (case (type a)
             (type-fix+ ; a signed fixnum
@@ -399,13 +395,13 @@
                   (type-fix+ (sub-big-number a b #true))            ;; +A - +b -> as +A + -b
                   (type-fix- (add-number-big b a))               ;; +A - -b -> as +A + +b
                   (type-int+ (sub-big a b))                     ;; +A - +B -> as +A + -B
-                  (type-int- (add-big a b #false))                  ;; +A - -B -> as +A + +B
+                  (type-int- (add-big a b 0))                  ;; +A - -B -> as +A + +B
                   (else (big-bad-args '- a b))))
             (type-int-
                (case (type b)
                   (type-fix+ (to-int- (add-number-big b a))) ;; -A - +b -> as -A + -b
                   (type-fix- (sub-number-big b a #true))            ;; -A - -b -> as -A + +b
-                  (type-int+ (to-int- (add-big a b #false))) ;; -A - +B -> as -A + -B
+                  (type-int+ (to-int- (add-big a b 0))) ;; -A - +B -> as -A + -B
                   (type-int- (sub-big b a))                     ;; -A - -B -> as -A + +B
                   (else (big-bad-args '- a b))))
             (else
@@ -433,7 +429,7 @@
                   (case (type b)
                      (type-fix+ (add-number-big b a))               ;; +A + +b -> +C
                      (type-fix- (sub-big-number a b #true))            ;; +A + -b == -b + +A -> as above
-                     (type-int+ (add-big a b #false))                  ;; +A + +B == +C
+                     (type-int+ (add-big a b 0))                  ;; +A + +B == +C
                      (type-int- (sub-big a b))                     ;; +A + -B == +c | -c | +C | -C
                      (else (no b a))))
                (type-int-
@@ -441,7 +437,7 @@
                      (type-fix+ (sub-number-big b a #true))            ;; -A + +b == +b + -A -> as above
                      (type-fix- (to-int- (add-number-big b a))) ;; -A + -b == -b + -A = -C -> as above
                      (type-int+ (sub-big b a))                     ;; -A + +B == +B + -A -> as above
-                     (type-int- (to-int- (add-big a b #false))) ;; -A + -B == -(A + B)
+                     (type-int- (to-int- (add-big a b 0))) ;; -A + -B == -(A + B)
                      (else (no b a))))
                (else
                   (no a b)))))
@@ -476,7 +472,7 @@
          (syntax-rules ()
             ((nrev num)
                (nrev-walk num null))))
-      
+
       (define (qr-big-small a b) ; -> q r
          (cond
             ((eq? b 0)
@@ -758,13 +754,9 @@
             (else
                (lets
                   ((lo hi (fx* a (ncar b)))
-                   (lo o? (fx+ lo carry)))
-                  (if o?
-                     (lets ((hi _ (fx+ hi 1)))
-                        (ncons lo
-                           (mult-num-big a (ncdr b) hi)))
-                     (ncons lo
-                        (mult-num-big a (ncdr b) hi)))))))
+                   (lo o (fxadd lo carry))
+                   (hi _ (fx+ hi o)))
+                     (ncons lo (mult-num-big a (ncdr b) hi))))))
 
       ; O(1), fixnum multiply overflowing to bignum
 
@@ -782,9 +774,6 @@
                   (if (eq? hi 0)
                      lo
                      (ncons lo (ncons hi null)))))))
-
-
-      
 
 
       ;;;
@@ -965,11 +954,10 @@
             ((eq? a b) (subi n 1))
             ((lesser? a b) (subi n 1))
             (else
-               (lets ((b overflow? (fx+ b b)))
-                  (if overflow?
-                     (subi n 1)
-                     (shift-local-up a b (nat-succ n)))))))
-
+               (lets ((b overflow (fxadd b b)))
+                  (if (eq? overflow 0)
+                     (shift-local-up a b (nat-succ n))
+                     (subi n overflow))))))
 
 
       (define (div-shift a b n)
@@ -1159,11 +1147,9 @@
                ((x tl n)
                 (lo hi (fx* x d))
                 (tl carry (rmul (ncdr n) d))
-                (lo over (fx+ lo carry)))
-               (if over
-                  (lets ((hi _ (fx+ hi 1)))
-                     (values (ncons lo tl) hi))
-                  (values (ncons lo tl) hi)))))
+                (lo over (fxadd lo carry))
+                (hi _ (fx+ hi over)))
+                  (values (ncons lo tl) hi))))
 
       (define (rmul-digit n d) ; -> bignum
          (cond

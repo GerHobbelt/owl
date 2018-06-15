@@ -120,7 +120,7 @@
          (lets ((a b r o bs (get4 (cdr bs))))
             (values
                ;; res is shifted down, so there is room for an overflow bit
-               (list "{hval res=immval(R["a"])+immval(R["b"]);R["o"]=BOOL(1<<FBITS&res);R["r"]=F(res);}")
+               (list "{hval r=immval(R["a"])+immval(R["b"]);R["o"]=BOOL(r>>FBITS);R["r"]=F(r);}")
                bs (put (put regs r 'fixnum) o 'bool))))
 
       ; fxband a b r
@@ -325,6 +325,7 @@
                      (values
                         (list "error(17,ob,F(acc));")
                         null regs)))
+               (cons 22 cify-fxadd)
                (cons 23 cify-mkt)
                (cons 24 ;; ret r == call R3 with 1 argument at Rr
                   (λ (bs regs fail)
@@ -357,7 +358,6 @@
                               bs regs
                               (drop bs jump-len) regs)
                            regs))))
-               (cons 38 cify-fxadd)
                (cons 39 cify-fxmul)
                (cons 40 cify-fxsub)
                (cons 44 ;; less a b r

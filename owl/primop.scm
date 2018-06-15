@@ -41,8 +41,8 @@
          (let loop ((l l) (n 0))
             (if (eq? l '())
                n
-               (lets ((n o (fx+ n 1)))
-                  (if o #false (loop (cdr l) n))))))
+               (lets ((n o (fxadd n 1)))
+                  (and (eq? o 0) (loop (cdr l) n))))))
 
       (define (func lst)
          (lets
@@ -185,10 +185,10 @@
             (tuple 'mkblack      48 4 1 mkblack) ;; (mkblack l k v r)
             (tuple 'mkred       176 4 1 mkred)   ;; ditto, opcode: FFRED << 6 | 48
             (tuple 'ff-bind      49 1 #false ff-bind)  ;; SPECIAL ** (ffbind thing (lambda (name ...) body))
-            (tuple 'fxsub        21 2 2 'fxsub) ;; (fxsub a b) -> lo u
-            (tuple 'fxadd        22 2 2 'fxadd) ;; (fxadd a b) -> lo hi
-            (tuple 'fxqr         26 3 3 'fxqr)   ;; (fxdiv ah al b) -> qh ql r
-            (tuple 'fx+          38 2 2 fx+) ; FIXME: remove after fasl update
+            (tuple 'fxsub        21 2 2 fxsub) ;; (fxsub a b) -> lo u
+            (tuple 'fx+          22 2 2 fxadd) ;; (fxadd a b) -> lo hi
+            (tuple 'fxqr         26 3 3 fxqr)  ;; (fxdiv ah al b) -> qh ql r
+            (tuple 'fxadd        22 2 2 fxadd) ; FIXME: remove after fasl update
             (tuple 'fx*          39 2 2 fx*)   ;; (fx* a b)      ;; 2 out
             (tuple 'fx-          40 2 2 fx-) ; FIXME: remove after fasl update
             (tuple 'fx>>         58 2 2 fx>>)   ;; (fx>> a b) -> hi lo, lo are the lost bits
