@@ -332,11 +332,6 @@
                            (list "{word ob=R["o"];if(allocp(ob))ob=V(ob);R["r"]=F((hval)ob>>TPOS&63);}")
                            bs
                            (put regs r 'fixnum)))))
-               (cons 17 ;; arity-fail
-                  (λ (bs regs fail)
-                     (values
-                        (list "error(17,ob,F(acc));")
-                        #n regs)))
                (cons 18 cify-fxand)
                (cons 21 cify-fxsub)
                (cons 22 cify-fxadd)
@@ -435,6 +430,9 @@
                (cons 208 (cify-jump-imm "IFALSE"))
                (cons 58 cify-fxright)
                (cons 59 cify-lraw)
+               (cons 61 ;; arity-fail
+                  (λ (bs regs fail)
+                     (values (list "error(61,ob,F(acc));") #n regs)))
                (cons 63 cify-sysprim)
                ;; below are lower primop + extra info (like 13=ldi<what>)
                (cons 13 ;; ldz r

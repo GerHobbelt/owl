@@ -353,7 +353,7 @@
          ;   (cond
          ;      ((eq? type-bytecode t) ;; raw bytecode
          ;         (let ((op (ref obj 0)))
-         ;            (if (eq? op 17)
+         ;            (if (eq? op 61)
          ;               (tuple 'code (ref obj 1))
          ;               #false)))
          ;      ((eq? t type-proc)

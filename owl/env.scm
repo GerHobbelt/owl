@@ -204,7 +204,7 @@
 
       (define (verbose-vm-error env opcode a b)
          (case opcode
-            ((17)
+            ((61)
             ;; arity error, could be variable
             ; this is either a call, in which case it has an implicit continuation,
             ; or a return from a function which doesn't have it. it's usually a call,

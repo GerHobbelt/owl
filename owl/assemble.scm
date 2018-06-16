@@ -253,7 +253,7 @@
                               (fxband len #xff) ;; jump lo
                               (append bytes
                                  (if (null? tail)
-                                    (list 17) ;; force error
+                                    (list 61) ;; force error
                                     tail))))))))
             (else
                (error "assemble-code: unknown AST node " obj))))

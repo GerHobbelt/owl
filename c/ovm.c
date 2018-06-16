@@ -1123,12 +1123,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          if (A0 == load_imms[op >> 6])
             ip += ip[2] << 8 | ip[1];
          NEXT(3);
-      case 17: { /* arity error */
-         word *t;
-         allocate(acc+1, t);
-         *t = make_header(acc+1, TTUPLE);
-         memcpy(t + 1, R + 3, acc * W);
-         error(17, ob, t); }
       case 55: /* FIXME: remove after fasl update */
       case 18: /* fxand a b r, prechecked */
          A2 = A0 & A1;
@@ -1324,6 +1318,12 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
       case 59: /* lraw lst type r (FIXME: alloc amount testing compiler pass not in place yet) */
          A2 = prim_lraw(A0, A1);
          NEXT(3);
+      case 61: { /* arity error */
+         word *t;
+         allocate(acc + 1, t);
+         *t = make_header(acc + 1, TTUPLE);
+         memcpy(t + 1, R + 3, acc * W);
+         error(61, ob, t); }
       case 62: /* set-ticker <val> <to> -> old ticker value */
          /* ponder: it should be possible to remove this, if the only use is to yield control */
          A1 = F(ticker);

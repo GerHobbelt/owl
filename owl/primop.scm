@@ -51,7 +51,7 @@
              (len (len lst)))
             (bytes->bytecode
                (ilist 2 arity 0 len
-                  (app lst (list 17)))))) ;; fail if arity mismatch
+                  (app lst (list 61)))))) ;; fail if arity mismatch
 
       ;; changing any of the below 3 primops is tricky. they have to be recognized by the primop-of of
       ;; the repl which builds the one in which the new ones will be used, so any change usually takes
@@ -244,9 +244,9 @@
       ;; non-primop instructions that can report errors
       (define (instruction-name op)
          (cond
-            ((eq? op 17) 'arity-error)
             ((eq? op 32) 'bind)
             ((eq? op 50) 'run)
+            ((eq? op 61) 'arity-error)
             (else #false)))
 
       (define (primop-name pop)
