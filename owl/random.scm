@@ -251,7 +251,7 @@
          ;; expensive approach makes sure we terminate for all random streams.
          (lets
             ((r rs (uncons rs rs))
-             (m *max-fixnum*))
+             (m fx-greatest))
             (if (eq? r m)
                (values rs 0)
                (lets ((q r (truncate/ (* n r) m)))
@@ -259,7 +259,7 @@
 
       ;; like rand-fixnum, but <= limit instead of <
       (define (rand-bignum-topdigit rs n)
-         (if (eq? n *max-fixnum*)
+         (if (eq? n fx-greatest)
             ;; no, no, there's no limit
             (lets ((d rs (uncons rs rs)))
                (values rs d))

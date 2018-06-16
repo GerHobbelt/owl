@@ -780,7 +780,7 @@
                            (muxer rs ws alarms))
                         (lets
                            ((timeout
-                              (if (single-thread?) (min *max-fixnum* (- (caar alarms) now)) 0))
+                              (if (single-thread?) (min fx-greatest (- (caar alarms) now)) 0))
                             ((waked x) <= (_poll2 rs ws timeout)))
                            (cond
                               (waked

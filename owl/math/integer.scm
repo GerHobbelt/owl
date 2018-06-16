@@ -19,7 +19,7 @@
       rem mod
       ncons ncar ncdr
       big-digits-equal?
-      *max-fixnum* *fixnum-bits*
+      fx-greatest fx-width
       to-int- to-int+
       to-fix+ to-fix-
       add-big sub-big
@@ -39,18 +39,18 @@
 
       ;; get the largest value the VM supports in fixnum
       ;; idea is to allow the vm to be compiled with different ranges, initially fixed to 24
-      (define *max-fixnum*
+      (define fx-greatest
          (lets ((m _ (fx- 0 1)))
             m))
 
       ;; biggest before highest bit is set (needed in some bignum ops)
-      (define *pre-max-fixnum*
-         (lets ((f _ (fx>> *max-fixnum* 1)))
+      (define fx-greatest>>1
+         (lets ((f _ (fx>> fx-greatest 1)))
             f))
 
       ;; count the number of bits the VM supports in fixnum
-      (define *fixnum-bits*
-         (let loop ((f *max-fixnum*) (n 0))
+      (define fx-width
+         (let loop ((f fx-greatest) (n 0))
             (if (eq? f 0)
                n
                (lets
@@ -211,12 +211,12 @@
          (let ((t (type n)))
             (cond
                ((eq? t type-fix+)
-                  (if (eq? n *max-fixnum*)
+                  (if (eq? n fx-greatest)
                      *first-bignum*
                      (lets ((n _ (fx+ n 1))) n)))
                ((eq? t type-int+)
                   (let ((lo (ncar n)))
-                     (if (eq? lo *max-fixnum*)
+                     (if (eq? lo fx-greatest)
                         (ncons 0 (nat-succ (ncdr n)))
                         (lets ((lo _ (fx+ lo 1)))
                            (ncons lo (ncdr n))))))
@@ -528,7 +528,7 @@
       (define (>> a b)
          (case (type b)
             (type-fix+
-               (lets ((_ wor bits (fxqr 0 b *fixnum-bits*)))
+               (lets ((_ wor bits (fxqr 0 b fx-width)))
                   (if (eq? wor 0)
                      (case (type a)
                         (type-fix+ (receive (fx>> a bits) (lambda (hi lo) hi)))
@@ -548,7 +548,7 @@
                ;; todo, use digit multiples instead or drop each digit
                (if (eq? a 0)
                   0 ;; terminate early if out of bits
-                  (>> (ncdr a) (subi b *fixnum-bits*))))
+                  (>> (ncdr a) (subi b fx-width))))
             (else
                (big-bad-args '>> a b))))
 
@@ -577,8 +577,8 @@
             ((eq? a 0) 0)
             ((eq? (type b) type-fix+)
                (lets
-                  ((_ words bits (fxqr 0 b *fixnum-bits*))
-                   (bits _ (fx- *fixnum-bits* bits))) ; convert shift width for fx>>
+                  ((_ words bits (fxqr 0 b fx-width))
+                   (bits _ (fx- fx-width bits))) ; convert shift width for fx>>
                   (case (type a)
                      (type-fix+
                         (lets ((hi lo (fx>> a bits)))
@@ -608,7 +608,7 @@
                         (big-bad-args '<< a b)))))
             ((eq? (type b) type-int+)
                ;; not likely to happen though
-               (<< (<< a *max-fixnum*) (subi b *max-fixnum*)))
+               (<< (<< a fx-greatest) (subi b fx-greatest)))
             (else
                ;; could allow negative shift left to mean a shift right, but that is
                ;; probably more likely an accident than desired behavior, so failing here
@@ -963,10 +963,10 @@
                   ((null? na)
                      (if (null? nb)
                         (let ((b-lead (ncar b)))
-                           (if (eq? b-lead *max-fixnum*)
+                           (if (eq? b-lead fx-greatest)
                               (if (eq? n 0)
                                  0
-                                 (shift-local-down (ncar a) *pre-max-fixnum* (subi n 1)))
+                                 (shift-local-down (ncar a) fx-greatest>>1 (subi n 1)))
                               (let ((aa (ncar a)) (bb (+ b-lead 1)))
                                  ; increment b to ensure b'000.. > b....
                                  (cond
@@ -977,7 +977,7 @@
                         ; divisor is larger
                         0))
                   ((null? nb)
-                     (div-shift (ncdr a) b (+ n *fixnum-bits*)))
+                     (div-shift (ncdr a) b (+ n fx-width)))
                   (else
                      (div-shift (ncdr a) (ncdr b) n))))))
 
@@ -1112,7 +1112,7 @@
                   (cond
                      ((null? dr) (values tl dr)) ; failed below
                      (dr
-                        (let ((d (subi d 1))) ; int- (of was -*max-fixnum*), fix- or fix+
+                        (let ((d (subi d 1))) ; int- (of was -fx-greatest), fix- or fix+
                            (if (negative? d)
                               (values (ncons (+ d *first-bignum*) tl) #true) ; borrow
                               (values (ncons d tl) #false))))
@@ -1193,7 +1193,7 @@
             (lets ((rb (nrev b)))
                (if (lesser? #b000000111111111111111111 (ncar rb))
                   ; scale them to get a more fitting head for b
-                  ; and also get rid of the special case where it is *max-fixnum*
+                  ; and also get rid of the special case where it is fx-greatest
                   (>> (nat-rem-reverse (<< a 12) (<< b 12)) 12)
                   (let ((r (rrem (nrev a) rb)))
                      (cond
@@ -1233,7 +1233,7 @@
       ; b is usually shorter, so shift b right and then substract instead
       ; of moving a by s
 
-      (define last-bit (subi *fixnum-bits* 1))
+      (define last-bit (subi fx-width 1))
 
       (define (divex bit bp a b out)
          (cond

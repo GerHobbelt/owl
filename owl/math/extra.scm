@@ -52,7 +52,7 @@
                (let ((tl (ncdr n)))
                   (if (null? tl)
                      (nbits (ncar n) f)
-                     (nbits tl (+ f *fixnum-bits*)))))))
+                     (nbits tl (+ f fx-width)))))))
 
       (define (isqrt-init n)
          (lets

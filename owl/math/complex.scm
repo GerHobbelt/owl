@@ -28,7 +28,7 @@
       truncate round
       rational complex
       ncons ncar ncdr
-      *max-fixnum* *fixnum-bits*
+      fx-greatest fx-width
       )
 
    (import
@@ -48,9 +48,9 @@
          big-digits-equal? negate
          negative? quotient ediv
          to-int- to-int+ to-fix+ to-fix-
-         *fixnum-bits* *max-fixnum* truncate/
+         fx-greatest fx-width truncate/
          zero? positive? even? odd?
-         integer? fixnum? 
+         integer? fixnum?
          make-+
          << >> band bor bxor))
 
@@ -566,7 +566,7 @@
       (define (log2-big n digs)
          (let ((tl (ncdr n)))
             (if (null? tl)
-               (add (log2-msd (ncar n)) (mul digs *fixnum-bits*))
+               (add (log2-msd (ncar n)) (mul digs fx-width))
                (log2-big tl (add digs 1)))))
 
       (define (log2 n)
