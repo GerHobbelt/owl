@@ -267,7 +267,7 @@
       (complex? 3)                    ===> #t
       (real? 3)                       ===> #t
       (real? -2.5+0.0i)               ===> #t
-      ;(real? #e1e10)                 ===> #t ;; FIXME: unsupported number syntax
+      (real? #e1e10)                  ===> #t
       (rational? 6/10)                ===> #t
       (rational? 6/3)                 ===> #t
       (integer? 3+0i)                 ===> #t
