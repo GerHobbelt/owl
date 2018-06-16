@@ -1100,6 +1100,10 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          A1 = A0;
          A3 = A2;
          NEXT(4);
+      case 54: /* FIXME: remove after fasl update */
+      case 7: /* eq? a b r */
+         A2 = BOOL(A0 == A1);
+         NEXT(3);
       case 8: /* jeq a b o, extended jump */
          if (A0 == A1)
             ip += ip[3] << 8 | ip[2];
@@ -1305,9 +1309,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          NEXT(0); }
       case 51: /* cons a b r */
          A2 = cons(A0, A1);
-         NEXT(3);
-      case 54: /* eq a b r */
-         A2 = BOOL(A0 == A1);
          NEXT(3);
       case 58: { /* fx>> x n hi lo */
          hval x = immval(A0);

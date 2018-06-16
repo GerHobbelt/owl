@@ -308,6 +308,10 @@
                          (regs (put regs to1 (get regs from1 #false)))
                          (regs (put regs to2 (get regs from2 #false))))
                            (values (list "R["to1"]=R["from1"];R["to2"]=R["from2"];") bs regs))))
+               (cons 7 ;; eq? a b to
+                  (λ (bs regs fail)
+                     (lets ((a b to bs (get3 (cdr bs))))
+                        (values (list "R["to"]=BOOL(R["a"]==R["b"]);") bs regs))))
                (cons 8 ;; jump-if-equal a b lo8 hi8
                   (λ (bs regs fail)
                      (lets
@@ -418,12 +422,6 @@
                               (values
                                  (list "assert(pairp(R[" from "]),R[" from "],169);R[" to "]=G(R[" from "],2);")
                                  bs (del (put regs from 'pair) to)))))))
-               (cons 54 ;; eq a b to
-                  (λ (bs regs fail)
-                     (lets ((a b to bs (get3 (cdr bs))))
-                        (values
-                           (list "R["to"]=BOOL(R["a"]==R["b"]);")
-                           bs regs))))
                (cons 16 (cify-jump-imm "F(0)"))
                (cons 80 (cify-jump-imm "INULL"))
                (cons 144 (cify-jump-imm "ITRUE"))

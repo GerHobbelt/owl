@@ -83,7 +83,7 @@
       (define sys         (func '(4 27 4 5 6 7 24 7)))
       (define sizeb       (func '(2 28 4 5 24 5)))
       (define raw         (func '(3 59 4 5 6 24 6)))
-      (define eq?         (func '(3 54 4 5 6 24 6)))
+      (define eq?         (func '(3 7 4 5 6 24 6)))
       (define fxand       (func '(3 18 4 5 6 24 6)))
       (define fxior       (func '(3 29 4 5 6 24 6)))
       (define fxxor       (func '(3 33 4 5 6 24 6)))
@@ -169,7 +169,7 @@
             (tuple 'cons         51 2 1 cons)
             (tuple 'car         105 1 1 car) ;; opcode: 1 << 6 | 41
             (tuple 'cdr         169 1 1 cdr) ;; opcode: 2 << 6 | 41
-            (tuple 'eq?          54 2 1 eq?)
+            (tuple 'eq?           7 2 1 eq?)
             (tuple 'type         15 1 1 type)
             (tuple 'ref          47 2 1 ref)
             (tuple 'mkt          23 'any 1 mkt) ;; mkt type v0..vn t
