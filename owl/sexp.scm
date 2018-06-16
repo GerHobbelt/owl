@@ -369,7 +369,8 @@
                   (get-parses
                      ((skip maybe-whitespace)
                       (base get-exactness-base)
-                      (val (get-natural base)))
+                      (val (get-natural base))
+                      (verify (lesser? val 256) '(bad u8)))
                      val))))
             (raw fields type-bytevector)))
 
@@ -382,12 +383,6 @@
                   ;; vector may have unquoted stuff, so convert it to a sexp constructing a vector, which the macro handler can deal with
                   (cons '_sharp_vector fields) ; <- quasiquote macro expects to see this in vectors
                   (list->vector fields)))))
-
-      (define (valid-ff-node? val)
-         (and (pair? val)
-            (or
-               (symbol? val)
-               (immediate? val))))
 
       (define (valid-ff-key? val)
          (or (symbol? val) (immediate? val)))
