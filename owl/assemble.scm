@@ -52,10 +52,10 @@
             '((move . 9)      ; move a, t:      Rt = Ra
               (refi . 1)      ; refi a, p, t:   Rt = Ra[p], p unsigned
               (goto . 3)      ; jmp a, nargs    call Ra with nargs args
-              (clos . 132)    ; clos lp, o, nenv, e0 ... en, t:
-              (cloc . 4)      ; cloc lp, o, nenv, e0 ... en, t:
-              (clos1 . 196)
-              (cloc1 . 68)
+              (clos . 134)    ; clos lp, o, nenv, e0 ... en, t:
+              (cloc . 6)      ; cloc lp, o, nenv, e0 ... en, t:
+              (clos1 . 198)
+              (cloc1 . 70)
               (move2 . 5)     ; two moves, 4 args
               (jeq . 8)       ; jeq a b o1 o2   ip += o if Ra == Rb
               (jeqi . 16)     ; jeqi a o1 o2    ip += o if Ra == imm[i>>6]

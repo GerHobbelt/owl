@@ -1085,7 +1085,12 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          ob = (word *)A0;
          acc = ip[1];
          goto apply;
-      case 4: { /* opcodes 132, 4, 196, 68 */
+      case 5: /* mov2 from1 to1 from2 to2 */
+         A1 = A0;
+         A3 = A2;
+         NEXT(4);
+      case 4: /* FIXME: remove after fasl update */
+      case 6: { /* opcodes 134, 6, 198, 70 */
          word size = *ip++, tmp;
          word *ob;
          tmp = R[op & 64 ? 1 : *ip++];
@@ -1096,10 +1101,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             ob[tmp] = R[*ip++];
          R[*ip++] = (word)ob;
          NEXT(0); }
-      case 5: /* mov2 from1 to1 from2 to2 */
-         A1 = A0;
-         A3 = A2;
-         NEXT(4);
       case 54: /* FIXME: remove after fasl update */
       case 7: /* eq? a b r */
          A2 = BOOL(A0 == A1);
@@ -1123,7 +1124,7 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             ob = V(ob);
          A1 = F((hval)ob >> TPOS & 63);
          NEXT(2); }
-      case 16: /* jv[which] a o1 a2 */
+      case 16: /* jeqi[which] a lo hi */ /* FIXME: move this to op4 after fasl update, and encode offset in big-endian (like most other jump instructions) */
          if (A0 == load_imms[op >> 6])
             ip += ip[2] << 8 | ip[1];
          NEXT(3);
