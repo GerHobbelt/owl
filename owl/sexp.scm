@@ -51,6 +51,9 @@
             (eq? n #\.)
             (or (<= #\0 n #\9) (> n 127)))) ;; allow high code points in symbols
 
+      (define get-hash (get-imm #\#))
+      (define get-pipe (get-imm #\|))
+
       (define get-symbol
          (get-either
             (get-parses
@@ -61,13 +64,13 @@
                 )
                (string->uninterned-symbol (runes->string (cons head tail))))
             (get-parses
-               ((skip (get-imm #\|))
+               ((skip get-pipe)
                 (chars
                   (get-greedy-star
                      (get-either
                         (get-parses ((skip (get-imm #\\)) (rune get-rune)) rune)
                         (get-rune-if (B not (C eq? #\|))))))
-                (skip (get-imm #\|)))
+                (skip get-pipe))
                (string->uninterned-symbol (runes->string chars)))))
 
       (define (digit-char? x)
@@ -97,36 +100,44 @@
                      (+ (* n base) d))))
             0 digits))
 
-      (define get-exactness ;; just for Scheme compatibility
-         (get-either
-            (get-parses
-               ((skip (get-imm #\#))
-                (skip (get-either (get-imm #\e) (get-imm #\i))))
-               #t)
-            (get-epsilon #f)))
-
       (define get-sign
          (one-of (get-imm 43) (get-imm 45) (get-epsilon 43)))
 
       (define bases
-         (list->ff
-            (list
-               (cons #\b  2)
-               (cons #\o  8)
-               (cons #\d 10)
-               (cons #\x 16))))
+         (list->ff '((#\b . 2) (#\o . 8) (#\d . 10) (#\x . 16))))
+
+      ;; the exactness prefixes are ignored in owl
+      (define get-exactness
+         (get-either (get-imm #\e) (get-imm #\i)))
 
       (define get-exactness-base
-         (get-parses
-            ((skip get-exactness)
-             (base (get-either
-               (get-parses
-                  ((skip (get-imm #\#))
-                   (char (get-byte-if (λ (x) (getf bases x)))))
-                  (getf bases char))
-               (get-epsilon 10)))
-             (skip get-exactness))
-            base))
+         (get-either
+            (get-parses
+               ((skip get-hash)
+                (char
+                  (get-either
+                     (get-parses
+                        ((skip get-exactness)
+                         (char
+                           (get-either
+                              (get-parses
+                                 ((skip get-hash)
+                                  (char (get-byte-if (λ (x) (getf bases x)))))
+                                 char)
+                              (get-epsilon #\d))))
+                        char)
+                     (get-parses
+                        ((char (get-byte-if (λ (x) (getf bases x))))
+                         (skip
+                           (get-either
+                              (get-parses
+                                 ((skip get-hash)
+                                  (skip get-exactness))
+                                 skip)
+                              (get-epsilon #f))))
+                        char))))
+               (getf bases char))
+            (get-epsilon 10)))
 
       (define (get-natural base)
          (get-parses
@@ -212,20 +223,12 @@
              (skip (get-imm 10))) ;; <- note that this won't match if line ends to eof
             chars))
 
-      ;; #!<string>\n parses to '(hashbang <string>)
-      (define get-hashbang
-         (get-parses
-            ((hash (get-imm 35))
-             (bang (get-imm 33))
-             (line get-rest-of-line))
-            (list 'quote (list 'hashbang (list->string line)))))
-
       ;; skip everything up to |#
       (define (get-block-comment)
          (get-either
             (get-parses
-               ((skip (get-imm #\|))
-                (skip (get-imm #\#)))
+               ((skip get-pipe)
+                (skip get-hash))
                'comment)
             (get-parses
                ((skip get-byte)
@@ -234,15 +237,14 @@
 
       (define get-a-whitespace
          (one-of
-            ;get-hashbang   ;; actually probably better to make it a symbol as above
             (get-byte-if (C memq '(9 10 32 13)))
             (get-parses
                ((skip (get-imm #\;))
                 (skip get-rest-of-line))
                'comment)
             (get-parses
-               ((skip (get-imm #\#))
-                (skip (get-imm #\|))
+               ((skip get-hash)
+                (skip get-pipe)
                 (skip (get-block-comment)))
                'comment)))
 
@@ -331,7 +333,7 @@
       ;; fixme: add named characters #\newline, ...
       (define get-quoted-char
          (get-parses
-            ((skip (get-imm #\#))
+            ((skip get-hash)
              (skip (get-imm #\\))
              (codepoint (get-either get-named-char get-rune)))
             codepoint))
@@ -341,18 +343,18 @@
          (get-either
             (get-word "..." '...)
             (get-parses
-               ((skip (get-imm #\#))
+               ((skip get-hash)
                 (val
                   (one-of
-                     (get-word "true" #true)    ;; get the longer ones first if present
-                     (get-word "false" #false)
-                     (get-word "null" #null)
-                     (get-word "empty" #empty)
-                     (get-word "n" #null)
-                     (get-word "t" #true)
+                     (get-word "false" #false) ;; get the longer ones first if present
                      (get-word "f" #false)
-                     (get-word "T" #true)
+                     (get-word "null" #null)
+                     (get-word "n" #null)
+                     (get-word "true" #true)
+                     (get-word "t" #true)
+                     (get-word "empty" #empty)
                      (get-word "F" #false)
+                     (get-word "T" #true)
                      (get-parses
                         ((bang (get-imm #\!))
                          (line get-rest-of-line))
@@ -361,7 +363,7 @@
 
       (define get-bytevector
          (get-parses
-            ((skip (get-imm #\#))
+            ((skip get-hash)
              (skip (get-imm #\u))
              (skip (get-imm #\8))
              (fields
@@ -375,7 +377,7 @@
 
       (define (get-vector-of parser)
          (get-parses
-            ((skip (get-imm #\#))
+            ((skip get-hash)
              (fields (get-list-of parser)))
             (let ((fields (intern-symbols fields)))
                (if (any pair? fields)
@@ -426,7 +428,6 @@
             ((skip maybe-whitespace)
              (val
                (one-of
-                  ;get-hashbang
                   get-number         ;; more than a simple integer
                   get-sexp-regex     ;; must be before symbols, which also may start with /
                   get-symbol
