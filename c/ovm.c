@@ -1129,6 +1129,10 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          *t = make_header(acc+1, TTUPLE);
          memcpy(t + 1, R + 3, acc * W);
          error(17, ob, t); }
+      case 55: /* FIXME: remove after fasl update */
+      case 18: /* fxand a b r, prechecked */
+         A2 = A0 & A1;
+         NEXT(3);
       case 21: { /* fx- a b r u, types prechecked, signs ignored */
          hval r = immval(A0) - immval(A1);
          A3 = F(r >> FBITS & 1);
@@ -1197,6 +1201,10 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             A1 = rawp(hdr) ? F(payl_len(hdr)) : IFALSE;
          }
          NEXT(2); }
+      case 56: /* FIXME: remove after fasl update */
+      case 29: /* fxior a b r, prechecked */
+         A2 = A0 | A1;
+         NEXT(3);
       case 32: { /* bind tuple <n> <r0> .. <rn> */
          word *tuple = (word *) R[*ip++];
          word hdr, pos = 1, n = *ip++ + 1;
@@ -1206,6 +1214,10 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          while (--n)
             R[*ip++] = tuple[pos++];
          NEXT(0); }
+      case 57: /* FIXME: remove after fasl update */
+      case 33: /* fxxor a b r, prechecked */
+         A2 = A0 ^ (FMAX << IPOS & A1); /* inherit A0's type info */
+         NEXT(3);
       case 35: { /* listuple type size lst to */
          uint type = immval(A0);
          hval size = immval(A1) + 1;
@@ -1302,15 +1314,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          NEXT(3);
       case 54: /* eq a b r */
          A2 = BOOL(A0 == A1);
-         NEXT(3);
-      case 55: /* band a b r, prechecked */
-         A2 = A0 & A1;
-         NEXT(3);
-      case 56: /* bor a b r, prechecked */
-         A2 = A0 | A1;
-         NEXT(3);
-      case 57: /* bxor a b r, prechecked */
-         A2 = A0 ^ (FMAX << IPOS & A1); /* inherit A0's type info */
          NEXT(3);
       case 58: { /* fx>> x n hi lo */
          hval x = immval(A0);

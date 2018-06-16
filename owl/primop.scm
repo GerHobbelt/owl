@@ -84,9 +84,9 @@
       (define sizeb       (func '(2 28 4 5 24 5)))
       (define raw         (func '(3 59 4 5 6 24 6)))
       (define eq?         (func '(3 54 4 5 6 24 6)))
-      (define fxband      (func '(3 55 4 5 6 24 6)))
-      (define fxbor       (func '(3 56 4 5 6 24 6)))
-      (define fxbxor      (func '(3 57 4 5 6 24 6)))
+      (define fxand       (func '(3 18 4 5 6 24 6)))
+      (define fxior       (func '(3 29 4 5 6 24 6)))
+      (define fxxor       (func '(3 33 4 5 6 24 6)))
       (define type        (func '(2 15 4 5 24 5)))
       (define ref         (func '(3 47 4 5 6 24 6)))
 
@@ -170,13 +170,16 @@
             (tuple 'car         105 1 1 car) ;; opcode: 1 << 6 | 41
             (tuple 'cdr         169 1 1 cdr) ;; opcode: 2 << 6 | 41
             (tuple 'eq?          54 2 1 eq?)
-            (tuple 'fxband       55 2 1 fxband)
-            (tuple 'fxbor        56 2 1 fxbor)
-            (tuple 'fxbxor       57 2 1 fxbxor)
             (tuple 'type         15 1 1 type)
             (tuple 'ref          47 2 1 ref)
             (tuple 'mkt          23 'any 1 mkt) ;; mkt type v0..vn t
+            (tuple 'fxand        18 2 1 fxand)
+            (tuple 'fxband       18 2 1 fxand) ; FIXME: remove after fasl update
+            (tuple 'fxior        29 2 1 fxior)
+            (tuple 'fxbor        29 2 1 fxior) ; FIXME: remove after fasl update
             (tuple 'bind         32 1 #false bind)  ;; (bind thing (lambda (name ...) body)), fn is at CONT so arity is really 1
+            (tuple 'fxxor        33 2 1 fxxor)
+            (tuple 'fxbxor       33 2 1 fxxor) ; FIXME: remove after fasl update
             (tuple 'set          45 3 1 set)   ;; (set tuple pos val) -> tuple'
             (tuple 'lesser?      44 2 1 lesser?)  ;; (lesser? a b)
             (tuple 'listuple     35 3 1 listuple)  ;; (listuple type size lst)

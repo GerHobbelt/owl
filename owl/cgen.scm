@@ -116,7 +116,7 @@
             (values (list "R["to"]=prim_ref(R["ob"],R["pos"]);") bs
                (del regs to))))
 
-      ; fx+ a b r o?
+      ; fx+ a b r o
       (define (cify-fxadd bs regs fail)
          (lets ((a b r o bs (get4 (cdr bs))))
             (values
@@ -124,20 +124,20 @@
                (list "{hval r=immval(R["a"])+immval(R["b"]);R["o"]=F(r>>FBITS);R["r"]=F(r);}")
                bs (put (put regs r 'fixnum) o 'bool))))
 
-      ; fxband a b r
-      (define (cify-fxband bs regs fail)
+      ; fxand a b r
+      (define (cify-fxand bs regs fail)
          (lets ((a b r bs (get3 (cdr bs))))
             (values (list "R["r"]=R["a"]&R["b"];") bs
                (put regs r 'fixnum))))
 
-      ; fxbor a b r
-      (define (cify-fxbor bs regs fail)
+      ; fxior a b r
+      (define (cify-fxior bs regs fail)
          (lets ((a b r bs (get3 (cdr bs))))
             (values (list "R["r"]=R["a"]|R["b"];") bs
                (put regs r 'fixnum))))
 
-      ; fxbxor a b r
-      (define (cify-fxbxor bs regs fail)
+      ; fxxor a b r
+      (define (cify-fxxor bs regs fail)
          (lets ((a b r bs (get3 (cdr bs))))
             (values (list "R["r"]=R["a"]^(FMAX<<IPOS&R["b"]);") bs
                (put regs r 'fixnum))))
@@ -149,7 +149,7 @@
                (list "{uint64_t p=(uint64_t)immval(R["a"])*immval(R["b"]);R["l"]=F(p);R["h"]=F(p>>FBITS);}")
                bs (put (put regs h 'fixnum) l 'fixnum))))
 
-      ; fx- a b r u?
+      ; fx- a b r u
       (define (cify-fxsub bs regs fail)
          (lets ((a b r u bs (get4 (cdr bs))))
             (values
@@ -337,6 +337,7 @@
                      (values
                         (list "error(17,ob,F(acc));")
                         #n regs)))
+               (cons 18 cify-fxand)
                (cons 21 cify-fxsub)
                (cons 22 cify-fxadd)
                (cons 23 cify-mkt)
@@ -359,7 +360,9 @@
                ;               ) regs))))
                (cons 26 cify-fxqr)
                (cons 28 cify-sizeb)
+               (cons 29 cify-fxior)
                (cons 32 cify-bind)
+               (cons 33 cify-fxxor)
                (cons 39 cify-fxmul)
                (cons 44 ;; less a b r
                   (λ (bs regs fail)
@@ -430,9 +433,6 @@
                (cons 80 (cify-jump-imm "INULL"))
                (cons 144 (cify-jump-imm "ITRUE"))
                (cons 208 (cify-jump-imm "IFALSE"))
-               (cons 55 cify-fxband)
-               (cons 56 cify-fxbor)
-               (cons 57 cify-fxbxor)
                (cons 58 cify-fxright)
                (cons 59 cify-lraw)
                (cons 63 cify-sysprim)
