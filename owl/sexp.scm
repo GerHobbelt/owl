@@ -73,11 +73,6 @@
                 (skip get-pipe))
                (string->uninterned-symbol (runes->string chars)))))
 
-      (define (digit-char? x)
-         (or (<= 48 x 57)
-            (<= 65 x 70)
-            (<= 97 x 102)))
-
       (define digit-values
          (list->ff
             (append
@@ -106,6 +101,9 @@
       (define bases
          (list->ff '((#\b . 2) (#\o . 8) (#\d . 10) (#\x . 16))))
 
+      (define (base-char? x)
+         (getf bases x))
+
       ;; the exactness prefixes are ignored in owl
       (define get-exactness
          (get-either (get-imm #\e) (get-imm #\i)))
@@ -117,24 +115,24 @@
                 (char
                   (get-either
                      (get-parses
-                        ((skip get-exactness)
-                         (char
-                           (get-either
-                              (get-parses
-                                 ((skip get-hash)
-                                  (char (get-byte-if (λ (x) (getf bases x)))))
-                                 char)
-                              (get-epsilon #\d))))
-                        char)
-                     (get-parses
-                        ((char (get-byte-if (λ (x) (getf bases x))))
+                        ((char (get-byte-if base-char?))
                          (skip
                            (get-either
                               (get-parses
                                  ((skip get-hash)
                                   (skip get-exactness))
-                                 skip)
+                                 #t)
                               (get-epsilon #f))))
+                        char)
+                     (get-parses
+                        ((skip get-exactness)
+                         (char
+                           (get-either
+                              (get-parses
+                                 ((skip get-hash)
+                                  (char (get-byte-if base-char?)))
+                                 char)
+                              (get-epsilon #\d))))
                         char))))
                (getf bases char))
             (get-epsilon 10)))
@@ -415,11 +413,11 @@
                       (v lst lst))
                   (loop lst (put ff k v))))))
 
-      (define (get-ff get-any)
+      (define (get-ff parser)
          (get-parses
             ((skip (get-imm #\@))
              (fields
-               (get-list-of get-any))
+               (get-list-of parser))
              (verify (ff-able? fields) '(bad ff)))
             (lst->ff (intern-symbols fields))))
 
