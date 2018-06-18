@@ -233,8 +233,8 @@
       (define (get-nat ll fail top)
          (lets ((ll b (grab ll fail)))
             (if (eq? 0 (fxband b 128)) ; leaf case
-               (values ll (bor (<< top 7) b))
-               (get-nat ll fail (bor (<< top 7) (band b low7))))))
+               (values ll (bior (<< top 7) b))
+               (get-nat ll fail (bior (<< top 7) (band b low7))))))
 
       (define (decode-immediate ll fail)
          (lets

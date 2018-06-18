@@ -126,9 +126,9 @@
       (define read-mode
          sys-O_RDONLY)
       (define (output-mode)
-         (bor (bor (sys-O_WRONLY) (sys-O_CREAT)) (sys-O_TRUNC)))
+         (bior (bior (sys-O_WRONLY) (sys-O_CREAT)) (sys-O_TRUNC)))
       (define (append-mode)
-         (bor (bor (sys-O_WRONLY) (sys-O_CREAT)) (sys-O_APPEND)))
+         (bior (bior (sys-O_WRONLY) (sys-O_CREAT)) (sys-O_APPEND)))
 
       (define (open-input-file path)
          (sys-open path (read-mode) 0))

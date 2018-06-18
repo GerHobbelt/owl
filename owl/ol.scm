@@ -130,7 +130,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
          quotient gcd ediv
          << < <= = >= > >>
          equal? memq member
-         band bor bxor
+         band bior bxor
          sort
          ; suffix-array bisect
          fold foldr map reverse length zip append unfold

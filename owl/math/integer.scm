@@ -9,7 +9,7 @@
       make-+
       + - * =
       << < <= = >= > >>
-      band bor bxor
+      band bior bxor
       quotient ediv truncate/
       nat-succ big-bad-args negate
       ncar ncdr
@@ -630,14 +630,14 @@
                         (ncons this tail)))))))
 
       ;; answer is quaranteed to be a bignum
-      (define (big-bor a b)
+      (define (big-bior a b)
          (cond
             ((null? a) b)
             ((null? b) a)
             (else
                (lets
                   ((this (fxbor (ncar a) (ncar b)))
-                   (tail (big-bor (ncdr a) (ncdr b))))
+                   (tail (big-bior (ncdr a) (ncdr b))))
                   (ncons this tail)))))
 
       ;; → null | bignum
@@ -686,7 +686,7 @@
       (define (even? n) (eq? 0 (band n 1)))
       (define (odd?  n) (eq? 1 (band n 1)))
 
-      (define (bor a b)
+      (define (bior a b)
          (case (type a)
             (type-fix+
                (case (type b)
@@ -695,18 +695,18 @@
                      (ncons (fxbor a (ncar b))
                         (ncdr b)))
                   (else
-                     (big-bad-args 'bor a b))))
+                     (big-bad-args 'bior a b))))
             (type-int+
                (case (type b)
                   (type-fix+
                      (ncons (fxbor b (ncar a))
                         (ncdr a)))
                   (type-int+
-                     (big-bor a b))
+                     (big-bior a b))
                   (else
-                     (big-bad-args 'bor a b))))
+                     (big-bad-args 'bior a b))))
             (else
-               (big-bad-args 'bor a b))))
+               (big-bad-args 'bior a b))))
 
       (define (bxor a b)
          (case (type a)

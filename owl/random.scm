@@ -346,7 +346,7 @@
             (lets
                ((hi (<< 1 (- n 1)))
                 (rs val (rand rs hi)))
-               (values rs (bor val hi)))))
+               (values rs (bior val hi)))))
 
       ;; select with bits of a random number (to save some rands)
       (define (random-subset rs l)

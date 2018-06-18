@@ -67,13 +67,13 @@
 
       (define (rol x n)
          (word
-            (bor
+            (bior
                (<< x n)
                (>> x (- 32 n)))))
 
       (define (ror x n)
          (word
-            (bor
+            (bior
                (>> x n)
                (<< x (- 32 n)))))
 
@@ -94,8 +94,8 @@
              (b ll (uncons ll #false))
              (c ll (uncons ll #false))
              (d ll (uncons ll #false)))
-            (values (bor (bor d (<< c 8))
-                         (bor (<< b 16) (<< a 24)))
+            (values (bior (fxbor d (<< c 8))
+                         (bior (<< b 16) (<< a 24)))
                     ll)))
 
       (define (grab-initial-words ll)
@@ -127,7 +127,7 @@
          (let loop ((i 0) (a h0) (b h1) (c h2) (d h3) (e h4) (ws (reverse ws)))
             (cond
                ((< i 20)
-                  (lets ((f (bor (band b c) (band (bnot b) d)))
+                  (lets ((f (bior (band b c) (band (bnot b) d)))
                          (k #x5a827999)
                          (a b c d e
                            (sha1-step a b c d e f k (car ws))))
@@ -139,7 +139,7 @@
                            (sha1-step a b c d e f k (car ws))))
                      (loop (+ i 1) a b c d e (cdr ws))))
                ((< i 60)
-                  (lets ((f (bor (bor (band b c) (band b d)) (band c d)))
+                  (lets ((f (bior (bior (band b c) (band b d)) (band c d)))
                          (k #x8f1bbcdc)
                          (a b c d e
                            (sha1-step a b c d e f k (car ws))))

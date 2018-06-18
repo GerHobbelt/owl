@@ -64,7 +64,7 @@
                            ((a bs bs)
                             (a (hex-char->bits a)))
                            (if a
-                              (loop (cons (bor (<< b 4) a) out) bs)
+                              (loop (cons (fxbor (<< b 4) a) out) bs)
                               #false))))
                   (else #false))))))
 

@@ -495,15 +495,15 @@
                e ∊ l
                (< e 256)
 
-      theorem bor-band-self
-         ∀ a ∊ Nat (bor a a) = (band a a)
+      theorem bior-band-self
+         ∀ a ∊ Nat (bior a a) = (band a a)
 
       theorem bxor-self
          ∀ a ∊ Nat (bxor a a) = 0
 
-      theorem borband
+      theorem biorband
          ∀ a b c ∊ Nat
-            (band (bor a b) c) = (bor (band a c) (band b c))
+            (band (bior a b) c) = (bior (band a c) (band b c))
 
       theorem bxor-inv
          ∀ a b ∊ Nat

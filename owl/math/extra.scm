@@ -66,7 +66,7 @@
       (define (isqrt-fix hi bit n)
          (if (eq? bit 0)
             hi
-            (lets ((this (bor hi bit)) (mid (* this this)))
+            (lets ((this (bior hi bit)) (mid (* this this)))
                (if (> mid n)
                   (isqrt-fix hi (>> bit 1) n)
                   (isqrt-fix this (>> bit 1) n)))))

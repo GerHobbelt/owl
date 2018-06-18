@@ -9,7 +9,7 @@
       number? fixnum? integer?
       + - * = /
       << < <= = >= > >>
-      band bor bxor
+      band bior bxor
       quotient ediv truncate/
       add sub mul big-bad-args negate
       even? odd?
@@ -52,7 +52,7 @@
          zero? positive? even? odd?
          integer? fixnum?
          make-+
-         << >> band bor bxor))
+         << >> band bior bxor))
 
 
    (begin
