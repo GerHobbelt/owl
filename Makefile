@@ -19,17 +19,11 @@ simple-ol: bin/vm
 
 fasl/boot.fasl: fasl/init.fasl
 	# start bootstrapping with the bundled init.fasl image
-	cp $? $@
+	sh -e bin/fasl-build.sh bin/vm $? -r owl/ol.scm -o $@
 
 fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm scheme/*.scm tests/*.scm tests/*.sh owl/*/*.scm
 	# selfcompile boot.fasl until a fixed point is reached
-	@bin/vm fasl/init.fasl -e '(time-ms)' >.start
-	bin/vm fasl/boot.fasl --run owl/ol.scm -s none -o fasl/bootp.fasl
-	@bin/vm fasl/init.fasl -e '(str"bootstrap: "(-(time-ms)(read(open-input-file".start")))"ms\nfasl: "(file-size"fasl/bootp.fasl")"b")'
-	# check that the new image passes tests
-	CC='$(CC)' sh tests/run all bin/vm fasl/bootp.fasl
-	# copy new image to ol.fasl if it is a fixed point, otherwise recompile
-	if cmp -s fasl/boot.fasl fasl/bootp.fasl; then mv fasl/bootp.fasl $@; else mv fasl/bootp.fasl fasl/boot.fasl && exec make $@; fi
+	CC='$(CC)' sh -e bin/fasl-build.sh -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
 
 ## building just the virtual machine to run fasl images
 
@@ -113,7 +107,7 @@ clean:
 	-rm -f fasl/boot.fasl fasl/bootp.fasl fasl/ol.fasl
 	-rm -f c/_vm.c c/vm.c c/ol.c
 	-rm -f doc/*.gz manual.md
-	-rm -f tmp/* .start
+	-rm -f tmp/*
 	-rm -f bin/ol bin/ol-old bin/vm
 
 fasl-update: fasl/ol.fasl
