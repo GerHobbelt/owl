@@ -787,8 +787,7 @@
              (comp? get-maybe-caret)
              (charss (get-plus char-class-elem)) ;; todo: [] might also be useful
              (close (get-imm 93)))
-            (make-char-class comp?
-               (foldr append #n charss))))
+            (make-char-class comp? (concatenate charss))))
 
       ;; n m|inf → (R → R{n,m})
       (define (make-repeater n m)

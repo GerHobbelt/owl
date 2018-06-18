@@ -222,8 +222,7 @@
                            (string-append ", " (getf rule 'comment))
                            "")
                         (if (getf rule 'default)
-                           (foldr string-append "]"
-                              (list " [" (getf rule 'default)))
+                           (string-append " [" (getf rule 'default) "]")
                            "")
                         (if (getf rule 'mandatory) " (mandatory)" "")
                         (if (getf rule 'plural) " (can be several)" "")

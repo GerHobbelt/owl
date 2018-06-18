@@ -3,7 +3,7 @@
 ME=$$
 HERE=$(pwd)
 
-echo '(lambda (args) (print (foldr string-append "" (list "#!" (foldr (lambda (a b) (if (equal? b "") a (string-append a " " b))) "" (map (lambda (x) (string-append ' "\"$HERE/\"" ' x)) (cdr args))) "\n" "(print \"ohai\")"))))' | $@ --run - $@ > tmp/script-$ME
+echo '(lambda (args) (print (string-append "#!" (foldr (lambda (a b) (if (equal? b "") a (string-append a " " b))) "" (map (lambda (x) (string-append "'"$HERE/"'" x)) (cdr args))) "\n(print \"ohai\")")))' | $@ -r - $@ >tmp/script-$ME
 
 chmod +x tmp/script-$ME
 

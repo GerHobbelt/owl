@@ -511,8 +511,7 @@
 
 ))
 
-(define tests
-   (foldr append #n (list tests-1 tests-2)))
+(define tests (append tests-1 tests-2))
 
 
 ;; Practice
