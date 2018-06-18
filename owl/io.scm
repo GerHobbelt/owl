@@ -434,10 +434,10 @@
          (let ((block (read-bytevector 4096 port)))
             (cond
                ((eof-object? block)
-                  (bytevectors->list (reverse buff)))
+                  (bytevector-concatenate->list (reverse buff)))
                ((not block)
                   ;; read error
-                  (bytevectors->list (reverse buff)))
+                  (bytevector-concatenate->list (reverse buff)))
                (else
                   (read-blocks->list port (cons block buff))))))
 

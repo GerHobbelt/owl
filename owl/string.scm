@@ -14,6 +14,7 @@
       list->string       ; aka runes->string
       string->list       ; aka string->runes
       string-append
+      string-concatenate ; list of strings -> string
       c-string           ; str → #false | UTF-8 encoded null-terminated raw data string
       null-terminate     ; see ^
       finish-string      ; useful to construct a string with sharing
@@ -256,8 +257,11 @@
 
       ; FIXME: string-append is VERY temporary
       ; figure out how to handle balancing. 234-trees with occasional rebalance?
-      (define (string-append . lst)
+      (define (string-concatenate lst)
          (bytes->string (foldr render-string #n lst)))
+
+      (define (string-append . lst)
+         (string-concatenate lst))
 
       (define (string-eq-walk a b)
          (cond
