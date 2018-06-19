@@ -270,13 +270,13 @@
 
       (define quoted-values
          (list->ff
-            '((#\a . #x0007)
-              (#\b . #x0008)
-              (#\t . #x0009)
-              (#\n . #x000a)
-              (#\r . #x000d)
-              (#\" . #x0022)
-              (#\\ . #x005c))))
+            '((#\a . #x07)
+              (#\b . #x08)
+              (#\t . #x09)
+              (#\n . #x0a)
+              (#\r . #x0d)
+              (#\" . #x22)
+              (#\\ . #x5c))))
 
       (define get-quoted-string-char
          (get-parses
@@ -336,6 +336,15 @@
              (codepoint (get-either get-named-char get-rune)))
             codepoint))
 
+      (define (get-letter-word l w val)
+         (get-parses
+            ((skip (get-imm l))
+             (res
+               (get-either
+                  (get-word w val)
+                  (get-epsilon val))))
+            res))
+
       ;; most of these are to go via type definitions later
       (define get-funny-word
          (get-either
@@ -344,15 +353,10 @@
                ((skip get-hash)
                 (val
                   (one-of
-                     (get-word "false" #false) ;; get the longer ones first if present
-                     (get-word "f" #false)
-                     (get-word "null" #null)
-                     (get-word "n" #null)
-                     (get-word "true" #true)
-                     (get-word "t" #true)
+                     (get-letter-word #\f "alse" #false)
+                     (get-letter-word #\n "ull" #null)
+                     (get-letter-word #\t "rue" #true)
                      (get-word "empty" #empty)
-                     (get-word "F" #false)
-                     (get-word "T" #true)
                      (get-parses
                         ((bang (get-imm #\!))
                          (line get-rest-of-line))
@@ -421,13 +425,13 @@
             ((skip maybe-whitespace)
              (val
                (one-of
+                  (get-list-of (get-sexp))
                   get-number         ;; more than a simple integer
                   get-sexp-regex     ;; must be before symbols, which also may start with /
                   get-symbol
                   get-string
                   get-funny-word
                   get-bytevector
-                  (get-list-of (get-sexp))
                   (get-vector-of (get-sexp)) ;; #(...) -> vector or #((a . b) (c . d))
                   (get-ff (get-sexp)) ;; #(...) -> vector or #((a . b) (c . d))
                   (get-quoted (get-sexp))
