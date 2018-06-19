@@ -36,20 +36,32 @@
 
    (begin
 
-      (define special-symbol-chars (string->bytes "+-=<>!*%?_/~&$^:")) ;; owl uses @ for finite function syntax
+      ;; character classes
+      (define class-space #x80)
+      (define class-exactness #x40)
+      (define class-xdigit #x20)
+      (define class-digit #x10)
+      (define class-radix 8)
+      (define class-initial 4)
+      (define class-subsequent 2)
+      (define class-str-escape 1)
+
+      (define classes #u8(0 0 0 0 0 0 0 0 0 128 128 128 128 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 128 6 1 0 6 6 6 0 0 0 6 6 0 6 2 6 50 50 50 50 50 50 50 50 50 50 6 0 6 6 6 6 2 38 46 38 46 102 38 6 6 70 6 6 6 6 6 14 6 6 6 6 6 6 6 6 14 6 6 0 1 0 6 6 0 39 47 38 46 102 38 6 6 70 6 6 6 6 7 14 6 6 7 6 7 6 6 6 14 6 6 0 0 0 6))
+
+      (define (is-class? x class)
+         (and
+            (lesser? x 127)
+            (lesser? 0 (fxband (ref classes x) class))))
 
       (define (symbol-lead-char? n)
          (or
-            (<= #\a n #\z)
-            (<= #\A n #\Z)
-            (memq n special-symbol-chars)
-            (> n 127)))         ;; allow high code points in symbols
+            (is-class? n class-initial)
+            (lesser? 127 n))) ;; allow high code points in symbols
 
       (define (symbol-char? n)
          (or
-            (symbol-lead-char? n)
-            (eq? n #\.)
-            (or (<= #\0 n #\9) (> n 127)))) ;; allow high code points in symbols
+            (is-class? n class-subsequent)
+            (lesser? 127 n))) ;; allow high code points in symbols
 
       (define get-hash (get-imm #\#))
       (define get-pipe (get-imm #\|))
@@ -77,22 +89,22 @@
          (list->ff
             (append
                (map (λ (d) (cons d (- d 48))) (iota 48 1 58))  ;; 0-9
-               (map (λ (d) (cons d (- d 55))) (iota 65 1 71))  ;; A-F
                (map (λ (d) (cons d (- d 87))) (iota 97 1 103)) ;; a-f
                )))
 
       (define (digit-char? base)
-         (if (eq? base 10)
-            (λ (n) (<= 48 n 57))
-            (λ (n) (< (get digit-values n 100) base))))
+         (cond
+            ((eq? base 10)
+               (C is-class? class-digit))
+            ((eq? base 16)
+               (C is-class? class-xdigit))
+            (else
+               (λ (n) (lesser? (get digit-values n base) base)))))
 
       (define (bytes->number digits base)
          (fold
             (λ (n digit)
-               (let ((d (getf digit-values digit)))
-                  (if (or (not d) (>= d base))
-                     (error "bad digit " digit)
-                     (+ (* n base) d))))
+               (+ (* n base) (get digit-values (fxbor digit 32) base)))
             0 digits))
 
       (define get-sign
@@ -101,12 +113,10 @@
       (define bases
          (list->ff '((#\b . 2) (#\o . 8) (#\d . 10) (#\x . 16))))
 
-      (define (base-char? x)
-         (getf bases x))
+      (define base-char? (C is-class? class-radix))
 
       ;; the exactness prefixes are ignored in owl
-      (define get-exactness
-         (get-either (get-imm #\e) (get-imm #\i)))
+      (define exactness-char? (C is-class? class-exactness))
 
       (define get-exactness-base
          (get-either
@@ -120,12 +130,12 @@
                            (get-either
                               (get-parses
                                  ((skip get-hash)
-                                  (skip get-exactness))
+                                  (skip (get-byte-if exactness-char?)))
                                  #t)
                               (get-epsilon #f))))
                         char)
                      (get-parses
-                        ((skip get-exactness)
+                        ((skip (get-byte-if exactness-char?))
                          (char
                            (get-either
                               (get-parses
@@ -134,7 +144,7 @@
                                  char)
                               (get-epsilon #\d))))
                         char))))
-               (getf bases char))
+               (getf bases (fxbor char 32))) ;; switch to lower case
             (get-epsilon 10)))
 
       (define (get-natural base)
@@ -235,7 +245,7 @@
 
       (define get-a-whitespace
          (one-of
-            (get-byte-if (C memq '(9 10 32 13)))
+            (get-byte-if (C is-class? class-space))
             (get-parses
                ((skip (get-imm #\;))
                 (skip get-rest-of-line))
@@ -284,11 +294,11 @@
              (char
                (get-either
                   (get-parses
-                     ((char (get-byte-if (λ (byte) (getf quoted-values byte)))))
+                     ((char (get-byte-if (C is-class? class-str-escape))))
                      (getf quoted-values char))
                   (get-parses
                      ((skip (get-imm #\x))
-                      (hexes (get-greedy-plus (get-byte-if (digit-char? 16))))
+                      (hexes (get-greedy-plus (get-byte-if (C is-class? class-xdigit))))
                       (skip (get-imm #\;)))
                      (bytes->number hexes 16)))))
             char))
