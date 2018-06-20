@@ -37,31 +37,20 @@
    (begin
 
       ;; character classes
-      (define class-space #x80)
-      (define class-exactness #x40)
-      (define class-xdigit #x20)
-      (define class-digit #x10)
-      (define class-radix 8)
-      (define class-initial 4)
-      (define class-subsequent 2)
-      (define class-str-escape 1)
-
-      (define classes #u8(0 0 0 0 0 0 0 0 0 128 128 128 128 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 128 6 1 0 6 6 6 0 0 0 6 6 0 6 2 6 50 50 50 50 50 50 50 50 50 50 6 0 6 6 6 6 2 38 46 38 46 102 38 6 6 70 6 6 6 6 6 14 6 6 6 6 6 6 6 6 14 6 6 0 1 0 6 6 0 39 47 38 46 102 38 6 6 70 6 6 6 6 7 14 6 6 7 6 7 6 6 6 14 6 6 0 0 0 6))
+      (define classes #u8(0 0 0 0 0 0 0 0 0 128 128 128 128 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 128 1 4 0 1 1 1 0 0 0 1 3 0 3 2 1 50 50 50 50 50 50 50 50 50 50 1 0 1 1 1 1 2 33 41 33 41 97 33 1 1 65 1 1 1 1 1 9 1 1 1 1 1 1 1 1 9 1 1 0 4 0 1 1 0 37 45 33 41 97 33 1 1 65 1 1 1 1 5 9 1 1 5 1 5 1 1 1 9 1 1 0 0 0 1 0))
 
       (define (is-class? x class)
-         (and
-            (lesser? x 127)
-            (lesser? 0 (fxband (ref classes x) class))))
+         (lesser? 0 (fxband (ref classes x) class))) ;; out-of-bound access returns #f, which matches 1
 
-      (define (symbol-lead-char? n)
-         (or
-            (is-class? n class-initial)
-            (lesser? 127 n))) ;; allow high code points in symbols
-
-      (define (symbol-char? n)
-         (or
-            (is-class? n class-subsequent)
-            (lesser? 127 n))) ;; allow high code points in symbols
+      (define is-space? (C is-class? #x80))
+      (define is-exactness? (C is-class? #x40))
+      (define is-xdigit? (C is-class? #x20))
+      (define is-digit? (C is-class? #x10))
+      (define is-radix? (C is-class? 8))
+      (define is-escape-str? (C is-class? 4))
+      ;; set the lowest bit to match high code points, too
+      (define is-subsequent? (C is-class? 3))
+      (define is-initial? (C is-class? 1))
 
       (define get-hash (get-imm #\#))
       (define get-pipe (get-imm #\|))
@@ -69,11 +58,8 @@
       (define get-symbol
          (get-either
             (get-parses
-               ((head (get-rune-if symbol-lead-char?))
-                (tail (get-greedy-star (get-rune-if symbol-char?)))
-                ;(next (peek get-byte))
-                ;(foo (assert (B not symbol-char?) next))
-                )
+               ((head (get-rune-if is-initial?))
+                (tail (get-greedy-star (get-rune-if is-subsequent?))))
                (string->uninterned-symbol (runes->string (cons head tail))))
             (get-parses
                ((skip get-pipe)
@@ -95,9 +81,9 @@
       (define (digit-char? base)
          (cond
             ((eq? base 10)
-               (C is-class? class-digit))
+               is-digit?)
             ((eq? base 16)
-               (C is-class? class-xdigit))
+               is-xdigit?)
             (else
                (λ (n) (lesser? (get digit-values n base) base)))))
 
@@ -113,11 +99,7 @@
       (define bases
          (list->ff '((#\b . 2) (#\o . 8) (#\d . 10) (#\x . 16))))
 
-      (define base-char? (C is-class? class-radix))
-
       ;; the exactness prefixes are ignored in owl
-      (define exactness-char? (C is-class? class-exactness))
-
       (define get-exactness-base
          (get-either
             (get-parses
@@ -125,22 +107,22 @@
                 (char
                   (get-either
                      (get-parses
-                        ((char (get-byte-if base-char?))
+                        ((char (get-byte-if is-radix?))
                          (skip
                            (get-either
                               (get-parses
                                  ((skip get-hash)
-                                  (skip (get-byte-if exactness-char?)))
+                                  (skip (get-byte-if is-exactness?)))
                                  #t)
                               (get-epsilon #f))))
                         char)
                      (get-parses
-                        ((skip (get-byte-if exactness-char?))
+                        ((skip (get-byte-if is-exactness?))
                          (char
                            (get-either
                               (get-parses
                                  ((skip get-hash)
-                                  (char (get-byte-if base-char?)))
+                                  (char (get-byte-if is-radix?)))
                                  char)
                               (get-epsilon #\d))))
                         char))))
@@ -245,7 +227,7 @@
 
       (define get-a-whitespace
          (one-of
-            (get-byte-if (C is-class? class-space))
+            (get-byte-if is-space?)
             (get-parses
                ((skip (get-imm #\;))
                 (skip get-rest-of-line))
@@ -294,11 +276,11 @@
              (char
                (get-either
                   (get-parses
-                     ((char (get-byte-if (C is-class? class-str-escape))))
+                     ((char (get-byte-if is-escape-str?)))
                      (getf quoted-values char))
                   (get-parses
                      ((skip (get-imm #\x))
-                      (hexes (get-greedy-plus (get-byte-if (C is-class? class-xdigit))))
+                      (hexes (get-greedy-plus (get-byte-if is-xdigit?)))
                       (skip (get-imm #\;)))
                      (bytes->number hexes 16)))))
             char))
