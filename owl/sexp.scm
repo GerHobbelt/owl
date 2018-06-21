@@ -37,7 +37,7 @@
    (begin
 
       ;; character classes
-      (define classes #u8(0 0 0 0 0 0 0 0 0 128 128 128 128 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 128 1 4 0 1 1 1 0 0 0 1 3 0 3 2 1 50 50 50 50 50 50 50 50 50 50 1 0 1 1 1 1 2 33 41 33 41 97 33 1 1 65 1 1 1 1 1 9 1 1 1 1 1 1 1 1 9 1 1 0 4 0 1 1 0 37 45 33 41 97 33 1 1 65 1 1 1 1 5 9 1 1 5 1 5 1 1 1 9 1 1 0 0 0 1 0))
+      (define classes #u8(0 0 0 0 0 0 0 0 0 8 8 8 8 8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 8 1 16 0 1 1 1 0 0 0 1 3 0 3 2 1 6 6 6 6 6 6 6 6 6 6 1 0 1 1 1 1 2 5 37 5 37 69 5 1 1 65 1 1 1 1 1 33 1 1 1 1 1 1 1 1 33 1 1 0 16 0 1 1 0 21 53 5 37 69 5 1 1 65 1 1 1 1 17 33 1 1 17 1 17 1 1 1 33 1 1 0 16 0 1 0))
 
       (define-syntax is-class?
          (syntax-rules (x)
@@ -46,12 +46,11 @@
                   ;; out-of-bound access returns #f, which matches 1
                   (lesser? 0 (fxband (ref classes x) class))))))
 
-      (define is-space? (is-class? #x80))
       (define is-exactness? (is-class? #x40))
-      (define is-xdigit? (is-class? #x20))
-      (define is-digit? (is-class? #x10))
-      (define is-radix? (is-class? 8))
-      (define is-escape-str? (is-class? 4))
+      (define is-radix? (is-class? #x20))
+      (define is-escaped? (is-class? #x10))
+      (define is-space? (is-class? 8))
+      (define is-xdigit? (is-class? 4))
       ;; set the lowest bit to match high code points, too
       (define is-subsequent? (is-class? 3))
       (define is-initial? (is-class? 1))
@@ -83,13 +82,9 @@
                )))
 
       (define (digit-char? base)
-         (cond
-            ((eq? base 10)
-               is-digit?)
-            ((eq? base 16)
-               is-xdigit?)
-            (else
-               (λ (n) (lesser? (get digit-values n base) base)))))
+         (if (eq? base 16)
+            is-xdigit?
+            (λ (x) (lesser? (fxbxor x #\0) base))))
 
       (define (bytes->number digits base)
          (fold
@@ -266,13 +261,11 @@
 
       (define quoted-values
          (list->ff
-            '((#\a . #x07)
-              (#\b . #x08)
-              (#\t . #x09)
-              (#\n . #x0a)
-              (#\r . #x0d)
-              (#\" . #x22)
-              (#\\ . #x5c))))
+            '((#\a . #\alarm)
+              (#\b . #\backspace)
+              (#\t . #\tab)
+              (#\n . #\newline)
+              (#\r . #\return))))
 
       (define get-quoted-string-char
          (get-parses
@@ -280,8 +273,8 @@
              (char
                (get-either
                   (get-parses
-                     ((char (get-byte-if is-escape-str?)))
-                     (getf quoted-values char))
+                     ((char (get-byte-if is-escaped?)))
+                     (get quoted-values char char))
                   (get-parses
                      ((skip (get-imm #\x))
                       (hexes (get-greedy-plus (get-byte-if is-xdigit?)))
@@ -324,7 +317,6 @@
             (get-word "space" 32)
             (get-word "delete" 127)))
 
-      ;; fixme: add named characters #\newline, ...
       (define get-quoted-char
          (get-parses
             ((skip get-hash)
