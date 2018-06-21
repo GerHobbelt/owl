@@ -58,22 +58,6 @@
       (define get-hash (get-imm #\#))
       (define get-pipe (get-imm #\|))
 
-      (define get-symbol
-         (get-either
-            (get-parses
-               ((head (get-rune-if is-initial?))
-                (tail (get-greedy-star (get-rune-if is-subsequent?))))
-               (string->uninterned-symbol (runes->string (cons head tail))))
-            (get-parses
-               ((skip get-pipe)
-                (chars
-                  (get-greedy-star
-                     (get-either
-                        (get-parses ((skip (get-imm #\\)) (rune get-rune)) rune)
-                        (get-rune-if (B not (C eq? #\|))))))
-                (skip get-pipe))
-               (string->uninterned-symbol (runes->string chars)))))
-
       (define digit-values
          (list->ff
             (append
@@ -259,7 +243,7 @@
                things
                (append things tail))))
 
-      (define quoted-values
+      (define mnemonic-escape
          (list->ff
             '((#\a . #\alarm)
               (#\b . #\backspace)
@@ -267,14 +251,14 @@
               (#\n . #\newline)
               (#\r . #\return))))
 
-      (define get-quoted-string-char
+      (define get-char-escaped
          (get-parses
             ((skip (get-imm #\\))
              (char
                (get-either
                   (get-parses
                      ((char (get-byte-if is-escaped?)))
-                     (get quoted-values char char))
+                     (get mnemonic-escape char char))
                   (get-parses
                      ((skip (get-imm #\x))
                       (hexes (get-greedy-plus (get-byte-if is-xdigit?)))
@@ -282,16 +266,30 @@
                      (bytes->number hexes 16)))))
             char))
 
+      (define (get-char-sequence delimiter)
+         (get-star
+            (get-either
+               get-char-escaped
+               (get-rune-if (λ (x) (eq? (fxbor (eq? x delimiter) (eq? x #\\)) #f))))))
+
       (define get-string
          (get-parses
             ((skip (get-imm #\"))
-             (chars
-               (get-star
-                  (get-either
-                     get-quoted-string-char
-                     (get-rune-if (B not (C memq '(#\" #\\)))))))
+             (chars (get-char-sequence #\"))
              (skip (get-imm #\")))
             (runes->string chars)))
+
+      (define get-identifier
+         (get-either
+            (get-parses
+               ((head (get-rune-if is-initial?))
+                (tail (get-star (get-rune-if is-subsequent?))))
+               (string->uninterned-symbol (runes->string (cons head tail))))
+            (get-parses
+               ((skip get-pipe)
+                (chars (get-char-sequence #\|))
+                (skip get-pipe))
+               (string->uninterned-symbol (runes->string chars)))))
 
       (define quotations
          (list->ff '((39 . quote) (44 . unquote) (96 . quasiquote) (splice . unquote-splicing))))
@@ -415,8 +413,8 @@
                (one-of
                   (get-list-of (get-sexp))
                   get-number         ;; more than a simple integer
-                  get-sexp-regex     ;; must be before symbols, which also may start with /
-                  get-symbol
+                  get-sexp-regex ;; must be before identifiers, which also may start with /
+                  get-identifier
                   get-string
                   get-funny-word
                   get-bytevector

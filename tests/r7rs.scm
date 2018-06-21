@@ -11,8 +11,8 @@ Testing block comments. They could also be nested on second thought...
 ;; test |symbol| syntax
 
 (let
-   ((a '|foo bar|)
-    (b (string->symbol "foo bar")))
+   ((a '|foo bar\x20;baz|)
+    (b (string->symbol "foo\x20;bar baz")))
    (if (not (eq? a b))
       (print "symbolic failure 1")))
 
