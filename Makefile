@@ -19,7 +19,7 @@ simple-ol: bin/vm
 
 fasl/boot.fasl: bin/vm fasl/init.fasl
 	# start bootstrapping with the bundled init.fasl image
-	bin/vm $? -r bin/fasl-build.scm bin/vm $? -r owl/ol.scm -o $@
+	bin/vm fasl/init.fasl -r bin/fasl-build.scm bin/vm fasl/init.fasl -r owl/ol.scm -o $@
 
 fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
 	# selfcompile boot.fasl until a fixed point is reached

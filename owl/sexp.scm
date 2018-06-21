@@ -39,18 +39,22 @@
       ;; character classes
       (define classes #u8(0 0 0 0 0 0 0 0 0 128 128 128 128 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 128 1 4 0 1 1 1 0 0 0 1 3 0 3 2 1 50 50 50 50 50 50 50 50 50 50 1 0 1 1 1 1 2 33 41 33 41 97 33 1 1 65 1 1 1 1 1 9 1 1 1 1 1 1 1 1 9 1 1 0 4 0 1 1 0 37 45 33 41 97 33 1 1 65 1 1 1 1 5 9 1 1 5 1 5 1 1 1 9 1 1 0 0 0 1 0))
 
-      (define (is-class? x class)
-         (lesser? 0 (fxband (ref classes x) class))) ;; out-of-bound access returns #f, which matches 1
+      (define-syntax is-class?
+         (syntax-rules (x)
+            ((is-class? class)
+               (λ (x)
+                  ;; out-of-bound access returns #f, which matches 1
+                  (lesser? 0 (fxband (ref classes x) class))))))
 
-      (define is-space? (C is-class? #x80))
-      (define is-exactness? (C is-class? #x40))
-      (define is-xdigit? (C is-class? #x20))
-      (define is-digit? (C is-class? #x10))
-      (define is-radix? (C is-class? 8))
-      (define is-escape-str? (C is-class? 4))
+      (define is-space? (is-class? #x80))
+      (define is-exactness? (is-class? #x40))
+      (define is-xdigit? (is-class? #x20))
+      (define is-digit? (is-class? #x10))
+      (define is-radix? (is-class? 8))
+      (define is-escape-str? (is-class? 4))
       ;; set the lowest bit to match high code points, too
-      (define is-subsequent? (C is-class? 3))
-      (define is-initial? (C is-class? 1))
+      (define is-subsequent? (is-class? 3))
+      (define is-initial? (is-class? 1))
 
       (define get-hash (get-imm #\#))
       (define get-pipe (get-imm #\|))
