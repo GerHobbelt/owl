@@ -58,13 +58,6 @@
       (define get-hash (get-imm #\#))
       (define get-pipe (get-imm #\|))
 
-      (define digit-values
-         (list->ff
-            (append
-               (map (λ (d) (cons d (- d 48))) (iota 48 1 58))  ;; 0-9
-               (map (λ (d) (cons d (- d 87))) (iota 97 1 103)) ;; a-f
-               )))
-
       (define (digit-char? base)
          (if (eq? base 16)
             is-xdigit?
@@ -73,7 +66,8 @@
       (define (bytes->number digits base)
          (fold
             (λ (n digit)
-               (+ (* n base) (get digit-values (fxbor digit 32) base)))
+               (+ (* n base)
+                  (fxband (if (lesser? #\9 digit) (lets ((d _ (fx- digit 7))) d) digit) 15)))
             0 digits))
 
       (define get-sign
