@@ -64,6 +64,19 @@
             ((pair? r) (ok (cons (car r) l) (cdr r) (car r)))
             (else      (byte l (r) ok))))
 
+      (define (byte-if pred)
+         (λ (l r ok)
+            (cond
+               ((null? r)
+                  (backtrack l r eof-error))
+               ((pair? r)
+                  (lets ((x xt r))
+                     (if (pred x)
+                        (ok (cons x l) xt x)
+                        (backtrack l r 'bad-byte))))
+               (else
+                  ((byte-if pred) l (r) ok)))))
+
       (define (imm x)
          (λ (l r ok)
             (cond
@@ -71,7 +84,7 @@
                   (backtrack l r eof-error))
                ((pair? r)
                   (if (eq? (car r) x)
-                     (ok (cons (car r) l) (cdr r) x)
+                     (ok (cons x l) (cdr r) x)
                      (backtrack l r 'bad-byte)))
                (else
                   ((imm x) l (r) ok)))))
@@ -97,11 +110,10 @@
       (define (star-vals a vals)
          (λ (l r ok)
             (a
-               (cons
-                  (λ (l r why) (ok l r (reverse vals))) l)
-                r
-                (λ (l r val)
-                   ((star-vals a (cons val vals)) l r ok)))))
+               (cons (λ (l r why) (ok l r (reverse vals))) l)
+               r
+               (λ (l r val)
+                  ((star-vals a (cons val vals)) l r ok)))))
 
       (define star
          (C star-vals #n))
@@ -178,12 +190,6 @@
              (as (star parser)))
             (cons a as)))
 
-      (define (byte-if pred)
-         (parses
-            ((a byte)
-             (verify (pred a) "checked"))
-            a))
-
       ; #b10xxxxxx
       (define extension-byte
          (parses
@@ -194,8 +200,7 @@
       (define (byte-between lo hi)
          (byte-if
             (λ (x)
-               (and (lesser? lo x)
-                    (lesser? x hi)))))
+               (and (lesser? lo x) (lesser? x hi)))))
 
       (define rune
          (one-of
@@ -266,7 +271,7 @@
             (let loop ((ll (port->byte-stream fd)))
                (lets
                   ((lp r val
-                      (parser #n ll parser-succ)))
+                     (parser #n ll parser-succ)))
                   (cond
                      (lp ;; something parsed successfully
                         (pair val (loop r)))
