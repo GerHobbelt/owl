@@ -245,32 +245,41 @@
               (#\n . #\newline)
               (#\r . #\return))))
 
-      (define get-char-escaped
-         (get-parses
-            ((skip (get-imm #\\))
-             (char
-               (get-either
-                  (get-parses
-                     ((char (get-byte-if is-escaped?)))
-                     (get mnemonic-escape char char))
-                  (get-parses
-                     ((skip (get-imm #\x))
-                      (hexes (get-greedy-plus (get-byte-if is-xdigit?)))
-                      (skip (get-imm #\;)))
-                     (bytes->number hexes 16)))))
-            char))
+      (define (get-sequence-char delimiter)
+         (get-either
+            (get-parses
+               ((skip (get-imm #\\))
+                (char
+                  (get-either
+                     (get-parses
+                        ((char (get-byte-if is-escaped?)))
+                        (get mnemonic-escape char char))
+                     (get-parses
+                        ((skip (get-imm #\x))
+                         (hexes (get-greedy-plus (get-byte-if is-xdigit?)))
+                         (skip (get-imm #\;)))
+                        (bytes->number hexes 16)))))
+               char)
+            (get-rune-if (λ (x) (eq? (fxbor (eq? x delimiter) (eq? x #\\)) #f)))))
 
-      (define (get-char-sequence delimiter)
-         (get-star
-            (get-either
-               get-char-escaped
-               (get-rune-if (λ (x) (eq? (fxbor (eq? x delimiter) (eq? x #\\)) #f))))))
+      (define (get-transparent-break parser)
+         (get-parses
+            ((skip
+               (get-greedy-star
+                  (get-parses
+                     ((skip (get-imm #\\))
+                      (skip (get-greedy-plus (get-byte-if is-space?))))
+                     #n)))
+             (data parser))
+            data))
 
       (define get-string
          (get-parses
             ((skip (get-imm #\"))
-             (chars (get-char-sequence #\"))
-             (skip (get-imm #\")))
+             (chars
+               (get-greedy-star
+                  (get-transparent-break (get-sequence-char #\"))))
+             (skip (get-transparent-break (get-imm #\"))))
             (runes->string chars)))
 
       (define get-identifier
@@ -281,7 +290,7 @@
                (string->uninterned-symbol (runes->string (cons head tail))))
             (get-parses
                ((skip get-pipe)
-                (chars (get-char-sequence #\|))
+                (chars (get-greedy-star (get-sequence-char #\|)))
                 (skip get-pipe))
                (string->uninterned-symbol (runes->string chars)))))
 

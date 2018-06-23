@@ -71,5 +71,7 @@ Testing block comments. They could also be nested on second thought...
    (if (not (= (foo 10) 1))
       (print (list 'letrec* 'got (foo 10)))))
 
+;; transparent line break
 ;; shouldn't have printed anything before this
-(print "all done")
+(print "all \
+   done")
