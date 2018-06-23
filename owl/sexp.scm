@@ -283,11 +283,18 @@
             (runes->string chars)))
 
       (define get-identifier
-         (get-either
+         (one-of
             (get-parses
                ((head (get-rune-if is-initial?))
                 (tail (get-star (get-rune-if is-subsequent?))))
                (string->uninterned-symbol (runes->string (cons head tail))))
+            (get-parses
+               ((head (get-imm #\.))
+                (tail (get-greedy-plus (get-rune-if is-subsequent?))))
+               (let ((str (runes->string (cons head tail))))
+                  (if (string=? str "...")
+                     '...
+                     (string->uninterned-symbol str))))
             (get-parses
                ((skip get-pipe)
                 (chars (get-greedy-star (get-sequence-char #\|)))
@@ -336,21 +343,19 @@
 
       ;; most of these are to go via type definitions later
       (define get-funny-word
-         (get-either
-            (get-word "..." '...)
-            (get-parses
-               ((skip get-hash)
-                (val
-                  (one-of
-                     (get-letter-word #\f "alse" #false)
-                     (get-letter-word #\n "ull" #null)
-                     (get-letter-word #\t "rue" #true)
-                     (get-word "empty" #empty)
-                     (get-parses
-                        ((bang (get-imm #\!))
-                         (line get-rest-of-line))
-                        (list 'quote (list 'hashbang (list->string line)))))))
-               val)))
+         (get-parses
+            ((skip get-hash)
+             (val
+               (one-of
+                  (get-letter-word #\f "alse" #false)
+                  (get-letter-word #\n "ull" #null)
+                  (get-letter-word #\t "rue" #true)
+                  (get-word "empty" #empty)
+                  (get-parses
+                     ((bang (get-imm #\!))
+                      (line get-rest-of-line))
+                     (list 'quote (list 'hashbang (list->string line)))))))
+            val))
 
       (define get-bytevector
          (get-parses
