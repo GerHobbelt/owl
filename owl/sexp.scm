@@ -130,7 +130,6 @@
          (get-parses ((char get-sign))
             (if (eq? char 43) self (H - 0))))
 
-
       ;; separate parser with explicitly given base for string->number
       (define (get-number-in-base base)
          (get-parses
@@ -160,7 +159,7 @@
             ((n get-number-unit)
              (m (get-either
                   (get-parses
-                     ((skip (get-imm 47))
+                     ((skip (get-imm #\/))
                       (m get-number-unit)
                       (verify (not (eq? 0 m)) "zero denominator"))
                      m)
@@ -325,13 +324,6 @@
             (get-word "space" 32)
             (get-word "delete" 127)))
 
-      (define get-quoted-char
-         (get-parses
-            ((skip get-hash)
-             (skip (get-imm #\\))
-             (codepoint (get-either get-named-char get-rune)))
-            codepoint))
-
       (define (get-letter-word l w val)
          (get-parses
             ((skip (get-imm l))
@@ -340,47 +332,6 @@
                   (get-word w val)
                   (get-epsilon val))))
             res))
-
-      ;; most of these are to go via type definitions later
-      (define get-funny-word
-         (get-parses
-            ((skip get-hash)
-             (val
-               (one-of
-                  (get-letter-word #\f "alse" #false)
-                  (get-letter-word #\n "ull" #null)
-                  (get-letter-word #\t "rue" #true)
-                  (get-word "empty" #empty)
-                  (get-parses
-                     ((bang (get-imm #\!))
-                      (line get-rest-of-line))
-                     (list 'quote (list 'hashbang (list->string line)))))))
-            val))
-
-      (define get-bytevector
-         (get-parses
-            ((skip get-hash)
-             (skip (get-imm #\u))
-             (skip (get-imm #\8))
-             (fields
-               (get-list-of
-                  (get-parses
-                     ((skip maybe-whitespace)
-                      (base get-exactness-base)
-                      (val (get-natural base))
-                      (verify (lesser? val 256) '(bad u8)))
-                     val))))
-            (raw fields type-bytevector)))
-
-      (define (get-vector-of parser)
-         (get-parses
-            ((skip get-hash)
-             (fields (get-list-of parser)))
-            (let ((fields (intern-symbols fields)))
-               (if (any pair? fields)
-                  ;; vector may have unquoted stuff, so convert it to a sexp constructing a vector, which the macro handler can deal with
-                  (cons '_sharp_vector fields) ; <- quasiquote macro expects to see this in vectors
-                  (list->vector fields)))))
 
       (define (valid-ff-key? val)
          (or (symbol? val) (immediate? val)))
@@ -406,14 +357,49 @@
                       (v lst lst))
                   (loop lst (put ff k v))))))
 
-      (define (get-ff parser)
+      (define (get-hash-prefixed parser)
          (get-parses
             ((skip get-hash)
-             (skip get-hash)
-             (fields
-               (get-list-of parser))
-             (verify (ff-able? fields) '(bad ff)))
-            (lst->ff (intern-symbols fields))))
+             (val
+               (one-of
+                  (get-letter-word #\f "alse" #false)
+                  (get-letter-word #\n "ull" #null)
+                  (get-letter-word #\t "rue" #true)
+                  (get-word "empty" #empty)
+                  (get-parses ;; character
+                     ((skip (get-imm #\\))
+                      (codepoint (get-either get-named-char get-rune)))
+                     codepoint)
+                  (get-parses ;; #(...)
+                     ((fields (get-list-of parser)))
+                     (let ((fields (intern-symbols fields)))
+                        (if (any pair? fields)
+                           ;; vector may have unquoted stuff, so convert it to a sexp constructing a vector, which the macro handler can deal with
+                           (cons '_sharp_vector fields) ; <- quasiquote macro expects to see this in vectors
+                           (list->vector fields))))
+                  (get-parses ;; #u8(...)
+                     ((skip (get-imm #\u))
+                      (skip (get-imm #\8))
+                      (fields
+                        (get-list-of
+                           (get-parses
+                              ((skip maybe-whitespace)
+                               (base get-exactness-base)
+                               (val (get-natural base))
+                               (verify (lesser? val 256) '(bad u8)))
+                              val))))
+                     (raw fields type-bytevector))
+                  (get-parses ;; ##(...)
+                     ((skip get-hash)
+                      (fields
+                        (get-list-of parser))
+                      (verify (ff-able? fields) '(bad ff)))
+                     (lst->ff (intern-symbols fields)))
+                  (get-parses
+                     ((bang (get-imm #\!))
+                      (line get-rest-of-line))
+                     (list 'quote (list 'hashbang (list->string line)))))))
+            val))
 
       (define (get-sexp)
          (get-parses
@@ -424,14 +410,10 @@
                   get-number         ;; more than a simple integer
                   get-sexp-regex ;; must be before identifiers, which also may start with /
                   get-identifier
+                  (get-hash-prefixed (get-sexp))
                   get-string
-                  get-funny-word
-                  get-bytevector
-                  (get-vector-of (get-sexp)) ;; #(...) -> vector or #((a . b) (c . d))
-                  (get-ff (get-sexp)) ;; #(...) -> vector or #((a . b) (c . d))
                   (get-quoted (get-sexp))
-                  (get-byte-if eof-object?)
-                  get-quoted-char)))
+                  (get-byte-if eof-object?))))
             val))
 
       (define (ok? x) (eq? (ref x 1) 'ok))
