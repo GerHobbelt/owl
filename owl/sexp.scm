@@ -115,20 +115,20 @@
          (get-parses
             ((sign-char get-sign) ; + / -, default +
              (n (get-natural base)))
-            (if (eq? sign-char 43) n (- 0 n))))
+            (if (eq? sign-char #\+) n (- 0 n))))
 
       ;; → n, to multiply with
       (define (get-exponent base)
          (get-either
             (get-parses
-               ((skip (get-imm 101)) ; e
+               ((skip (get-imm #\e))
                 (pow (get-integer base)))
                (expt base pow))
             (get-epsilon 1)))
 
       (define get-signer
          (get-parses ((char get-sign))
-            (if (eq? char 43) self (H - 0))))
+            (if (eq? char #\+) self (H - 0))))
 
       ;; separate parser with explicitly given base for string->number
       (define (get-number-in-base base)
@@ -138,7 +138,7 @@
              (tail ;; optional after dot part be added
                (get-either
                   (get-parses
-                     ((skip (get-imm 46))
+                     ((skip (get-imm #\.))
                       (digits (get-greedy-star (get-byte-if (digit-char? base)))))
                      (/ (bytes->number digits base)
                         (expt base (length digits))))
@@ -219,18 +219,18 @@
 
       (define (get-list-of parser)
          (get-parses
-            ((lp (get-imm 40))
+            ((lp (get-imm #\())
              (things
                (get-star parser))
              (skip maybe-whitespace)
              (tail
                (get-either
-                  (get-parses ((rp (get-imm 41))) #n)
+                  (get-parses ((rp (get-imm #\)))) #n)
                   (get-parses
-                     ((dot (get-imm 46))
+                     ((dot (get-imm #\.))
                       (fini parser)
                       (skip maybe-whitespace)
-                      (skip (get-imm 41)))
+                      (skip (get-imm #\))))
                      fini))))
             (if (null? tail)
                things
@@ -301,28 +301,28 @@
                (string->uninterned-symbol (runes->string chars)))))
 
       (define quotations
-         (list->ff '((39 . quote) (44 . unquote) (96 . quasiquote) (splice . unquote-splicing))))
+         (list->ff '((#\' . quote) (#\, . unquote) (#\` . quasiquote) (splice . unquote-splicing))))
 
       (define (get-quoted parser)
          (get-parses
             ((type
                (get-either
-                  (get-parses ((_ (get-imm 44)) (_ (get-imm 64))) 'splice) ; ,@
+                  (get-parses ((_ (get-imm #\,)) (_ (get-imm #\@))) 'splice)
                   (get-byte-if (λ (x) (getf quotations x)))))
              (value parser))
             (list (getf quotations type) value)))
 
       (define get-named-char
          (one-of
-            (get-word "null" 0)
-            (get-word "alarm" 7)
-            (get-word "backspace" 8)
-            (get-word "tab" 9)
-            (get-word "newline" 10)
-            (get-word "return" 13)
-            (get-word "escape" 27)
-            (get-word "space" 32)
-            (get-word "delete" 127)))
+            (get-word "null" #\null)
+            (get-word "alarm" #\alarm)
+            (get-word "backspace" #\backspace)
+            (get-word "tab" #\tab)
+            (get-word "newline" #\newline)
+            (get-word "return" #\return)
+            (get-word "escape" #\escape)
+            (get-word "space" #\space)
+            (get-word "delete" #\delete)))
 
       (define (get-letter-word l w val)
          (get-parses
