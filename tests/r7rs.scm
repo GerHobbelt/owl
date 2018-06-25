@@ -4,7 +4,7 @@
 
 #|
 
-Testing block comments. They could also be nested on second thought...
+Testing block comments. #| They can also be nested. |#
 
 |#
 

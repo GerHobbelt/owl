@@ -190,16 +190,22 @@
             chars))
 
       ;; skip everything up to |#
-      (define (get-block-comment)
-         (get-either
+      (define (get-block-comment nest)
+         (one-of
             (get-parses
                ((skip get-pipe)
-                (skip get-hash))
-               'comment)
+                (skip get-hash)
+                (comment (if (eq? nest 0) (get-epsilon #\space) (get-block-comment (- nest 1)))))
+               comment)
+            (get-parses
+               ((skip get-hash)
+                (skip get-pipe)
+                (comment (get-block-comment (+ nest 1))))
+               comment)
             (get-parses
                ((skip get-byte)
-                (skip (get-block-comment)))
-               skip)))
+                (comment (get-block-comment nest)))
+               comment)))
 
       (define get-a-whitespace
          (one-of
@@ -207,12 +213,12 @@
             (get-parses
                ((skip (get-imm #\;))
                 (skip get-rest-of-line))
-               'comment)
+               #\space)
             (get-parses
                ((skip get-hash)
                 (skip get-pipe)
-                (skip (get-block-comment)))
-               'comment)))
+                (comment (get-block-comment 0)))
+               comment)))
 
       (define maybe-whitespace (get-star get-a-whitespace))
       (define whitespace (get-greedy-plus get-a-whitespace))
