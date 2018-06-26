@@ -190,21 +190,21 @@
             chars))
 
       ;; skip everything up to |#
-      (define (get-block-comment nest)
+      (define (get-block-comment parser)
          (one-of
             (get-parses
                ((skip get-pipe)
                 (skip get-hash)
-                (comment (if (eq? nest 0) (get-epsilon #\space) (get-block-comment (- nest 1)))))
+                (comment parser))
                comment)
             (get-parses
                ((skip get-hash)
                 (skip get-pipe)
-                (comment (get-block-comment (+ nest 1))))
+                (comment (get-block-comment (get-block-comment parser))))
                comment)
             (get-parses
                ((skip get-byte)
-                (comment (get-block-comment nest)))
+                (comment (get-block-comment parser)))
                comment)))
 
       (define get-a-whitespace
@@ -217,11 +217,10 @@
             (get-parses
                ((skip get-hash)
                 (skip get-pipe)
-                (comment (get-block-comment 0)))
+                (comment (get-block-comment (get-epsilon #\space))))
                comment)))
 
       (define maybe-whitespace (get-star get-a-whitespace))
-      (define whitespace (get-greedy-plus get-a-whitespace))
 
       (define (get-list-of parser)
          (get-parses
@@ -427,9 +426,8 @@
       (define (fail reason) (tuple 'fail reason))
 
       (define sexp-parser
-         (get-parses
-            ((foo maybe-whitespace)
-             (sexp (get-sexp))) ;; do not read trailing whitespace to avoid blocking when parsing a stream
+         ;; do not read trailing white-space to avoid blocking, when parsing a stream
+         (get-parses ((sexp (get-sexp)))
             (intern-symbols sexp)))
 
       (define get-sexps
@@ -439,7 +437,7 @@
       (define get-padded-sexps
          (get-parses
             ((data get-sexps)
-             (ws maybe-whitespace))
+             (skip maybe-whitespace))
             data))
 
       ;; fixme: new error message info ignored, and this is used for loading causing the associated issue
