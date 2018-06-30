@@ -1,12 +1,19 @@
-;;; A typical way to make data structures for holding key-value in
+;;; A typical way to make data structures for holding key-value mappings in
 ;;; Lisp systems is to make an association list. An association list
-;;; is a list of pairs, where the car holds the key, and cdr holds the
+;;; is a list of pairs, where the car holds the key, and cdr holds the corresponding
 ;;; value. While easy to define and use, they have the downside of slowing
-;;; down linearly as the size of the association list grows.
+;;; down linearly as the size of the number of associations grows.
+;;;
+;;; Another way to think about such a data structure is to view it as a
+;;; partial function. When the function is applied to a key, the associated
+;;; value if any is returned.
 ;;;
 ;;; Owl has finite functions, or ffs, which behave like association
 ;;; lists, but they slow down only logarithmically as they get more keys.
-;;; They are internally represented as red-black trees.
+;;; The semantics are exactly those of an association list using `eq?`
+;;; for comparing keys. Finite functions are internally represented as
+;;; red-black trees with compacted nodes, so a finite function will
+;;; not add any memory overhead compared to association lists.
 ;;;
 ;;; `#empty` or `##()` can be used to refer to an empty finite function.
 ;;; `put` adds or rewrites the value of a key, `get` fetches the value
@@ -26,11 +33,13 @@
 ;;;   > (get (del f 'foo) 'foo #f)
 ;;;   #f
 ;;; ```
-;;; A finite function maps keys to values. As the name implies, a ff
-;;; can also be called to do just that. If one argument is given and it
-;;; is defined, the value is returned. In case of an undefined value, either
-;;; an error is signaled or the second default argument is returned, if
-;;; it is specified.
+;;;
+;;; One can also apply a finite function to an argument. The result
+;;; will be the value mapped to that key, if any.
+;;; If the value is not defined in the function, an error is signaled.
+;;; As with many other such functions, you can also pass a second default
+;;; value for a finite function, in which case it is returned if the key
+;;; is not defined.
 ;;;
 ;;; ```
 ;;;   > (f 'foo)
@@ -77,14 +86,12 @@
 ;;;   (ff->list ##(a 1 b 2)) → '((a . 1) (b . 2))
 ;;;
 ;;; ```
-
-;; fixme: ff unit tests went missing at some point. add with lib-compare vs naive alists.
-;; fixme: ffc[ad]r are no longer needed as primitives
-
-; Note: objects in owl are *ordered*. The gc was specifically
-; designed to preserve order in order to improve locality and
-; allow O(log n) maps (called ffs to avoid collision with
-; the standard map function) of arbitrary objects.
+;;;
+;;; Other programming languges typically use hashing to obtain a
+;;; similar data structure. Owl has an order preserving garbage
+;;; collector, which makes it possible to compare order as well as
+;;; equality of objects. This makes it easy to build efficient tree
+;;; data structures without complex key hashing and collision checks.
 
 (define-library (owl ff)
 
