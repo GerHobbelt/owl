@@ -645,9 +645,10 @@
       (define accept-nonspace (pred (B not space?)))
 
       ;; \<x>
+      ;; todo: can this be merged with char class char?
       (define get-quoted-char
          (get-parses
-            ((skip (get-imm 92)) ; \
+            ((skip (get-imm #\\))
              (val
                (one-of
                   (imm-val #\d accept-digit)       ;; \d = [0-9]
@@ -664,6 +665,7 @@
                   (imm-val #\] (imm #\]))
                   (imm-val #\( (imm #\())
                   (imm-val #\) (imm #\)))
+                  (imm-val #\| (imm #\|))
                   (imm-val #\W accept-nonword)     ;; \W = [^_0-9a-zA-Z]
                   (imm-val #\s accept-space)       ;; \s = [ \t\r\n\v\f]
                   (imm-val #\S accept-nonspace)    ;; \S = [ \t\r\n\v\f]
@@ -732,23 +734,24 @@
       (define parse-quoted-char-body
          (one-of
             ;; the usual quotations
-            (imm-val 97  7)   ;; \a = 7
-            (imm-val 98  8)   ;; \b = 8
-            (imm-val 116 9)   ;; \t = 9
-            (imm-val 110 10)  ;; \n = 10
-            (imm-val 118 11)  ;; \v = 11
-            (imm-val 102 12)  ;; \f = 12
-            (imm-val 114 13)  ;; \r = 13
-            (get-imm 91)      ;; \[ = [
-            (get-imm 92)      ;; \\ = \
-            (get-imm 93)      ;; \] = ]
-            (get-imm 94)      ;; \^ = ^
-            (get-parses ((skip (get-imm 120)) (char get-8bit)) char)    ;; \xhh
-            (get-parses ((skip (get-imm 117)) (char get-16bit)) char))) ;; \uhhhh
+            (imm-val #\a  7)
+            (imm-val #\b  8)
+            (imm-val #\t  9)
+            (imm-val #\n 10)
+            (imm-val #\v 11)
+            (imm-val #\f 12)
+            (imm-val #\r 13)
+            (get-imm #\[)
+            (get-imm #\\)
+            (get-imm #\])
+            (get-imm #\^)
+            (get-imm #\|)
+            (get-parses ((skip (get-imm #\x)) (char get-8bit)) char)    ;; \xhh
+            (get-parses ((skip (get-imm #\u)) (char get-16bit)) char))) ;; \uhhhh
 
       (define parse-quoted-char
          (get-parses
-            ((skip (get-imm 92)) ;; \
+            ((skip (get-imm #\\))
              (val parse-quoted-char-body))
             val))
 
