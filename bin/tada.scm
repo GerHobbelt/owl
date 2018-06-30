@@ -1,88 +1,30 @@
 #!/usr/bin/ol -r
 
-;; totally automatic documentation aggregator (TADA)
-;; initial minimal viable version
-;; usage: tada owl-library.scm -> documentation
+(import 
+   (owl sexp)
+   (owl sys)
+   (owl args))
 
-(import (owl sexp))
+;;; File system
 
-;; simple expression pattern match
+(define (dir->list-recursive path)
+   (define (walk path out)
+      (if (directory? path)
+         (fold
+            (λ (out sub)
+               (walk (str path "/" sub) out))
+            out (dir->list path))
+         (cons path out)))
+   (walk path #null))
 
-(define (match exp pat)
-   (define (walk exp pat found)
-      (cond
-         ((not found)
-            #false)
-         ((eq? pat '?)
-            (cons exp found))
-         ((pair? pat)
-            (if (pair? exp)
-               (walk (car exp) (car pat)
-                  (walk (cdr exp) (cdr pat) found))
-               #false))
-         ((eq? exp pat)
-            found)
-         (else
-            #false)))
-   (let ((res (walk exp pat #n)))
-      (if res
-         (list->tuple res)
-         #false)))
+(define (dirs->list-recursive paths)
+   (fold
+      (λ (out thing)
+         (append (dir->list-recursive thing) out))
+      #null paths))
 
-(define (match-1 exp pat)
-   (let ((res (match exp pat)))
-      (if res (ref res 1) #false)))
 
-(define (maybe-definition-args defn)
-   (if (m/^ *\(define +\(/ defn)  ; ))
-      (s/\).*// ; (
-         (s/.*\(define +\([^ ]+ *// defn)) ; ))
-      #false))
-
-(define (maybe fn val)
-   (if val (fn val) val))
-
-(define (maybe-put ff k v)
-   (if v (put ff k v) ff))
-
-(define (find-args defn comms)
-   (or (maybe s/,.*// (find m/.* -> / comms))
-       (maybe-definition-args defn)))
-
-(define (find-description comms)
-   (maybe s/.*, *// (find m/.* -> .*,/ comms)))
-
-(define (examples comms)
-   (map s/   //
-      (filter m/^   .* = / comms)))
-
-(define (metadata-entry info name defn-line prev-comments)
-   (-> info
-      (maybe-put 'name name)
-      (maybe-put 'description (find-description prev-comments))
-      (maybe-put 'args (find-args defn-line prev-comments))
-      (maybe-put 'examples (examples prev-comments))))
-
-(define (add-comment-metadatas meta path)
-   (let loop ((ls (lines (open-input-file path))) (cs #n) (metas meta))
-      (lets ((line ls (uncons ls #false)))
-         (if line
-            (cond
-               ((m/^ *;; / line)
-                  (loop ls (cons (s/^ *;; // line) cs) metas))
-               ((m/^ *\(define / line) ;) happy paren balancer
-                  (let ((name (s/^ *\(define \(?([^ ]+).*/\1/ line))) ; ))
-                     (loop ls #n
-                        (lets
-                            ((name (string->symbol name))
-                             (info (getf metas name)))
-                            (if info
-                               (put metas name
-                                  (metadata-entry info name line (reverse cs)))
-                               metas)))))
-               (else
-                  (loop ls #n metas)))
-            metas))))
+;;; HTML
 
 (define safe-chars
    (fold
@@ -103,96 +45,35 @@
          #n
          (string->list s))))
 
-(define (export? x)
-   (and (pair? x) (list? x) (eq? (car x) 'export)))
 
-(define (begin? x)
-   (and (pair? x) (list? x) (eq? (car x) 'begin)))
+;;; Command line
 
-(define (add-defn-metadata meta exp)
-   (cond
-      ((match exp '(define (? . ?) . ?)) =>
-         (lambda (ms)
-            (let ((val (getf meta (ref ms 1))))
-               (if val ;; exported, collecting data for it
-                  (put meta (ref ms 1) (put val 'args (ref ms 2)))
-                  meta))))
-      (else meta)))
+(define command-line-rules
+   (cl-rules
+     `((help     "-h" "--help")
+       (source-dir "-d" "--directory" plural has-arg
+          comment "a directory to find sources form (recursively)"))))
 
-(define (pick-exports exps body)
-   (lets
-      ((meta
-         (fold
-            (lambda (ff exp)
-               (put ff exp (put #empty 'name exp)))
-             #empty exps)))
-      (fold add-defn-metadata meta (or body #n))))
 
-;; sexp -> #f | (libname . initial-metadata-ff)
-(define (maybe-tada-module sexp)
-   (let ((res (match sexp '(define-library ? . ?))))
-      (if res
-         (lets ((library (ref res 1))
-                (exports
-                   (fold
-                      (lambda (found x)
-                         (or found (if (export? x) (cdr x) #false)))
-                      #false (ref res 2)))
-                (body
-                   (fold
-                      (lambda (found x) (or found (if (begin? x) (cdr x) #false)))
-                      #false (ref res 2))))
-            (if (and library exports)
-               (values library (pick-exports exports body))
-               (values #f #f)))
-        (values #f #f))))
+;;; Different kinds of documentation
 
-(define (meta-of sym ms)
-   (cond
-      ((null? ms) ms)
-      ((equal? (symbol->string sym) (caar ms))
-         (cdar ms))
-      (else
-         (meta-of sym (cdr ms)))))
+(define (gather-documentation path)
+   (print " - " path)
+   (lets ((content (file->list path))
+          (sexps (list->sexps content #false #false))) ;; module is in one sexp
+      (print (list 'path path 'length (length content) 'sexps (length sexps)))))
 
-(define (tada-add out path)
-   (print-to stderr (str "Reading " path))
-   (lets ((sexps (force-ll (read-ll (open-input-file path)))))
-      (print-to stderr (str " - " (length sexps) " exps"))
-      (if (= (length sexps) 2)
-         (lets
-            ((libname info (maybe-tada-module (car sexps)))
-             (metas (if info (add-comment-metadatas info path) #f)))
-            (if (and info metas)
-               (cons (cons libname metas) out)
-               out))
-         (begin
-            (print-to stderr "Warning: not tadaing " path)
-            out))))
 
-(lambda (args)
-   (for-each
-      (lambda (node)
-         (print "*" (html-safe (str (car node ))) "*")
-         (ff-fold
-            (lambda (_ name info)
-               (lets
-                  ((args (getf info 'args))
-                   (examples (get info 'examples #n))
-                   (desc (getf info 'description)))
-                  (print
-                     (html-safe
-                        (str " - "
-                           (if args
-                              (if (m/ -> / args)
-                                 (str "(" name " " (s/ *->/) ->/ args))
-                                 (str "(" name " " args ")"))
-                              name)
-                           (if desc (str ", _" desc "_") ""))))
-                  (for-each
-                     (lambda (exp) (print "    - " (html-safe exp)))
-                      examples)))
-            #f (cdr node))
-         (print))
-      (reverse (fold tada-add #n (cdr args))))
+;;; Entry
+
+(λ (args)
+   (process-arguments (cdr args) command-line-rules "you lose"
+      (λ (opts extras)
+         (print "opts: " opts)
+         (print "extras: " extras)
+         (let ((files (dirs->list-recursive (getf opts 'source-dir))))
+            (print "gathering documentation from " (length files) " files.")
+            (map gather-documentation files))))
    0)
+
+
