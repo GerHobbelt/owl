@@ -1,6 +1,8 @@
-;;;
-;;; COMMAND LINE ARGUMENT HANDLER
-;;;
+#| doc
+This library makes it easy to write tools which use command line arguments 
+in the usual way.
+|#
+
 
 (define-library (owl args)
 

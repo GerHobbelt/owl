@@ -78,9 +78,11 @@
      `((help     "-h" "--help")
        (source-dir "-d" "--directory" plural has-arg
           comment "a directory to find sources form (recursively)")
-       (output   "-o" "--output" has-arg default "manual.sexp"
-          comment "output sexp file"))))
-          
+       (output   "-o" "--output" has-arg default "manual.md"
+          comment "output file")
+       (prelude  "-p" "--prelude" has-arg default "doc/manual.md"
+          comment "documentation prelude file"))))
+
 
 ;;; Embedded documentation in comments
 
@@ -121,20 +123,52 @@
             others)
          others)))
 
+;;; Rendering
+
+(define (render-documentation doc)
+   (str
+      "\n## " (doc 'name (doc 'path)) "\n"
+      (doc 'initial-doc "\n")
+      "\n"
+      "Exported values:\n\n"
+      (foldr
+         (λ (x tl) (str "- " x "\n" tl))
+         "" (doc 'exports #null))
+      "\n"
+      (if (doc 'examples #f)
+         (str
+            "### Examples"
+            (doc 'examples))
+         "")
+   ))
+
 ;;; Entry
 
 (λ (args)
    (process-arguments (cdr args) command-line-rules "you lose"
       (λ (opts extras)
-         (let ((docs 
-                  (fold gather-documentation #null
-                     (sort string>?
-                        (dirs->list-recursive
-                           (getf opts 'source-dir)))))
+         (lets
+             ((docs
+               (fold gather-documentation #null
+                  (sort string>?
+                     (dirs->list-recursive
+                        (getf opts 'source-dir)))))
+              (prelude
+                 (bytes->string
+                    (file->list (getf opts 'prelude))))
                (output-path
-                  (getf opts 'output)))
+                  (getf opts 'output))
+               (output-port
+                  (open-output-file output-path)))
             (for-each print docs)
             (print "Writing to " output-path)
-            (write-to (open-output-file output-path) docs))))
+            (print-to output-port prelude)
+            (for-each
+               (λ (doc-node)
+                  (print "rendering " doc-node)
+                  (print-to output-port
+                     (render-documentation doc-node)))
+               docs)
+            (close-port output-port))))
    0)
 

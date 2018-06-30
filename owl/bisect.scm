@@ -1,6 +1,6 @@
-;;;
-;;; Bisect, binary search on sorted data from a numeric range
-;;;
+#| doc
+Bisect makes a binary search on sorted data.
+|#
 
 ;; todo: convert bisect range end to be denoted by returning the end instead of #false
 

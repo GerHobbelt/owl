@@ -1,6 +1,6 @@
-;;;
-;;; Bytecode assembly
-;;;
+#| doc
+This library implements bytecode assembly.
+|#
 
 (define-library (owl assemble)
 

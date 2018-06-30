@@ -1,6 +1,7 @@
-;;;
-;;; Converting S-exps to a more compact and checked AST
-;;;
+#| doc
+After macro expansion the S-expressions are translated to a tree of tuples 
+with checked structure to avoid having to constantly check S-expression structure.
+|#
 
 (define-library (owl ast)
 
