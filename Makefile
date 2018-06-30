@@ -5,15 +5,13 @@ PREFIX = /usr
 BINDIR = /bin
 MANDIR = /share/man
 INSTALL = install
-CFLAGS = -Wall -O2
-CC = gcc
+
+export CFLAGS = -Wall -O2
+export CC = gcc
+export LDFLAGS
 
 # owl needs just a single binary
 all owl: bin/ol
-
-simple-ol: bin/vm
-	bin/vm fasl/init.fasl --run owl/ol.scm -s none -o c/ol.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/ol c/ol.c
 
 ## fasl (plain bytecode) image boostrap
 
@@ -23,7 +21,7 @@ fasl/boot.fasl: bin/vm fasl/init.fasl
 
 fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
 	# selfcompile boot.fasl until a fixed point is reached
-	CC='$(CC)' bin/vm fasl/init.fasl -r bin/fasl-build.scm -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
+	bin/vm fasl/init.fasl -r bin/fasl-build.scm -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
 
 ## building just the virtual machine to run fasl images
 
@@ -56,7 +54,7 @@ c/ol.c: fasl/ol.fasl
 bin/ol: c/ol.c
 	# compile the real owl repl binary
 	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/olp $?
-	CC='$(CC)' CFLAGS='$(CFLAGS)' LDFLAGS='$(LDFLAGS)' sh tests/run all bin/olp
+	sh tests/run all bin/olp
 	test '!' -f $@ || mv $@ bin/ol-old
 	mv bin/olp $@
 
@@ -64,14 +62,14 @@ bin/ol: c/ol.c
 ## running unit tests manually
 
 fasltest: bin/vm fasl/ol.fasl
-	CC='$(CC)' sh tests/run all bin/vm fasl/ol.fasl
+	sh tests/run all bin/vm fasl/ol.fasl
 
 test: bin/ol
-	CC='$(CC)' sh tests/run all bin/ol
+	sh tests/run all bin/ol
 
 random-test: bin/vm bin/ol fasl/ol.fasl
-	CC='$(CC)' sh tests/run random bin/vm fasl/ol.fasl
-	CC='$(CC)' sh tests/run random bin/ol
+	sh tests/run random bin/vm fasl/ol.fasl
+	sh tests/run random bin/ol
 
 
 ## data
@@ -113,4 +111,4 @@ clean:
 fasl-update: fasl/ol.fasl
 	cp fasl/ol.fasl fasl/init.fasl
 
-.PHONY: all clean fasl-update fasltest install owl random-test simple-ol test uninstall
+.PHONY: all clean fasl-update fasltest install owl random-test test uninstall
