@@ -1,3 +1,8 @@
+#| doc
+This library is used internally to convert all variables to unique ones to 
+avoid having to track variable shadowing.
+|#
+
 ;;;
 ;;; Alpha conversion
 ;;;

@@ -1,6 +1,6 @@
-;;;
-;;; Owl math module, first iteration
-;;;
+#| doc
+This library defines arbitrary precision integer arithmetic.
+|#
 
 (define-library (owl math integer)
 

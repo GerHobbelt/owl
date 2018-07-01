@@ -1,3 +1,10 @@
+#| doc
+Byte vectors are vectors holding only numbers in the range 0-255. 
+They are internally represented as chunks of memory in the garbage collected heap.
+Typical use cases for them is packing data for an operating system call, 
+  or receiving data from an external source.
+|#
+
 (define-library (owl bytevector)
    (export
       bytevector

@@ -1,6 +1,6 @@
-;;;
-;;; Owl math module, first iteration
-;;;
+#| doc
+This library defines complex arbitrary precision math functions.
+|#
 
 
 (define-library (owl math complex)

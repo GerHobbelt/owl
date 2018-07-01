@@ -4,23 +4,23 @@ Lisp systems is to make an association list. An association list
 is a list of pairs, where the car holds the key, and cdr holds the corresponding
 value. While easy to define and use, they have the downside of slowing
 down linearly as the size of the number of associations grows.
-;;;
+
 Another way to think about such a data structure is to view it as a
 partial function. When the function is applied to a key, the associated
 value if any is returned.
-;;;
+
 Owl has finite functions, or ffs, which behave like association
 lists, but they slow down only logarithmically as they get more keys.
 The semantics are exactly those of an association list using `eq?`
 for comparing keys. Finite functions are internally represented as
 red-black trees with compacted nodes, so a finite function will
 not add any memory overhead compared to association lists.
-;;;
+
 `#empty` or `##()` can be used to refer to an empty finite function.
 `put` adds or rewrites the value of a key, `get` fetches the value
 or returns the third argument if the key is not found. `del` removes
 a key from a ff.
-;;;
+
 ```
   > (define f (put (put #empty 'foo 100) 'bar 42))
   > f
@@ -34,7 +34,7 @@ a key from a ff.
   > (get (del f 'foo) 'foo #f)
   #f
 ```
-;;;
+
 One can also apply a finite function to an argument. The result
 will be the value mapped to that key, if any.
 If the value is not defined in the function, an error is signaled.
@@ -50,44 +50,44 @@ is not defined.
   > (map f '(foo bar))
   '(100 42)
 ```
-;;;
+
 Many list functions have corresponding functions for ffs, where
 usually a function receiving the list element just receives two
 arguments, being a particular key and value pair. The name of the
 function is typically prefixed with ff-.
-;;;
+
 ```
   (get ##(a 1) 'a #f) → 1
-;;;
+
   (get ##(a 1) 'x #f) → #f
-;;;
+
   (put ##(a 1 b 2) 'c 3) → ##(a 1 b 2 c 3)
-;;;
+
   (del ##(a 1 b 2) 'a) → ##(b 2)
-;;;
+
   (fupd ff key value) → ff', like put, but for an existing key
-;;;
+
   (keys ##(foo 1 bar 2)) → '(foo bar)
-;;;
+
   (ff-union ##(a 100 b 200) ##(b 2 c 3) +) → ##(a 100 b 202 c 3)
-;;;
+
   (ff-diff ##(a 1 b 2 c 3) ##(a 10 b 20)) → ##(c 3)
-;;;
+
   (ff-fold (λ (o k v) (cons (cons k v) o)) #n ##(foo 1 bar 2) →
      '((bar . 2) (foo . 1))
-;;;
+
   (ff-foldr (λ (o k v) (cons (cons k v) o)) #n ##(foo 1 bar 2) →
      '((foo . 1) (bar . 2))
   (ff-map ##(a 1 b 2 c 3) (λ (k v) (square v))) → ##(a 1 b 4 c 9)
-;;;
+
   (ff-iter ff) → a lazy list of key-value pairs
-;;;
+
   (list->ff '((a . 1) (b . 2))) → ##(a 1 b 2)
-;;;
+
   (ff->list ##(a 1 b 2)) → '((a . 1) (b . 2))
-;;;
+
 ```
-;;;
+
 Other programming languges typically use hashing to obtain a
 similar data structure. Owl has an order preserving garbage
 collector, which makes it possible to compare order as well as

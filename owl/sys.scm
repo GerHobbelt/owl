@@ -399,7 +399,6 @@
          (let ((pid (sys 18)))
             (or (eq? pid 0) pid)))
 
-      ;; warning, easily collides with owl wait
       (define (waitpid pid)
          (let ((res (sys 19 pid (cons #false #false))))
             (cond
