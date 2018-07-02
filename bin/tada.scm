@@ -4,9 +4,9 @@
    (owl sexp)
    (owl sys)
    (owl args)
+   (owl proof)
    (only (owl io) write-to))
 
-;; todo: multiple match squery → get all examples
 ;; todo: per-function documentation: simple arg case
 ;; todo: per-function documentation: type (function vs macro)
 ;; todo: per-function documentation: well formed comments
@@ -56,7 +56,23 @@
 (define (car-eq? exp a)
    (and (pair? exp) (eq? (car exp) a)))
 
-(define (squery exps sq)
+(define (sselect-all exps sq)
+   (define (walk exps sq found)
+      (cond
+         ((null? exps)
+            found)
+         ((car-eq? (car exps) (car sq))
+            (if (null? (cdr sq))
+               (cons (car exps)
+                  (walk (cdr exps) sq found))
+               (walk (cdar exps) (cdr sq)
+                  (walk (cdr exps) sq
+                     found))))
+         (else
+            (walk (cdr exps) sq found))))
+   (walk exps sq #null))
+
+(define (sselect exps sq)
    (cond
       ((null? exps)
          #false)
@@ -64,12 +80,18 @@
          (if (null? (cdr sq))
             (car exps)
             (or
-               (squery (cdar exps) (cdr sq))
-               (squery (cdr exps) sq))))
+               (sselect (cdar exps) (cdr sq))
+               (sselect (cdr exps) sq))))
       (else
-         (squery (cdr exps) sq))))
+         (sselect (cdr exps) sq))))
 
-
+(example
+   (sselect-all '((A (B 1)) (A (C 1)) (A (B 2))) '(A B))
+      = '((B 1) (B 2))
+   (sselect-all '((A (B 1) (B 2))) '(A B))
+      = '((B 1) (B 2))
+   (sselect-all '((A) (A (B 1) (B 11)) (A (C 1)) (A (B 2) (B 22))) '(A B))
+      = '((B 1) (B 11) (B 2) (B 22)))
 
 ;;; Command line
 
@@ -104,13 +126,14 @@
    (print " - " path)
    (lets ((content (file->list path))
           (sexps (list->sexps content #false #false)) ;; module is in one sexp
-          (lib-name (maybe cadr (squery sexps '(define-library))))
-          (exports (maybe cdr (squery sexps '(define-library export))))
+          (lib-name (maybe cadr (sselect sexps '(define-library))))
+          (exports (maybe cdr (sselect sexps '(define-library export))))
           (initial-doc
              (maybe bytes->string
                 (find-initial-documentation content)))
-          (examples ;; first one for now
-             (squery sexps '(define-library begin example))))
+          (examples
+             (map cdr
+               (sselect-all sexps '(define-library begin example)))))
       (if (or initial-doc lib-name)
          (cons
             (-> #empty
@@ -118,14 +141,21 @@
                (put 'length (length content))
                (maybe-put 'name lib-name)
                (maybe-put 'exports exports)
-               (maybe-put 'examples examples)
+               (maybe-put 'examples
+                  (if (null? examples)
+                     #f
+                     examples))
                (maybe-put 'initial-doc initial-doc))
             others)
          others)))
 
 ;;; Rendering
 
+(define (render-example example)
+   (str " - " (car example) " → " (caddr example) "\n"))
+
 (define (render-documentation doc)
+   (print "Documentation examples are " (doc 'examples #f))
    (str
       "\n## " (doc 'name (doc 'path)) "\n"
       (doc 'initial-doc "\n")
@@ -137,8 +167,10 @@
       "\n"
       (if (doc 'examples #f)
          (str
-            "### Examples"
-            (doc 'examples))
+            "### Examples\n\n"
+            (foldr str ""
+               (map render-example
+                  (doc 'examples))))
          "")
    ))
 
