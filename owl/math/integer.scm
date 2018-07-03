@@ -7,6 +7,7 @@ This library defines arbitrary precision integer arithmetic.
    (export
       fixnum? integer?
       make-+
+      make--
       + - * =
       << < <= = >= > >>
       band bior bxor
@@ -23,6 +24,7 @@ This library defines arbitrary precision integer arithmetic.
       to-int- to-int+
       to-fix+ to-fix-
       add-big sub-big
+      right-out
       )
 
    (import
@@ -200,6 +202,8 @@ This library defines arbitrary precision integer arithmetic.
 
       (define (>= a b) (<= b a))
 
+      (define (right-out a b)
+         (error "not integers: " (list a b)))
 
 
 
@@ -369,39 +373,41 @@ This library defines arbitrary precision integer arithmetic.
                (lets ((r overflow (fxadd a b)))
                   (if (eq? overflow 0) r (ncons r *big-one*))))))
 
-      (define (subi a b)
-         (case (type a)
-            (type-fix+ ; a signed fixnum
-               (case (type b)
-                  (type-fix+   (sub-small->pick-sign a b))         ;; +a - +b -> as +a + -b
-                  (type-fix- (add-small->positive a b))         ;; +a - -b -> as +a + +b
-                  (type-int+ (sub-number-big a b #true))            ;; +a - +B -> as +a + -B
-                  (type-int-   (add-number-big a b))            ;; +a - -B -> as +a + +B
-                  (else (big-bad-args '- a b))))
-            (type-fix-
-               (case (type b)
-                  (type-fix+ (add-small->negative a b))            ;; -a - +b -> as -a + -b
-                  (type-fix- (sub-small->pick-sign b a))         ;; -a - -b -> as -a + +b
-                  (type-int+ (to-int- (add-number-big a b))) ;; -a - +B -> as -a + -B
-                  (type-int- (sub-big-number b a #true))         ;; -a - -B -> as -a + +B
-                  (else (big-bad-args '- a b))))
-            (type-int+
-               (case (type b)
-                  (type-fix+ (sub-big-number a b #true))            ;; +A - +b -> as +A + -b
-                  (type-fix- (add-number-big b a))               ;; +A - -b -> as +A + +b
-                  (type-int+ (sub-big a b))                     ;; +A - +B -> as +A + -B
-                  (type-int- (add-big a b 0))                  ;; +A - -B -> as +A + +B
-                  (else (big-bad-args '- a b))))
-            (type-int-
-               (case (type b)
-                  (type-fix+ (to-int- (add-number-big b a))) ;; -A - +b -> as -A + -b
-                  (type-fix- (sub-number-big b a #true))            ;; -A - -b -> as -A + +b
-                  (type-int+ (to-int- (add-big a b 0))) ;; -A - +B -> as -A + -B
-                  (type-int- (sub-big b a))                     ;; -A - -B -> as -A + +B
-                  (else (big-bad-args '- a b))))
-            (else
-               (big-bad-args '- a b))))
+      (define (make-- no)
+         (λ (a b)
+            (case (type a)
+               (type-fix+ ; a signed fixnum
+                  (case (type b)
+                     (type-fix+ (sub-small->pick-sign a b))      ;; +a - +b -> as +a + -b
+                     (type-fix- (add-small->positive a b))       ;; +a - -b -> as +a + +b
+                     (type-int+ (sub-number-big a b #true))      ;; +a - +B -> as +a + -B
+                     (type-int- (add-number-big a b))            ;; +a - -B -> as +a + +B
+                     (else (no a b))))
+               (type-fix-
+                  (case (type b)
+                     (type-fix+ (add-small->negative a b))       ;; -a - +b -> as -a + -b
+                     (type-fix- (sub-small->pick-sign b a))      ;; -a - -b -> as -a + +b
+                     (type-int+ (to-int- (add-number-big a b)))  ;; -a - +B -> as -a + -B
+                     (type-int- (sub-big-number b a #true))      ;; -a - -B -> as -a + +B
+                     (else (no a b))))
+               (type-int+
+                  (case (type b)
+                     (type-fix+ (sub-big-number a b #true))      ;; +A - +b -> as +A + -b
+                     (type-fix- (add-number-big b a))            ;; +A - -b -> as +A + +b
+                     (type-int+ (sub-big a b))                   ;; +A - +B -> as +A + -B
+                     (type-int- (add-big a b 0))                 ;; +A - -B -> as +A + +B
+                     (else (no a b))))
+               (type-int-
+                  (case (type b)
+                     (type-fix+ (to-int- (add-number-big b a))) ;; -A - +b -> as -A + -b
+                     (type-fix- (sub-number-big b a #true))     ;; -A - -b -> as -A + +b
+                     (type-int+ (to-int- (add-big a b 0)))      ;; -A - +B -> as -A + -B
+                     (type-int- (sub-big b a))                  ;; -A - -B -> as -A + +B
+                     (else (no a b))))
+               (else
+                  (no a b)))))
 
+      (define - (make-- right-out))
 
       (define (make-+ no)
          (λ (a b)
@@ -437,7 +443,7 @@ This library defines arbitrary precision integer arithmetic.
                (else
                   (no a b)))))
 
-      (define + (make-+ (λ (a b) (error "cannot: " (list '+ a b)))))
+      (define + (make-+ right-out))
 
       ;;;
       ;;; DIVISION
@@ -548,7 +554,7 @@ This library defines arbitrary precision integer arithmetic.
                ;; todo, use digit multiples instead or drop each digit
                (if (eq? a 0)
                   0 ;; terminate early if out of bits
-                  (>> (ncdr a) (subi b fx-width))))
+                  (>> (ncdr a) (- b fx-width))))
             (else
                (big-bad-args '>> a b))))
 
@@ -608,7 +614,7 @@ This library defines arbitrary precision integer arithmetic.
                         (big-bad-args '<< a b)))))
             ((eq? (type b) type-int+)
                ;; not likely to happen though
-               (<< (<< a fx-greatest) (subi b fx-greatest)))
+               (<< (<< a fx-greatest) (- b fx-greatest)))
             (else
                ;; could allow negative shift left to mean a shift right, but that is
                ;; probably more likely an accident than desired behavior, so failing here
@@ -789,7 +795,7 @@ This library defines arbitrary precision integer arithmetic.
             ((eq? ex 0) (if (null? a) (bigen b) (+ a b)))
             ((null? a)
                (ncons 0
-                  (add-ext #n b (subi ex 1))))
+                  (add-ext #n b (- ex 1))))
             ((eq? (type a) type-fix+) (add-ext (ncons a #n) b ex))
             ((eq? (type ex) type-fix+)
                (lets
@@ -798,7 +804,7 @@ This library defines arbitrary precision integer arithmetic.
                   (ncons d (add-ext ds b ex))))
             (else
                (ncons (ncar a)
-                  (add-ext (ncdr a) b (subi ex 1))))))
+                  (add-ext (ncdr a) b (- ex 1))))))
 
       ; fixme, should just keep jumbo digits for for added versions and
       ;        perform the carrying just once in a final pass. add merges
@@ -877,7 +883,7 @@ This library defines arbitrary precision integer arithmetic.
                            (lets ((a (+ ah at)) (b (+ bh bt)))
                               (kara a b)))
                          ; 2O(n)
-                         (z1 (subi z1a (+ z2 z0)))
+                         (z1 (- z1a (+ z2 z0)))
                          ; two more below
                          (x (if (eq? z1 0) z0 (add-ext z0 z1 atl))))
                         (if (eq? z2 0)
@@ -937,22 +943,22 @@ This library defines arbitrary precision integer arithmetic.
       (define (shift-local-down a b n)
          (cond
             ((eq? n 0) 0)
-            ((eq? a b) (subi n 1))
+            ((eq? a b) (- n 1))
             ((lesser? b a) n)
             (else
                (lets ((b over (fx>> b 1)))
-                  (shift-local-down a b (subi n 1))))))
+                  (shift-local-down a b (- n 1))))))
 
       ; increase b
       (define (shift-local-up a b n)
          (cond
-            ((eq? a b) (subi n 1))
-            ((lesser? a b) (subi n 1))
+            ((eq? a b) (- n 1))
+            ((lesser? a b) (- n 1))
             (else
                (lets ((b overflow (fxadd b b)))
                   (if (eq? overflow 0)
                      (shift-local-up a b (nat-succ n))
-                     (subi n overflow))))))
+                     (- n overflow))))))
 
 
       (define (div-shift a b n)
@@ -966,7 +972,7 @@ This library defines arbitrary precision integer arithmetic.
                            (if (eq? b-lead fx-greatest)
                               (if (eq? n 0)
                                  0
-                                 (shift-local-down (ncar a) fx-greatest>>1 (subi n 1)))
+                                 (shift-local-down (ncar a) fx-greatest>>1 (- n 1)))
                               (let ((aa (ncar a)) (bb (+ b-lead 1)))
                                  ; increment b to ensure b'000.. > b....
                                  (cond
@@ -1009,7 +1015,7 @@ This library defines arbitrary precision integer arithmetic.
 
 
       (define (nat-quotrem-finish a b out)
-         (let ((next (subi a b)))
+         (let ((next (- a b)))
             (if (negative? next)
                (values out a)
                (nat-quotrem-finish next b (nat-succ out)))))
@@ -1024,7 +1030,7 @@ This library defines arbitrary precision integer arithmetic.
                      (nat-quotrem-finish a b out))
                   (else
                      (let ((this (<< b s)))
-                        (loop (subi a this) (+ out (<< 1 s)))))))))
+                        (loop (- a this) (+ out (<< 1 s)))))))))
 
       (define (div-big->negative a b)
          (lets ((q r (nat-quotrem a b)))
@@ -1082,7 +1088,7 @@ This library defines arbitrary precision integer arithmetic.
       ;; mainly manually partial evaling remainder separately, since a fast one is needed for now for gcd and rational math
 
       (define (nat-rem-finish a b)
-         (let ((ap (subi a b)))
+         (let ((ap (- a b)))
             (if (negative? ap)
                a
                (nat-rem-finish ap b))))
@@ -1097,7 +1103,7 @@ This library defines arbitrary precision integer arithmetic.
                   ((lesser? s 2)
                      (nat-rem-finish a b))
                   (else
-                     (loop (subi a (<< b s))))))))
+                     (loop (- a (<< b s))))))))
 
       ;; reverse number remainder
 
@@ -1107,12 +1113,12 @@ This library defines arbitrary precision integer arithmetic.
             ((null? a) (values a #n)) ; fail
             (else
                (lets
-                  ((d (subi (ncar a) (ncar b))) ; fix+ or fix-
+                  ((d (- (ncar a) (ncar b))) ; fix+ or fix-
                    (tl dr (rsub (ncdr a) (ncdr b))))
                   (cond
                      ((null? dr) (values tl dr)) ; failed below
                      (dr
-                        (let ((d (subi d 1))) ; int- (of was -fx-greatest), fix- or fix+
+                        (let ((d (- d 1))) ; int- (of was -fx-greatest), fix- or fix+
                            (if (negative? d)
                               (values (ncons (+ d *first-bignum*) tl) #true) ; borrow
                               (values (ncons d tl) #false))))
@@ -1233,7 +1239,7 @@ This library defines arbitrary precision integer arithmetic.
       ; b is usually shorter, so shift b right and then substract instead
       ; of moving a by s
 
-      (define last-bit (subi fx-width 1))
+      (define last-bit (- fx-width 1))
 
       (define (divex bit bp a b out)
          (cond
@@ -1251,7 +1257,7 @@ This library defines arbitrary precision integer arithmetic.
                       (bp _  (fx+ bp 1)))
                      (divex bit bp a b out))))
             (else ; shift + substract = amortized O(2b) + O(log a)
-               (divex bit bp (subi a (<< b bp))
+               (divex bit bp (- a (<< b bp))
                   b (ncons (fxbor bit (ncar out)) (ncdr out))))))
 
       (define divex-start (ncons 0 #n))
@@ -1287,7 +1293,7 @@ This library defines arbitrary precision integer arithmetic.
 
       ;;; alternative division
 
-      (define (div-big-exact a b) (ediv (subi a (nat-rem a b)) b))
+      (define (div-big-exact a b) (ediv (- a (nat-rem a b)) b))
 
       (define div-big div-big-exact)
 
@@ -1404,5 +1410,4 @@ This library defines arbitrary precision integer arithmetic.
                (rem a b))))
 
       (define * muli)
-      (define - subi)
 ))

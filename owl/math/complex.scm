@@ -51,7 +51,7 @@ This library defines complex arbitrary precision math functions.
          fx-greatest fx-width truncate/
          zero? positive? even? odd?
          integer? fixnum?
-         make-+
+         make-+ make-- right-out
          << >> band bior bxor))
 
 
@@ -109,6 +109,7 @@ This library defines complex arbitrary precision math functions.
                   #false))
             (else
                (big-bad-args '= a b))))
+
       (define (<= a b)
          (or (< a b) (= a b)))
 
@@ -197,11 +198,6 @@ This library defines complex arbitrary precision math functions.
 
       (define (gcdl ls) (fold gcd (car ls) (cdr ls)))
 
-
-      ;;;
-      ;;; RATIONALS and COMPLEX (stub)
-      ;;;
-
       (define-syntax complex
          (syntax-rules ()
             ((complex a b) (mkt type-complex a b))))
@@ -250,11 +246,11 @@ This library defines complex arbitrary precision math functions.
 
 
       ;;;
-      ;;; Generic arithmetic routines
+      ;;; To-be (owl rational)
       ;;;
 
-      ;; rational case: a/b + c, gcd(a,b) = 1 => gcd(a+bc, b) = 1 -> no need to renormalize
-      
+      ;; addition
+
       (define (mk-rational-add complex-no) ;; <- to be split to (owl rational)
          (make-+
             (λ (a b)
@@ -276,10 +272,67 @@ This library defines complex arbitrary precision math functions.
                         ; a'/a" + b = (a'+ba")/a"
                         (rational (i+ (ncar a) (i* b (ncdr a))) (ncdr a))))
                   (complex-no a b)))))
-      
-      (define r+ 
-         (mk-rational-add 
-            (λ (a b) (error "cannot r: " (list '+ a b)))))
+
+      (define r+
+         (mk-rational-add right-out))
+
+      ;; substraction
+
+      ; a/b - c = (a - bc)/b
+      (define (rat-int ra c)
+         (lets ((a b ra))
+            (rational (i- a (i* b c)) b)))
+
+      ; c - a/b  = (cb - a)/b
+      (define (int-rat c r)
+         (lets ((a b r))
+            (rational (i- (i* b c) a) b)))
+
+      (define (rational-sub-case no)
+         (let
+            ((rsub
+               (λ (a b r)
+                  (cond
+                     ((eq? (type a) type-rational)
+                        ;; a'/a" - ?
+                        (case (type b)
+                           (type-rational
+                              ; a'/a" - b'/b" = a'b" - b'a" / a"b"
+                              (let ((ad (ncdr a)) (bd (ncdr b)))
+                                 (if (eq? ad bd)
+                                    (divide (i- (ncar a) (ncar b)) ad)
+                                    (let ((an (ncar a)) (bn (ncar b)))
+                                       (divide
+                                          (i- (i* an bd) (i* bn ad))
+                                          (i* ad bd))))))
+                           (type-fix+ (rat-int a b))
+                           (type-fix- (rat-int a b))
+                           (type-int+ (rat-int a b))
+                           (type-int- (rat-int a b))
+                           (else (no a b))))
+                     ((eq? (type b) type-rational)
+                        (case (type a)
+                           (type-fix+ (int-rat a b))
+                           (type-fix- (int-rat a b))
+                           (type-int+ (int-rat a b))
+                           (type-int- (int-rat a b))
+                           (else (no a b))))
+                     (else
+                        (no a b))))))
+            (λ (a b)
+               (rsub a b rsub))))
+
+      (define (mk-rational-sub complex-no)
+         (make--
+            (rational-sub-case complex-no)))
+
+      (define r-
+         (mk-rational-sub right-out))
+
+      ;;; Complex code continues
+
+      ;; we assume these are the last cases for now,
+      ;; but this could also be generalized further to vectors and matrices later
 
       (define c+
          (mk-rational-add
@@ -297,64 +350,28 @@ This library defines complex arbitrary precision math functions.
                      (complex (r+ ar b) ai))))))
 
       (define add c+)
-            
-      (define (sub a b)
-         (case (type a)
-            (type-fix+
-               (case (type b)
-                  (type-rational  (let ((bl (ncdr b))) (sub (rational (i* a bl) bl) b)))
-                  (type-complex (lets ((br bi b)) (complex (sub a br) (negate bi))))
-                  (else (i- a b))))
-            (type-fix-
-               (case (type b)
-                  (type-rational  (let ((bl (ncdr b))) (sub (rational (i* a bl) bl) b)))
-                  (type-complex (lets ((br bi b)) (complex (sub a br) (negate bi))))
-                  (else (i- a b))))
-            (type-int+
-               (case (type b)
-                  (type-rational  (let ((bl (ncdr b))) (sub (rational (i* a bl) bl) b)))
-                  (type-complex (lets ((br bi b)) (complex (sub a br) (negate bi))))
-                  (else (i- a b))))
-            (type-int-
-               (case (type b)
-                  (type-rational  (let ((bl (ncdr b))) (sub (rational (i* a bl) bl) b)))
-                  (type-complex (lets ((br bi b)) (complex (sub a br) (negate bi))))
-                  (else (i- a b))))
-            (type-rational
-               (case (type b)
-                  (type-rational
-                     ; a'/a" - b'/b" = a'b" - b'a" / a"b"
-                     (let ((ad (ncdr a)) (bd (ncdr b)))
-                        (if (eq? ad bd)
-                           ; a/x - b/x = (a-b)/x, x within fixnum range
-                           (divide (i- (ncar a) (ncar b)) ad)
-                           (let ((an (ncar a)) (bn (ncar b)))
-                              (divide
-                                 (i- (i* an bd) (i* bn ad))
-                                 (i* ad bd))))))
-                  (type-complex
-                     (lets ((br bi b)) (complex (sub a br) (negate bi))))
-                  (else
-                     ; a'/a" - b = (a'-ba")/a"
-                     (rational (i- (ncar a) (i* b (ncdr a))) (ncdr a)))))
-            (type-complex
-               (if (eq? (type b) type-complex)
-                  (lets
-                     ((ar ai a)
-                      (br bi b)
-                      (r (sub ar br))
-                      (i (sub ai bi)))
-                     (if (eq? i 0)
-                        r
-                        (complex r i)))
-                  (lets ((ar ai a))
-                     (complex (sub ar b) ai))))
-            (else
-               (i- a b))))
 
-      ;; todo: complex construction should be a macro that checks for the nonimaginary part
-      ;; todo: no different multiplication for known up to rational etc
+      (define (complex-sub ar ai br bi)
+         (let ((i (r- ai bi)))
+            (if (eq? i 0)
+               (r- ar br)
+               (complex (r- ar br) i))))
 
+      (define c-
+         (mk-rational-sub
+            (λ (a b)
+               (if (eq? (type a) type-complex)
+                  ;; ar+ai - ?
+                  (if (eq? (type b) type-complex)
+                     (lets ((ar ai a)
+                            (br bi b))
+                           (complex-sub ar ai br bi))
+                     (lets ((ar ai a))
+                        (complex-sub ar ai b 0)))
+                  (lets ((br bi b))
+                     (complex-sub a 0 br bi))))))
+
+      (define sub c-)
 
       (define (mul a b)
          (case (type a)
@@ -411,8 +428,6 @@ This library defines complex arbitrary precision math functions.
             (else
                (i* a b))))
 
-
-      ;; todo: division lacks short circuits
       (define (div a b)
          (cond
             ((eq? b 0)
@@ -733,4 +748,7 @@ This library defines complex arbitrary precision math functions.
       (define real? number?)
       (define complex? number?)
       (define rational? number?)
+
+      (define (negate x)
+         (mul -1 x))
 ))
