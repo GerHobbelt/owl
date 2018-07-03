@@ -1085,8 +1085,6 @@ This library defines arbitrary precision integer arithmetic.
       ;;; REMAINDER
       ;;;
 
-      ;; mainly manually partial evaling remainder separately, since a fast one is needed for now for gcd and rational math
-
       (define (nat-rem-finish a b)
          (let ((ap (- a b)))
             (if (negative? ap)

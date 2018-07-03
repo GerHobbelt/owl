@@ -2,7 +2,6 @@
 This library defines complex arbitrary precision math functions.
 |#
 
-
 (define-library (owl math complex)
 
    (export
@@ -23,7 +22,7 @@ This library defines complex arbitrary precision math functions.
       zero?
       real? complex? rational?
       negative? positive?
-      denominator numerator
+      denumerator numerator
       remainder modulo
       truncate round
       rational complex
@@ -40,8 +39,19 @@ This library defines complex arbitrary precision math functions.
       (only (owl primop) create-type)
 
       (prefix ;; prefix integer operations with i
-         (only (owl math integer) + - * = < << >> rem mod)
+         (only (owl math integer) + - * = << >> rem mod)
          i)
+      (prefix ;; prefix some rational operations with r
+         (only (owl math rational) + -)
+         r)
+
+      (only (owl math rational)
+         mk-rational-add
+         mk-rational-sub
+         divide gcd gcdl
+         <
+         rational
+         numerator denumerator)
 
       (only (owl math integer)
          ncons ncar ncdr big-bad-args
@@ -57,31 +67,7 @@ This library defines complex arbitrary precision math functions.
 
    (begin
 
-      (define-syntax rational
-         (syntax-rules ()
-            ((rational a b) (mkt type-rational a b))))
-
-      ;; todo: rational comparison is dumb.. first one should check the signs, then whether log_2(ab') < log_2(ba'), which is way faster than multiplication, and only as a last resort do the actual multiplication. also, more common comparisons should be inlined here.
-      (define (< a b)
-         (cond
-            ; add short type paths here later
-            ((eq? (type a) type-rational)
-               (if (eq? (type b) type-rational)
-                  ; a/a' < b/b' <=> ab' < ba'
-                  (i< (i*(ncar a) (ncdr b)) (i* (ncar b) (ncdr a)))
-                  ; a/a' < b <=> a < ba'
-                  (i< (ncar a) (i* b (ncdr a)))))
-            ((eq? (type b) type-rational)
-               ; a < b/b' <=> ab' < b
-               (i< (i* a (ncdr b)) (ncar b)))
-            (else
-               (i< a b))))
-
-      (define (denominator n)
-         (if (eq? (type n) type-rational)
-            (ncdr n)  ;; always positive
-            1))
-
+      ;; fixme: separate types to modules
       (define (= a b)
          (case (type a)
             (type-fix+ (eq? a b))
@@ -122,217 +108,9 @@ This library defines complex arbitrary precision math functions.
       (define (minl as) (fold min (car as) (cdr as)))
       (define (maxl as) (fold max (car as) (cdr as)))
 
-      ;;;
-      ;;; GCD (lazy binary new)
-      ;;;
-
-      ;; Euclid's gcd
-      (define (gcd-euclid a b)
-         (if (eq? b 0)
-            a
-            (gcd-euclid b (irem a b))))
-
-      ;; lazy gcd
-
-      ; O(1), shift focus bit
-      (define (gcd-drop n)
-         (let ((s (car n)))
-            (cond
-               ((eq? s #x800000)
-                  (let ((n (cdr n)))
-                     ; drop a digit or zero
-                     (if (eq? (type n) type-fix+)
-                        (cons 1 0)
-                        (let ((tl (ncdr n)))
-                           (if (null? (ncdr tl))
-                              (cons 1 (ncar tl))
-                              (cons 1 tl))))))
-               (else
-                  (lets ((lo _ (fx+ s s)))
-                     (cons lo (cdr n)))))))
-
-      ;; FIXME - consider carrying these instead
-      ;; FIXME depends on fixnum size
-      (define gcd-shifts
-         (list->ff
-            (map (lambda (x) (cons (<< 1 x) x))
-               '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23))))
-
-
-      (define (lazy-gcd a b n)
-         (let ((av (cdr a)) (bv (cdr b)))
-            (cond
-               ((eq? av 0) (<< bv n))
-               ((eq? bv 0) (<< av n))
-               ((eq? (band av (car a)) 0) ; a even
-                  (if (eq? (band bv (car b)) 0) ; a and b even
-                     (lazy-gcd (gcd-drop a) (gcd-drop b) (i+ n 1))
-                     (lazy-gcd (gcd-drop a) b n)))
-               ((eq? (band bv (car b)) 0) ; a is odd, u is even
-                  (lazy-gcd a (gcd-drop b) n))
-               (else
-                  (lets
-                     ((av (>> av (get gcd-shifts (car a) 0)))
-                      (bv (>> bv (get gcd-shifts (car b) 0)))
-                      (x (i- av bv)))
-                     (if (negative? x)
-                        (lazy-gcd (cons 2 (negate x)) (cons 1 av) n)
-                        (lazy-gcd (cons 2 x) (cons 1 bv) n)))))))
-
-      ;; why are the bit values consed to head of numbers?
-      (define (nat-gcd a b) (lazy-gcd (cons 1 a) (cons 1 b) 0)) ;; FIXME - does not yet work with variable fixnum size
-      ;(define nat-gcd gcd-euclid)
-
-      ;; signed wrapper for nat-gcd
-      (define (gcd a b)
-         (cond
-            ; negates should be inlined
-            ((eq? (type a) type-fix-) (gcd (negate a) b))
-            ((eq? (type a) type-int-) (gcd (negate a) b))
-            ((eq? (type b) type-fix-) (gcd a (negate b)))
-            ((eq? (type b) type-int-) (gcd a (negate b)))
-            ((eq? (type a) type-fix+) (gcd-euclid a b))
-            ((eq? (type b) type-fix+) (gcd-euclid a b))
-            ((eq? a b) a)
-            (else (nat-gcd a b))))
-
-      (define (gcdl ls) (fold gcd (car ls) (cdr ls)))
-
       (define-syntax complex
          (syntax-rules ()
             ((complex a b) (mkt type-complex a b))))
-
-      ; normalize, fix sign and construct rational
-      (define (rationalize a b)
-         (let ((f (gcd a b)))
-            (if (eq? f 1)
-               (cond
-                  ((eq? (type b) type-fix-) (rational (negate a) (negate b)))
-                  ((eq? (type b) type-int-) (rational (negate a) (negate b)))
-                  (else (rational a b)))
-               (rationalize (quotient a f) (quotient b f)))))
-
-      ;; if dividing small fixnums, do it with primops
-      (define (divide-simple a b)
-         (if (eq? (type b) type-fix+) ; negative (if any) always at a
-            (cond
-               ((eq? (type a) type-fix+)
-                  (lets ((_ q r (fxqr 0 a b)))
-                     (if (eq? r 0)
-                        q
-                        #false)))
-               (else #false))
-            #false))
-
-      (define (divide a b)
-         (cond
-            ((eq? (type b) type-fix-) (divide (negate a) (negate b)))
-            ((eq? (type b) type-int-) (divide (negate a) (negate b)))
-            ((divide-simple a b) => self)
-            (else
-               (let ((f (gcd a b)))
-                  (cond
-                     ((eq? f 1)
-                        (if (eq? b 1)
-                           a
-                           (rational a b)))
-                     ((= f b)
-                        (ediv a f))
-                     (else
-                        (rational
-                           (ediv a f)
-                           (ediv b f))))))))
-
-
-
-      ;;;
-      ;;; To-be (owl rational)
-      ;;;
-
-      ;; addition
-
-      (define (mk-rational-add complex-no) ;; <- to be split to (owl rational)
-         (make-+
-            (λ (a b)
-               (if (eq? (type a) type-rational)
-                  (case (type b)
-                     (type-rational
-                        ; a'/a" + b'/b" = a'b" + b'a" / a"b"
-                        (let ((ad (ncdr a)) (bd (ncdr b)))
-                           (if (eq? ad bd)
-                              ; a/x + b/x = (a+b)/x, x within fixnum range
-                              (divide (i+ (ncar a) (ncar b)) ad)
-                              (let ((an (ncar a)) (bn (ncar b)))
-                                 (divide
-                                    (i+ (i* an bd) (i* bn ad))
-                                    (i* ad bd))))))
-                     (type-complex
-                        (complex-no b a))
-                     (else
-                        ; a'/a" + b = (a'+ba")/a"
-                        (rational (i+ (ncar a) (i* b (ncdr a))) (ncdr a))))
-                  (complex-no a b)))))
-
-      (define r+
-         (mk-rational-add right-out))
-
-      ;; substraction
-
-      ; a/b - c = (a - bc)/b
-      (define (rat-int ra c)
-         (lets ((a b ra))
-            (rational (i- a (i* b c)) b)))
-
-      ; c - a/b  = (cb - a)/b
-      (define (int-rat c r)
-         (lets ((a b r))
-            (rational (i- (i* b c) a) b)))
-
-      (define (rational-sub-case no)
-         (let
-            ((rsub
-               (λ (a b r)
-                  (cond
-                     ((eq? (type a) type-rational)
-                        ;; a'/a" - ?
-                        (case (type b)
-                           (type-rational
-                              ; a'/a" - b'/b" = a'b" - b'a" / a"b"
-                              (let ((ad (ncdr a)) (bd (ncdr b)))
-                                 (if (eq? ad bd)
-                                    (divide (i- (ncar a) (ncar b)) ad)
-                                    (let ((an (ncar a)) (bn (ncar b)))
-                                       (divide
-                                          (i- (i* an bd) (i* bn ad))
-                                          (i* ad bd))))))
-                           (type-fix+ (rat-int a b))
-                           (type-fix- (rat-int a b))
-                           (type-int+ (rat-int a b))
-                           (type-int- (rat-int a b))
-                           (else (no a b))))
-                     ((eq? (type b) type-rational)
-                        (case (type a)
-                           (type-fix+ (int-rat a b))
-                           (type-fix- (int-rat a b))
-                           (type-int+ (int-rat a b))
-                           (type-int- (int-rat a b))
-                           (else (no a b))))
-                     (else
-                        (no a b))))))
-            (λ (a b)
-               (rsub a b rsub))))
-
-      (define (mk-rational-sub complex-no)
-         (make--
-            (rational-sub-case complex-no)))
-
-      (define r-
-         (mk-rational-sub right-out))
-
-      ;;; Complex code continues
-
-      ;; we assume these are the last cases for now,
-      ;; but this could also be generalized further to vectors and matrices later
 
       (define c+
          (mk-rational-add
@@ -428,46 +206,6 @@ This library defines complex arbitrary precision math functions.
             (else
                (i* a b))))
 
-      (define (div a b)
-         (cond
-            ((eq? b 0)
-               (error "division by zero " (list '/ a b)))
-            ((eq? (type a) type-complex)
-               (if (eq? (type b) type-complex)
-                  (lets
-                     ((ar ai a)
-                      (br bi b)
-                      (x (add (mul br br) (mul bi bi)))
-                      (r (div (add (mul ar br) (mul ai bi)) x))
-                      (i (div (sub (mul ai br) (mul ar bi)) x)))
-                     (if (eq? i 0) r (complex r i)))
-                  (lets
-                     ((ar ai a)
-                      (x (mul b b))
-                      (r (div (mul ar b) x))
-                      (i (div (mul ai b) x)))
-                     (if (eq? i 0) r (complex r i)))))
-            ((eq? (type b) type-complex)
-               (lets
-                  ((br bi b)
-                   (x (add (mul br br) (mul bi bi)))
-                   (re (div (mul a br) x))
-                   (im (div (sub 0 (mul a bi)) x)))
-                  (if (eq? im 0) re (complex re im))))
-            ((eq? (type a) type-rational)
-               (if (eq? (type b) type-rational)
-                  ; a'/a" / b'/b" = a'b" / a"b'
-                  (divide
-                     (mul (ncar a) (ncdr b))
-                     (mul (ncdr a) (ncar b)))
-                  ; a'/a" / b = a'/ba"
-                  (divide (ncar a) (mul (ncdr a) b))))
-            ((eq? (type b) type-rational)
-               ; a / b'/b" = ab"/n
-               (divide (mul a (ncdr b)) (ncar b)))
-            (else
-               (divide a b))))
-
 
       ;;;
       ;;; Basic math extra stuff
@@ -518,19 +256,6 @@ This library defines complex arbitrary precision math functions.
 
       (define (sum l) (fold add (car l) (cdr l)))
       (define (product l) (fold mul (car l) (cdr l)))
-
-
-      ; for all numbers n == (/ (numerator n) (denumerator n))
-
-      (define (numerator n)
-         (case (type n)
-            (type-rational (ncar n))
-            (else n)))
-
-      (define (denumerator n)
-         (case (type n)
-            (type-rational (ncdr n))
-            (else 1)))
 
 
 
@@ -690,13 +415,54 @@ This library defines complex arbitrary precision math functions.
             ((a) a)
             (() 1)))
 
+      (define (div a b)
+         (cond
+            ((eq? b 0)
+               (error "division by zero " (list '/ a b)))
+            ((eq? (type a) type-complex)
+               (if (eq? (type b) type-complex)
+                  (lets
+                     ((ar ai a)
+                      (br bi b)
+                      (x (add (mul br br) (mul bi bi)))
+                      (r (div (add (mul ar br) (mul ai bi)) x))
+                      (i (div (sub (mul ai br) (mul ar bi)) x)))
+                     (if (eq? i 0) r (complex r i)))
+                  (lets
+                     ((ar ai a)
+                      (x (mul b b))
+                      (r (div (mul ar b) x))
+                      (i (div (mul ai b) x)))
+                     (if (eq? i 0) r (complex r i)))))
+            ((eq? (type b) type-complex)
+               (lets
+                  ((br bi b)
+                   (x (add (mul br br) (mul bi bi)))
+                   (re (div (mul a br) x))
+                  (im (div (sub 0 (mul a bi)) x)))
+                  (if (eq? im 0) re (complex re im))))
+            ((eq? (type a) type-rational)
+               (if (eq? (type b) type-rational)
+                  ; a'/a" / b'/b" = a'b" / a"b'
+                  (div
+                     (mul (ncar a) (ncdr b))
+                     (mul (ncdr a) (ncar b)))
+                  ; a'/a" / b = a'/ba"
+                  (divide (ncar a) (mul (ncdr a) b))))
+            ((eq? (type b) type-rational)
+               ; a / b'/b" = ab"/n
+               (divide (mul a (ncdr b)) (ncar b)))
+            (else
+               (divide a b))))
+
       (define /
          (case-lambda
             ((a b) (div a b))
-            ((a) (div 1 a))
+            ((a) (rational 1 a))
             ((a . bs) (div a (product bs)))))
 
       ;; fold but stop on first false
+      ;; fixme: does not belong here
       (define (each op x xs)
          (cond
             ((null? xs) #true)
