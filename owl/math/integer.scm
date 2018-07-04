@@ -6,8 +6,7 @@ This library defines arbitrary precision integer arithmetic.
 
    (export
       fixnum? integer?
-      make-+
-      make--
+      mk-add mk-sub
       + - * =
       << < <= = >= > >>
       band bior bxor
@@ -203,7 +202,7 @@ This library defines arbitrary precision integer arithmetic.
       (define (>= a b) (<= b a))
 
       (define (right-out a b)
-         (error "not integers: " (list a b)))
+         (error "bad math: " (list a b)))
 
 
 
@@ -373,7 +372,7 @@ This library defines arbitrary precision integer arithmetic.
                (lets ((r overflow (fxadd a b)))
                   (if (eq? overflow 0) r (ncons r *big-one*))))))
 
-      (define (make-- no)
+      (define (mk-sub no)
          (λ (a b)
             (case (type a)
                (type-fix+ ; a signed fixnum
@@ -407,9 +406,9 @@ This library defines arbitrary precision integer arithmetic.
                (else
                   (no a b)))))
 
-      (define - (make-- right-out))
+      (define - (mk-sub right-out))
 
-      (define (make-+ no)
+      (define (mk-add no)
          (λ (a b)
             (case (type a)
                (type-fix+ ; a signed fixnum
@@ -443,7 +442,7 @@ This library defines arbitrary precision integer arithmetic.
                (else
                   (no a b)))))
 
-      (define + (make-+ right-out))
+      (define + (mk-add right-out))
 
       ;;;
       ;;; DIVISION

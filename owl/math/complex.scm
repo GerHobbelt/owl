@@ -4,7 +4,7 @@ This library defines complex arbitrary precision math functions.
 
 (define-library (owl math complex)
 
-   (export + - * / = add sub mul div complex)
+   (export + - * / = complex)
 
    (import
 
@@ -39,7 +39,7 @@ This library defines complex arbitrary precision math functions.
          fx-greatest fx-width truncate/
          zero? positive? even? odd?
          integer? fixnum?
-         make-+ make-- right-out
+         right-out
          << >> band bior bxor))
 
 
@@ -83,7 +83,7 @@ This library defines complex arbitrary precision math functions.
          (syntax-rules ()
             ((complex a b) (mkt type-complex a b))))
 
-      (define c+
+      (define +
          (mk-rational-add
             (λ (a b) ;; a is complex
                (if (eq? (type b) type-complex)
@@ -97,8 +97,6 @@ This library defines complex arbitrary precision math functions.
                   (lets
                      ((ar ai a))
                      (complex (r+ ar b) ai))))))
-
-      (define add c+)
 
       (define (complex-sub ar ai br bi)
          (let ((i (r- ai bi)))
@@ -119,8 +117,6 @@ This library defines complex arbitrary precision math functions.
                         (complex-sub ar ai b 0)))
                   (lets ((br bi b))
                      (complex-sub a 0 br bi))))))
-
-      (define sub -)
 
       (define (mul a b)
          (case (type a)
@@ -186,9 +182,9 @@ This library defines complex arbitrary precision math functions.
                   (lets
                      ((ar ai a)
                       (br bi b)
-                      (x (add (mul br br) (mul bi bi)))
-                      (r (div (add (mul ar br) (mul ai bi)) x))
-                      (i (div (sub (mul ai br) (mul ar bi)) x)))
+                      (x (+ (mul br br) (mul bi bi)))
+                      (r (div (+ (mul ar br) (mul ai bi)) x))
+                      (i (div (- (mul ai br) (mul ar bi)) x)))
                      (if (eq? i 0) r (complex r i)))
                   (lets
                      ((ar ai a)
@@ -199,9 +195,9 @@ This library defines complex arbitrary precision math functions.
             ((eq? (type b) type-complex)
                (lets
                   ((br bi b)
-                   (x (add (mul br br) (mul bi bi)))
+                   (x (+ (mul br br) (mul bi bi)))
                    (re (div (mul a br) x))
-                  (im (div (sub 0 (mul a bi)) x)))
+                  (im (div (- 0 (mul a bi)) x)))
                   (if (eq? im 0) re (complex re im))))
             ((eq? (type a) type-rational)
                (if (eq? (type b) type-rational)
@@ -218,8 +214,6 @@ This library defines complex arbitrary precision math functions.
                (divide a b))))
 
    (define / div)
-
-   (define + add)
 
    (define * mul)
 

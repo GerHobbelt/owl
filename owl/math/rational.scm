@@ -23,7 +23,7 @@ This library defines arbitrary precision rational arithmetic operations.
       (prefix (only (owl math integer) << >> < + - * = rem quotient ediv =) i)
       (only (owl math integer) ncar ncdr band negate negative?)
       (only (owl math integer)
-         make-+ make-- right-out))
+         mk-add mk-sub right-out))
 
    (begin
 
@@ -165,8 +165,8 @@ This library defines arbitrary precision rational arithmetic operations.
                            (iediv a f)
                            (iediv b f))))))))
 
-      (define (mk-rational-add complex-no) ;; <- to be split to (owl rational)
-         (make-+
+      (define (mk-rational-add complex-no)
+         (mk-add
             (λ (a b)
                (if (eq? (type a) type-rational)
                   (case (type b)
@@ -237,7 +237,7 @@ This library defines arbitrary precision rational arithmetic operations.
                (rsub a b rsub))))
 
       (define (mk-rational-sub complex-no)
-         (make--
+         (mk-sub
             (rational-sub-case complex-no)))
 
       (define -

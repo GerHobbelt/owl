@@ -67,7 +67,7 @@
             (type-fix- (to-fix+ n))
             (type-int+ n)
             (type-int- (to-int+ n))
-            (type-rational (if (negative? n) (sub 0 n) n))
+            (type-rational (if (negative? n) (- 0 n) n))
             (else (error "bad math: " (list 'abs n)))))
 
       (define (floor n)
@@ -99,14 +99,14 @@
             (lets ((a b n))
                (if (eq? b 2)
                   (if (negative? a)
-                     (i>> (sub a 1) 1)
+                     (i>> (- a 1) 1)
                      (i>> (i+ a 1) 1))
                   (quotient a b)))
             n))
 
-      (define (sum l) (fold add (car l) (cdr l)))
+      (define (sum l) (fold + (car l) (cdr l)))
 
-      (define (product l) (fold mul (car l) (cdr l)))
+      (define (product l) (fold * (car l) (cdr l)))
 
       (define (min a b) (if (< a b) a b))
       (define (max a b) (if (< a b) b a))
@@ -128,7 +128,7 @@
       ;; naive version, multiply successively until >=
       (define (log-loop n a m i)
          (if (< m a)
-            (log-loop n a (mul m n) (add i 1))
+            (log-loop n a (* m n) (+ i 1))
             i))
 
       ;; least m such that n^m >= a
@@ -138,10 +138,10 @@
       ;; same, but double initial steps (could recurse on remaining interval, cache steps etc for further speedup)
       (define (logd-loop n a m i)
          (if (< m a)
-            (let ((mm (mul m m)))
+            (let ((mm (* m m)))
                (if (< mm a)
-                  (logd-loop n a mm (add i i))
-                  (log-loop n a (mul m n) (add i 1))))
+                  (logd-loop n a mm (+ i i))
+                  (log-loop n a (* m n) (+ i 1))))
             i))
 
       (define (logn n a)
@@ -156,20 +156,20 @@
       (define (log2-fixnum n)
          (let loop ((i 0))
             (if (< (<< 1 i) n)
-               (loop (add i 1))
+               (loop (+ i 1))
                i)))
 
       (define (log2-msd n)
          (let loop ((i 0))
             (if (<= (<< 1 i) n)
-               (loop (add i 1))
+               (loop (+ i 1))
                i)))
 
       (define (log2-big n digs)
          (let ((tl (ncdr n)))
             (if (null? tl)
-               (add (log2-msd (ncar n)) (mul digs fx-width))
-               (log2-big tl (add digs 1)))))
+               (+ (log2-msd (ncar n)) (* digs fx-width))
+               (log2-big tl (+ digs 1)))))
 
       (define (log2 n)
          (cond
@@ -187,7 +187,7 @@
       (define (lcm a b)
          (if (eq? a b)
             a
-            (quotient (abs (mul a b)) (gcd a b))))
+            (quotient (abs (* a b)) (gcd a b))))
 
 
       ;;;
@@ -195,7 +195,7 @@
       ;;;
 
       (define (char-of digit)
-         (add digit (if (< digit 10) 48 87)))
+         (+ digit (if (< digit 10) 48 87)))
 
       (define (render-digits num tl base)
          (fold (λ (a b) (cons b a)) tl
@@ -225,7 +225,7 @@
                      base)))
             ((< num 0)
                (cons 45
-                  (render-number (sub 0 num) tl base)))
+                  (render-number (- 0 num) tl base)))
             ((< num base)
                (cons (char-of num) tl))
             (else
@@ -237,19 +237,25 @@
       ;;;
       ;;; Variable arity versions
       ;;;
-
+   
+      (define add +)
+      
       (define +
          (case-lambda
             ((a b) (add a b))
             (xs (fold add 0 xs))))
 
+      (define sub -)
+      
       (define -
          (case-lambda
             ((a b) (sub a b))
             ((a) (sub 0 a))
             ((a b . xs)
                (sub a (fold add b xs)))))
-
+      
+      (define mul *)
+      
       (define *
          (case-lambda
             ((a b) (mul a b))
@@ -257,6 +263,7 @@
             ((a) a)
             (() 1)))
 
+      (define div /)
 
       (define /
          (case-lambda
