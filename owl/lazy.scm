@@ -42,7 +42,7 @@
       (owl defmac)
       (owl list)
       (owl list-extra)
-      (owl math)
+      (owl math complex)
       (owl proof)
       (only (owl syscall) error))
 

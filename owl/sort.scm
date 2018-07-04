@@ -7,12 +7,14 @@
 
    (import
       (owl defmac)
-      (owl math)
+      (owl math rational)
+      (owl math integer)
       (owl syscall)
       (owl list)
       (owl proof))
 
    (begin
+
       ;;;
       ;;; quicksort, never use this, worst case O(n^2) on sorted data
       ;;;

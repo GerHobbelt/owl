@@ -26,9 +26,6 @@
 ;;;   '(95 39 69 99 2 98 56 85 77 39)
 ;;; ```
 
-;; todo: alternative distributions
-;; note - we use mainly primop math here, so this may look a bit odd
-
 (define-library (owl random)
 
    (export
@@ -61,6 +58,7 @@
    (import
       (owl defmac)
       (owl math)
+      (only (owl math integer) ncar ncdr ncons)
       (owl lazy)
       (owl list)
       (only (owl syscall) error)

@@ -127,21 +127,20 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
    (list
          put get del ff-fold fupd
          - + * /
-         quotient gcd ediv
+         quotient gcd
          << < <= = >= > >>
          equal? memq member
          band bior bxor
-         sort
+         ; sort
          ; suffix-array bisect
-         fold foldr map reverse length zip append unfold
+         fold foldr map reverse length zip append
          list-ref lset iota
          ;print
          mail interact
          take filter remove
          thread-controller
          uncons lfold lmap
-         rand seed->rands
-         ))
+         rand seed->rands))
 
 ;; handles $ ol -c stuff
 (define (repl-compile compiler env path opts)

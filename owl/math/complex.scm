@@ -4,31 +4,7 @@ This library defines complex arbitrary precision math functions.
 
 (define-library (owl math complex)
 
-   (export
-      number? fixnum? integer?
-      + - * = /
-      << < <= = >= > >>
-      band bior bxor
-      quotient ediv truncate/
-      add sub mul big-bad-args negate
-      even? odd?
-      gcd gcdl lcm
-      min max minl maxl
-      floor ceiling abs
-      sum product
-      numerator denumerator
-      log log2
-      render-number
-      zero?
-      real? complex? rational?
-      negative? positive?
-      denumerator numerator
-      remainder modulo
-      truncate round
-      rational complex
-      ncons ncar ncdr
-      fx-greatest fx-width
-      )
+   (export + - * / = add sub mul div complex)
 
    (import
 
@@ -41,11 +17,13 @@ This library defines complex arbitrary precision math functions.
       (prefix ;; prefix integer operations with i
          (only (owl math integer) + - * = << >> rem mod)
          i)
+
       (prefix ;; prefix some rational operations with r
          (only (owl math rational) + -)
          r)
 
       (only (owl math rational)
+         ;; some rational versions are used as such
          mk-rational-add
          mk-rational-sub
          divide gcd gcdl
@@ -56,7 +34,7 @@ This library defines complex arbitrary precision math functions.
       (only (owl math integer)
          ncons ncar ncdr big-bad-args
          big-digits-equal? negate
-         negative? quotient ediv
+         quotient ediv
          to-int- to-int+ to-fix+ to-fix-
          fx-greatest fx-width truncate/
          zero? positive? even? odd?
@@ -67,7 +45,6 @@ This library defines complex arbitrary precision math functions.
 
    (begin
 
-      ;; fixme: separate types to modules
       (define (= a b)
          (case (type a)
             (type-fix+ (eq? a b))
@@ -102,12 +79,6 @@ This library defines complex arbitrary precision math functions.
       (define (> a b) (< b a))
       (define (>= a b) (<= b a))
 
-      (define (min a b) (if (< a b) a b))
-      (define (max a b) (if (< a b) b a))
-
-      (define (minl as) (fold min (car as) (cdr as)))
-      (define (maxl as) (fold max (car as) (cdr as)))
-
       (define-syntax complex
          (syntax-rules ()
             ((complex a b) (mkt type-complex a b))))
@@ -135,7 +106,7 @@ This library defines complex arbitrary precision math functions.
                (r- ar br)
                (complex (r- ar br) i))))
 
-      (define c-
+      (define -
          (mk-rational-sub
             (λ (a b)
                (if (eq? (type a) type-complex)
@@ -149,7 +120,7 @@ This library defines complex arbitrary precision math functions.
                   (lets ((br bi b))
                      (complex-sub a 0 br bi))))))
 
-      (define sub c-)
+      (define sub -)
 
       (define (mul a b)
          (case (type a)
@@ -195,225 +166,16 @@ This library defines complex arbitrary precision math functions.
                   (lets
                      ((ar ai a)
                       (br bi b)
-                      (r (sub (mul ar br) (mul ai bi)))
-                      (i (add (mul ai br) (mul ar bi))))
+                      (r (r- (mul ar br) (mul ai bi)))
+                      (i (r+ (mul ai br) (mul ar bi))))
                      (if (eq? i 0) r (complex r i)))
                   (lets
                      ((ar ai a)
-                      (r (mul ar b))
+                      (r (mul ar b)) ;; fixme: use r* instead
                       (i (mul ai b)))
                      (if (eq? i 0) r (complex r i)))))
             (else
                (i* a b))))
-
-
-      ;;;
-      ;;; Basic math extra stuff
-      ;;;
-
-      (define (abs n)
-         (case (type n)
-            (type-fix+ n)
-            (type-fix- (to-fix+ n))
-            (type-int+ n)
-            (type-int- (to-int+ n))
-            (type-rational (if (negative? n) (sub 0 n) n))
-            (else (error "bad math: " (list 'abs n)))))
-
-      (define (floor n)
-         (if (eq? (type n) type-rational)
-            (lets ((a b n))
-               (if (negative? a)
-                  (negate (i+ (quotient (abs a) b) 1))
-                  (quotient a b)))
-            n))
-
-      (define (ceiling n)
-         (if (eq? (type n) type-rational)
-            (lets ((a b n))
-               (if (negative? a)
-                  (quotient a b)
-                  (i+ (floor n) 1)))
-            n))
-
-      (define (truncate n)
-         (if (eq? (type n) type-rational)
-            (lets ((a b n))
-               (if (negative? a)
-                  (negate (quotient (negate a) b))
-                  (quotient a b)))
-            n))
-
-      (define (round n)
-         (if (eq? (type n) type-rational)
-            (lets ((a b n))
-               (if (eq? b 2)
-                  (if (negative? a)
-                     (>> (sub a 1) 1)
-                     (>> (i+ a 1) 1))
-                  (quotient a b)))
-            n))
-
-      (define (sum l) (fold add (car l) (cdr l)))
-      (define (product l) (fold mul (car l) (cdr l)))
-
-
-
-      ;;;
-      ;;; logarithms, here meaning (log n a) = m, being least natural number such that n^m >= a
-      ;;;
-
-      ;; naive version, multiply successively until >=
-      (define (log-loop n a m i)
-         (if (< m a)
-            (log-loop n a (mul m n) (add i 1))
-            i))
-
-      ;; least m such that n^m >= a
-      (define (log-naive n a)
-         (log-loop n a 1 0))
-
-      ;; same, but double initial steps (could recurse on remaining interval, cache steps etc for further speedup)
-      (define (logd-loop n a m i)
-         (if (< m a)
-            (let ((mm (mul m m)))
-               (if (< mm a)
-                  (logd-loop n a mm (add i i))
-                  (log-loop n a (mul m n) (add i 1))))
-            i))
-
-      (define (logn n a)
-         (cond
-            ((>= 1 a) 0)
-            ((< a n) 1)
-            (else (logd-loop n a n 1))))
-
-      ;; special case of log2
-
-      ; could do in 8 comparisons with a tree
-      (define (log2-fixnum n)
-         (let loop ((i 0))
-            (if (< (<< 1 i) n)
-               (loop (add i 1))
-               i)))
-
-      (define (log2-msd n)
-         (let loop ((i 0))
-            (if (<= (<< 1 i) n)
-               (loop (add i 1))
-               i)))
-
-      (define (log2-big n digs)
-         (let ((tl (ncdr n)))
-            (if (null? tl)
-               (add (log2-msd (ncar n)) (mul digs fx-width))
-               (log2-big tl (add digs 1)))))
-
-      (define (log2 n)
-         (cond
-            ((eq? (type n) type-int+) (log2-big (ncdr n) 1))
-            ((eq? (type n) type-fix+)
-               (if (< n 0) 1 (log2-fixnum n)))
-            (else (logn 2 n))))
-
-      (define (log n a)
-         (cond
-            ((eq? n 2) (log2 a))
-            ((<= n 1) (big-bad-args 'log n a))
-            (else (logn n a))))
-
-      ;(import-old lib-test)
-      ;(test
-      ;   (lmap (λ (i) (lets ((rst n (rand i 10000000000000000000))) n)) (lnums 1))
-      ;   (H log-naive 3)
-      ;   (H log 3))
-      ;(import-old lib-test)
-      ;(test
-      ;   (lmap (λ (i) (lets ((rst n (rand i #x20000))) n)) (lnums 1))
-      ;   (H log 2)
-      ;   log2)
-
-      ; note: It is safe to use quotient, which is faster for bignums, because by definition
-      ; the product is divisible by the gcd. Also, gcd 0 0 is not safe, but since (lcm
-      ; a a) == a, handling this special case and a small optimization overlap nicely.
-
-      (define (lcm a b)
-         (if (eq? a b)
-            a
-            (quotient (abs (mul a b)) (gcd a b))))
-
-
-      ;;;
-      ;;; Rendering numbers
-      ;;;
-
-      (define (char-of digit)
-         (add digit (if (< digit 10) 48 87)))
-
-      (define (render-digits num tl base)
-         (fold (λ (a b) (cons b a)) tl
-            (unfold (λ (n) (lets ((q r (truncate/ n base))) (values (char-of r) q))) num zero?)))
-
-      ;; move to math.scm
-
-      (define (render-number num tl base)
-         (cond
-            ((eq? (type num) type-rational)
-               (render-number (ref num 1)
-                  (cons 47
-                     (render-number (ref num 2) tl base))
-                  base))
-            ((eq? (type num) type-complex)
-               ;; todo: imaginary number rendering looks silly, written in a hurry
-               (lets ((real imag num))
-                  (render-number real
-                     (cond
-                        ((eq? imag 1) (ilist #\+ #\i tl))
-                        ((eq? imag -1) (ilist #\- #\i tl))
-                        ((< imag 0) ;; already has sign
-                           (render-number imag (cons #\i tl) base))
-                        (else
-                           (cons #\+
-                              (render-number imag (cons #\i tl) base))))
-                     base)))
-            ((< num 0)
-               (cons 45
-                  (render-number (sub 0 num) tl base)))
-            ((< num base)
-               (cons (char-of num) tl))
-            (else
-               (render-digits num tl base))))
-
-
-
-
-      ;;;
-      ;;; Variable arity versions
-      ;;;
-
-      ;; FIXME: these need short circuiting
-
-      ;; + → add
-      (define +
-         (case-lambda
-            ((a b) (add a b))
-            (xs (fold add 0 xs))))
-
-      ;; - → sub
-      (define -
-         (case-lambda
-            ((a b) (sub a b))
-            ((a) (sub 0 a))
-            ((a b . xs)
-               (sub a (fold add b xs)))))
-
-      ;; * → mul
-      (define *
-         (case-lambda
-            ((a b) (mul a b))
-            ((a b . xs) (mul a (fold mul b xs)))
-            ((a) a)
-            (() 1)))
 
       (define (div a b)
          (cond
@@ -455,66 +217,10 @@ This library defines complex arbitrary precision math functions.
             (else
                (divide a b))))
 
-      (define /
-         (case-lambda
-            ((a b) (div a b))
-            ((a) (rational 1 a))
-            ((a . bs) (div a (product bs)))))
+   (define / div)
 
-      ;; fold but stop on first false
-      ;; fixme: does not belong here
-      (define (each op x xs)
-         (cond
-            ((null? xs) #true)
-            ((op x (car xs))
-               (each op (car xs) (cdr xs)))
-            (else #false)))
+   (define + add)
 
-      ;; the rest are redefined against the old binary ones
+   (define * mul)
 
-      (define (vararg-predicate op) ;; turn into a macro
-         (case-lambda
-            ((a b) (op a b))
-            ((a . bs) (each op a bs))))
-
-      (define = (vararg-predicate =)) ;; short this later
-      (define < (vararg-predicate <))
-      (define > (vararg-predicate >))
-
-      (define <= (vararg-predicate <=))
-      (define >= (vararg-predicate >=))
-
-      ;; ditto for foldables
-      (define (vararg-fold op zero)
-         (case-lambda
-            ((a b) (op a b))
-            ((a) a)
-            ((a . bs) (fold op a bs))
-            (() (or zero (error "No arguments for " op)))))
-
-      (define min (vararg-fold min #false))
-      (define max (vararg-fold max #false))
-      (define gcd (vararg-fold gcd 0))
-      (define lcm (vararg-fold lcm 1))
-
-      (define remainder irem)
-      (define modulo imod)
-
-      (define (number? a)
-         (case (type a)
-            (type-fix+ #true)
-            (type-fix- #true)
-            (type-int+ #true)
-            (type-int- #true)
-            (type-rational #true)
-            (type-complex #true)
-            (else #false)))
-
-      ;; RnRS compat
-      (define real? number?)
-      (define complex? number?)
-      (define rational? number?)
-
-      (define (negate x)
-         (mul -1 x))
 ))

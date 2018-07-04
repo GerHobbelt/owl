@@ -17,7 +17,7 @@
       totient phi divisor-sum divisor-count
       dlog dlog-simple
       fib
-      histogram
+      histogram < > <= >=
       ; inv-mod mod-solve
       )
 

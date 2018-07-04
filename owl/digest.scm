@@ -118,7 +118,7 @@
             (xor-poss x (- n 1) ps (cdr lst))))
 
       (define (sha1-step a b c d e f k w)
-         (values (word (+ (rol a 5) f e k w)) a (word (rol b 30)) c d))
+         (values (word (+ (rol a 5) (+ (+ f e) (+ k w)))) a (word (rol b 30)) c d))
 
       (define bnot
          (C bxor #xffffffff))
@@ -296,7 +296,7 @@
             (lets
                ((S1 (bxor (bxor (ror e 6) (ror e 11)) (ror e 25)))
                 (ch (bxor (band e f) (band g (bnot e))))
-                (temp1 (word (+ h S1 ch (car ws) (car ks))))
+                (temp1 (word (+ h (+ (+ S1 ch) (+ (car ws) (car ks))))))
                 (S0 (bxor (bxor (ror a 2) (ror a 13)) (ror a 22)))
                 (maj (bxor (bxor (band a b) (band a c)) (band b c)))
                 (temp2 (+ S0 maj)))

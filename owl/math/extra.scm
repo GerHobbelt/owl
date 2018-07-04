@@ -2,22 +2,30 @@
 ;;; Owl math module, things after basic arithmetic
 ;;;
 
-;; todo: split this to integer-extra and complex-extra
+;; todo: split this
 
 (define-library (owl math extra)
 
    (export
+      abs floor sum product render-number
+      log2 log lcm negative? positive?
+      number?
       exact-integer-sqrt ;; n → m r, m^2 + r = n
       isqrt              ;; n → (floor (sqrt n))
       sqrt               ;; n → m, m^2 = n
-      expt expt-mod
-      ncr npr
-      ! factor prime?
+      expt expt-mod round
+      ncr npr truncate
+      modulo remainder
+      ceiling
+      ! factor prime? real? complex? rational?
       primes-between
       totient phi divisor-sum divisor-count
       dlog dlog-simple
       fib
       histogram
+      negative?
+      min max minl maxl
+      < > >= <=
       ; inv-mod mod-solve
       )
 
@@ -30,10 +38,291 @@
       (owl sort)
       (owl primop)
       (only (owl syscall))
+      (only (owl math integer) to-int+ to-fix+ quotient negate)
+      (prefix (owl math integer) i)
+      (prefix (owl math rational) r)
+      (only (owl math rational) < > gcd rational)
+      (only (owl math integer) << >> band bior ncar ncdr ediv fx-width big-bad-args truncate/ zero?)
       (owl ff)
       (only (owl syscall) error))
 
    (begin
+
+      (define (negative? x)
+         (case (type x)
+            (type-fix+ #f)
+            (type-fix- #t)
+            (type-int+ #f)
+            (type-int- #t)
+            (type-rational
+               (lets ((a b x)) (negative? a)))
+            (else (error "negative? " x))))
+
+       (define (positive? x)
+          (not (negative? x)))
+
+      (define (abs n)
+         (case (type n)
+            (type-fix+ n)
+            (type-fix- (to-fix+ n))
+            (type-int+ n)
+            (type-int- (to-int+ n))
+            (type-rational (if (negative? n) (sub 0 n) n))
+            (else (error "bad math: " (list 'abs n)))))
+
+      (define (floor n)
+         (if (eq? (type n) type-rational)
+            (lets ((a b n))
+               (if (negative? a)
+                  (negate (i+ (quotient (abs a) b) 1))
+                  (quotient a b)))
+            n))
+
+      (define (ceiling n)
+         (if (eq? (type n) type-rational)
+            (lets ((a b n))
+               (if (negative? a)
+                  (quotient a b)
+                  (i+ (floor n) 1)))
+            n))
+
+      (define (truncate n)
+         (if (eq? (type n) type-rational)
+            (lets ((a b n))
+               (if (negative? a)
+                  (negate (quotient (negate a) b))
+                  (quotient a b)))
+            n))
+
+      (define (round n)
+         (if (eq? (type n) type-rational)
+            (lets ((a b n))
+               (if (eq? b 2)
+                  (if (negative? a)
+                     (i>> (sub a 1) 1)
+                     (i>> (i+ a 1) 1))
+                  (quotient a b)))
+            n))
+
+      (define (sum l) (fold add (car l) (cdr l)))
+
+      (define (product l) (fold mul (car l) (cdr l)))
+
+      (define (min a b) (if (< a b) a b))
+      (define (max a b) (if (< a b) b a))
+      (define (minl as) (fold min (car as) (cdr as)))
+      (define (maxl as) (fold max (car as) (cdr as)))
+
+      (define (> a b) (< b a))
+
+      (define (<= a b)
+         (or (< a b) (= a b)))
+
+      (define (>= a b) (<= b a))
+
+
+      ;;;
+      ;;; logarithms, here meaning (log n a) = m, being least natural number such that n^m >= a
+      ;;;
+
+      ;; naive version, multiply successively until >=
+      (define (log-loop n a m i)
+         (if (< m a)
+            (log-loop n a (mul m n) (add i 1))
+            i))
+
+      ;; least m such that n^m >= a
+      (define (log-naive n a)
+         (log-loop n a 1 0))
+
+      ;; same, but double initial steps (could recurse on remaining interval, cache steps etc for further speedup)
+      (define (logd-loop n a m i)
+         (if (< m a)
+            (let ((mm (mul m m)))
+               (if (< mm a)
+                  (logd-loop n a mm (add i i))
+                  (log-loop n a (mul m n) (add i 1))))
+            i))
+
+      (define (logn n a)
+         (cond
+            ((>= 1 a) 0)
+            ((< a n) 1)
+            (else (logd-loop n a n 1))))
+
+      ;; special case of log2
+
+      ; could do in 8 comparisons with a tree
+      (define (log2-fixnum n)
+         (let loop ((i 0))
+            (if (< (<< 1 i) n)
+               (loop (add i 1))
+               i)))
+
+      (define (log2-msd n)
+         (let loop ((i 0))
+            (if (<= (<< 1 i) n)
+               (loop (add i 1))
+               i)))
+
+      (define (log2-big n digs)
+         (let ((tl (ncdr n)))
+            (if (null? tl)
+               (add (log2-msd (ncar n)) (mul digs fx-width))
+               (log2-big tl (add digs 1)))))
+
+      (define (log2 n)
+         (cond
+            ((eq? (type n) type-int+) (log2-big (ncdr n) 1))
+            ((eq? (type n) type-fix+)
+               (if (< n 0) 1 (log2-fixnum n)))
+            (else (logn 2 n))))
+
+      (define (log n a)
+         (cond
+            ((eq? n 2) (log2 a))
+            ((<= n 1) (big-bad-args 'log n a))
+            (else (logn n a))))
+
+      (define (lcm a b)
+         (if (eq? a b)
+            a
+            (quotient (abs (mul a b)) (gcd a b))))
+
+
+      ;;;
+      ;;; Rendering numbers
+      ;;;
+
+      (define (char-of digit)
+         (add digit (if (< digit 10) 48 87)))
+
+      (define (render-digits num tl base)
+         (fold (λ (a b) (cons b a)) tl
+            (unfold (λ (n) (lets ((q r (truncate/ n base))) (values (char-of r) q))) num zero?)))
+
+      ;; move to math.scm
+
+      (define (render-number num tl base)
+         (cond
+            ((eq? (type num) type-rational)
+               (render-number (ref num 1)
+                  (cons 47
+                     (render-number (ref num 2) tl base))
+                  base))
+            ((eq? (type num) type-complex)
+               ;; todo: imaginary number rendering looks silly, written in a hurry
+               (lets ((real imag num))
+                  (render-number real
+                     (cond
+                        ((eq? imag 1) (ilist #\+ #\i tl))
+                        ((eq? imag -1) (ilist #\- #\i tl))
+                        ((< imag 0) ;; already has sign
+                           (render-number imag (cons #\i tl) base))
+                        (else
+                           (cons #\+
+                              (render-number imag (cons #\i tl) base))))
+                     base)))
+            ((< num 0)
+               (cons 45
+                  (render-number (sub 0 num) tl base)))
+            ((< num base)
+               (cons (char-of num) tl))
+            (else
+               (render-digits num tl base))))
+
+
+
+
+      ;;;
+      ;;; Variable arity versions
+      ;;;
+
+      (define +
+         (case-lambda
+            ((a b) (add a b))
+            (xs (fold add 0 xs))))
+
+      (define -
+         (case-lambda
+            ((a b) (sub a b))
+            ((a) (sub 0 a))
+            ((a b . xs)
+               (sub a (fold add b xs)))))
+
+      (define *
+         (case-lambda
+            ((a b) (mul a b))
+            ((a b . xs) (mul a (fold mul b xs)))
+            ((a) a)
+            (() 1)))
+
+
+      (define /
+         (case-lambda
+            ((a b) (div a b))
+            ((a) (rational 1 a))
+            ((a . bs) (div a (product bs)))))
+
+      ;; fold but stop on first false
+      ;; fixme: does not belong here
+      (define (each op x xs)
+         (cond
+            ((null? xs) #true)
+            ((op x (car xs))
+               (each op (car xs) (cdr xs)))
+            (else #false)))
+
+      ;; the rest are redefined against the old binary ones
+
+      (define (vararg-predicate op) ;; turn into a macro
+         (case-lambda
+            ((a b) (op a b))
+            ((a . bs) (each op a bs))))
+
+      ;; todo: move variable arity ones to corresponding (scheme *)
+
+      (define = (vararg-predicate =)) ;; short this later
+      (define < (vararg-predicate <))
+      (define > (vararg-predicate >))
+
+      (define <= (vararg-predicate <=))
+      (define >= (vararg-predicate >=))
+
+      ;; ditto for foldables
+      (define (vararg-fold op zero)
+         (case-lambda
+            ((a b) (op a b))
+            ((a) a)
+            ((a . bs) (fold op a bs))
+            (() (or zero (error "No arguments for " op)))))
+
+      (define min (vararg-fold min #false))
+      (define max (vararg-fold max #false))
+      (define gcd (vararg-fold gcd 0))
+      (define lcm (vararg-fold lcm 1))
+
+      (define remainder irem)
+      (define modulo imod)
+
+      (define (number? a)
+         (case (type a)
+            (type-fix+ #true)
+            (type-fix- #true)
+            (type-int+ #true)
+            (type-int- #true)
+            (type-rational #true)
+            (type-complex #true)
+            (else #false)))
+
+      ;; RnRS compat
+      (define real? number?)
+      (define complex? number?)
+      (define rational? number?)
+
+      (define (negate x)
+         (mul -1 x))
+
       ;;;
       ;;; SQUARE ROOTS (stub)
       ;;;
@@ -312,9 +601,6 @@
                            res)))
                   pows store))))
 
-      ;; primes in the range [lo .. hi] (inclusive)
-
-
       (define (atkin-primes-between lo hi)
          (cond
             ((> lo hi) #n)
@@ -347,15 +633,6 @@
                      (cons (cons (car pows) 1) (cdr pows)))
                   (else
                      (atkin-factor-driver pows  max))))))
-
-      ; fixme, try different options
-      ;   - factor out twos first
-      ;   - try low primes
-      ;   - more low primes
-      ;  - quick prime? check (maybe miller-rabin (2 3 5))
-      ;  - limited pollard-rho
-      ;   - full trial division
-      ;   - intermediate prime? checks
 
       (define (factor n)
          (if (> n 1)
