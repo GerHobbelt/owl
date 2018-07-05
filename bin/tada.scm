@@ -165,7 +165,7 @@ output: pdf_document
 ;;; Rendering
 
 (define (render-example example)
-   (str " - " (car example) " → " (caddr example) "\n"))
+   (str " - `" (car example) "` → `" (caddr example) "`\n"))
 
 (define (render-documentation doc)
    (print "Documentation examples are " (doc 'examples #f))
@@ -175,7 +175,7 @@ output: pdf_document
       "\n"
       "Exported values:\n\n"
       (foldr
-         (λ (x tl) (str "- " x "\n" tl))
+         (λ (x tl) (str "- `" x "`\n" tl))
          "" (doc 'exports #null))
       "\n"
       (if (doc 'examples #f)
