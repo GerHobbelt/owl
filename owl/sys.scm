@@ -1,5 +1,6 @@
-;;; Owl sys library exports various operating system calls and helper
-;;; functions for using them.
+#| doc
+This library defines various system calls and wrappers for calling them.
+|#
 
 (define-library (owl sys)
    (export

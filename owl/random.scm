@@ -1,30 +1,32 @@
-;;; Randomness is an interesting thing to work with in a purely
-;;; functional setting. Owl builds randomness around streams of
-;;; typically deterministically generated 24-bit fixnums. These
-;;; are usually called rands in the code.
-;;;
-;;; A function involving randomness typically receives a rand
-;;; stream, and also returns it after possibly consuming some
-;;; rands. Behavior like this would be easy to hide using macros
-;;; or monadic code, but Owl generally strives to be explicit and
-;;; simple, so the rand streams are handled just like any other
-;;; value.
-;;;
-;;; ```
-;;;   > (define rs (seed->rands 9))
-;;;   > (rand rs 10000)
-;;;   '(values #<function> 3942) ;; the new rand stream and 3942
-;;;   > (lets ((rs a (rand rs 10000))) a)
-;;;   3942
-;;;   > (lets ((rs elem (rand-elem rs '(a b c d e f g)))) elem)
-;;;   'c
-;;;   > (lets ((rs sub (rand-subset rs '(a b c d e f g)))) sub)
-;;;   '(b e f)
-;;;   > (lets ((rs perm (random-permutation rs '(a b c d e f g)))) perm)
-;;;   '(g e c b d a f)
-;;;   > (lets ((rs ns (random-numbers rs 100 10))) ns)
-;;;   '(95 39 69 99 2 98 56 85 77 39)
-;;; ```
+#| doc
+Randomness is an interesting thing to work with in a purely
+functional setting. Owl builds randomness around streams of
+typically deterministically generated 24-bit fixnums. These
+are usually called rands in the code.
+
+A function involving randomness typically receives a rand
+stream, and also returns one after possibly consuming some
+rands. Behavior like this would be easy to hide using macros
+or monadic code, but Owl generally strives to be explicit and
+simple, so the rand streams are handled just like any other
+value.
+
+```
+  > (define rs (seed->rands 9))
+  > (rand rs 10000)
+  '(values #<function> 3942) ;; the new rand stream and 3942
+  > (lets ((rs a (rand rs 10000))) a)
+  3942
+  > (lets ((rs elem (rand-elem rs '(a b c d e f g)))) elem)
+  'c
+  > (lets ((rs sub (rand-subset rs '(a b c d e f g)))) sub)
+  '(b e f)
+  > (lets ((rs perm (random-permutation rs '(a b c d e f g)))) perm)
+  '(g e c b d a f)
+  > (lets ((rs ns (random-numbers rs 100 10))) ns)
+  '(95 39 69 99 2 98 56 85 77 39)
+```
+|#
 
 (define-library (owl random)
 

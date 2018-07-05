@@ -1,6 +1,6 @@
-;;;
-;;; Suffix array and tree construction
-;;;
+#| doc
+Suffix arrays are a useful data structure for speeding up searches from strings.
+|#
 
 (define-library (owl suffix)
 

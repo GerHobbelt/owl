@@ -1,10 +1,6 @@
-;;;
-;;; Unicode and UTF-8
-;;;
-
-;; todo: remove dependencies to remaining few bignum ops
-;; fixme: check for code point validity in string conversions
-;; fixme: force the string conversion errors to be handled explicitly
+#| doc
+UTF-8 encoding and decoding.
+|#
 
 (define-library (owl unicode)
 

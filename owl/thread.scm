@@ -1,12 +1,8 @@
-;;;
-;;; Thread controller
-;;;
-
-;; thread controller is like the kernel of owl lisp. it handles
-;; activation and suspension of threads, and has a tuple of
-;; functions which are like the system calls, via which a thread
-;; send requests via the thread scheduler to other threads or
-;; the underlying system.
+#| doc
+This library defines the thread controller. It handles activation, suspension
+and requested external actions of continuation-based threads.  It is much like
+a very small kernel.
+|#
 
 (define-library (owl thread)
 
