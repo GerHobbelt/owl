@@ -10,8 +10,7 @@ export CFLAGS = -Wall -O2
 export CC = gcc
 export LDFLAGS
 
-# owl needs just a single binary
-all owl: bin/ol
+all owl: bin/ol manual.md
 
 ## fasl (plain bytecode) image boostrap
 
