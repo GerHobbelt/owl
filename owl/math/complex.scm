@@ -4,7 +4,7 @@ This library defines complex arbitrary precision math functions.
 
 (define-library (owl math complex)
 
-   (export + - * / = complex)
+   (export + - * / = complex negate)
 
    (import
 
@@ -15,11 +15,11 @@ This library defines complex arbitrary precision math functions.
       (only (owl primop) create-type)
 
       (prefix ;; prefix integer operations with i
-         (only (owl math integer) + - * = << >> rem mod)
+         (only (owl math integer) + - * = << >> rem mod negate)
          i)
 
       (prefix ;; prefix some rational operations with r
-         (only (owl math rational) + -)
+         (only (owl math rational) + - negate)
          r)
 
       (only (owl math rational)
@@ -29,11 +29,11 @@ This library defines complex arbitrary precision math functions.
          divide gcd gcdl
          <
          rational
-         numerator denumerator)
+         numerator denominator)
 
       (only (owl math integer)
          ncons ncar ncdr big-bad-args
-         big-digits-equal? negate
+         big-digits-equal?
          quotient ediv
          to-int- to-int+ to-fix+ to-fix-
          fx-greatest fx-width truncate/
@@ -217,4 +217,9 @@ This library defines complex arbitrary precision math functions.
 
    (define * mul)
 
+   (define (negate a)
+      (or
+         (inegate a)
+         (rnegate a)
+         (* a -1)))
 ))

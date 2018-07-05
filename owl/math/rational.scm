@@ -1,7 +1,8 @@
 #| doc
 This library defines arbitrary precision rational arithmetic operations.
+A rational number p/q is a typed pair of arbitrary precision integers. A
+valid rational number has q != 0, q != 1, and gcd(p, q) = 1.
 |#
-
 
 (define-library (owl math rational)
 
@@ -12,16 +13,17 @@ This library defines arbitrary precision rational arithmetic operations.
       ;; = should be here also
       gcd gcdl
       rational
-      numerator denumerator
-      divide)
+      numerator denominator
+      divide
+      negate)
 
    (import
       (owl defmac)
       (owl ff) ;; used in gcd
       (owl list)
       (only (owl syscall) error)
-      (prefix (only (owl math integer) << >> < + - * = rem quotient ediv =) i)
-      (only (owl math integer) ncar ncdr band negate negative?)
+      (prefix (only (owl math integer) << >> < + - * = rem quotient ediv = negate) i)
+      (only (owl math integer) ncar ncdr band negative?)
       (only (owl math integer)
          mk-add mk-sub right-out))
 
@@ -103,7 +105,7 @@ This library defines arbitrary precision rational arithmetic operations.
                       (bv (i>> bv (get gcd-shifts (car b) 0)))
                       (x (i- av bv)))
                      (if (negative? x)
-                        (lazy-gcd (cons 2 (negate x)) (cons 1 av) n)
+                        (lazy-gcd (cons 2 (inegate x)) (cons 1 av) n)
                         (lazy-gcd (cons 2 x) (cons 1 bv) n)))))))
 
       ;; why are the bit values consed to head of numbers?
@@ -113,10 +115,10 @@ This library defines arbitrary precision rational arithmetic operations.
       ;; signed wrapper for nat-gcd
       (define (gcd a b)
          (cond
-            ((eq? (type a) type-fix-) (gcd (negate a) b))
-            ((eq? (type a) type-int-) (gcd (negate a) b))
-            ((eq? (type b) type-fix-) (gcd a (negate b)))
-            ((eq? (type b) type-int-) (gcd a (negate b)))
+            ((eq? (type a) type-fix-) (gcd (inegate a) b))
+            ((eq? (type a) type-int-) (gcd (inegate a) b))
+            ((eq? (type b) type-fix-) (gcd a (inegate b)))
+            ((eq? (type b) type-int-) (gcd a (inegate b)))
             ((eq? (type a) type-fix+) (gcd-euclid a b))
             ((eq? (type b) type-fix+) (gcd-euclid a b))
             ((eq? a b) a)
@@ -129,10 +131,17 @@ This library defines arbitrary precision rational arithmetic operations.
          (let ((f (gcd a b)))
             (if (eq? f 1)
                (cond
-                  ((eq? (type b) type-fix-) (rational (negate a) (negate b)))
-                  ((eq? (type b) type-int-) (rational (negate a) (negate b)))
+                  ((eq? (type b) type-fix-) (rational (inegate a) (inegate b)))
+                  ((eq? (type b) type-int-) (rational (inegate a) (inegate b)))
                   (else (rational a b)))
                (rationalize (iquotient a f) (iquotient b f)))))
+
+      ;; negate defined for rationals only
+      (define (negate a)
+         (if (eq? (type a) type-rational)
+            (lets ((u l a))
+               (rational (negate u) l)
+               #f)))
 
       ;; if dividing small fixnums, do it with primops
       (define (divide-simple a b)
@@ -148,8 +157,8 @@ This library defines arbitrary precision rational arithmetic operations.
 
       (define (divide a b)
          (cond
-            ((eq? (type b) type-fix-) (divide (negate a) (negate b)))
-            ((eq? (type b) type-int-) (divide (negate a) (negate b)))
+            ((eq? (type b) type-fix-) (divide (inegate a) (inegate b)))
+            ((eq? (type b) type-int-) (divide (inegate a) (inegate b)))
             ((divide-simple a b) => self)
             (else
                (let ((f (gcd a b)))
@@ -248,7 +257,7 @@ This library defines arbitrary precision rational arithmetic operations.
             (type-rational (ncar n))
             (else n)))
 
-      (define (denumerator n)
+      (define (denominator n)
          (case (type n)
             (type-rational (ncdr n))
             (else 1)))

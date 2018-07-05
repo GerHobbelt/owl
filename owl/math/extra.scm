@@ -1,8 +1,5 @@
-;;;
-;;; Owl math module, things after basic arithmetic
-;;;
-
-;; todo: split this
+#| doc
+|#
 
 (define-library (owl math extra)
 
@@ -326,9 +323,6 @@
       (define real? number?)
       (define complex? number?)
       (define rational? number?)
-
-      (define (negate x)
-         (mul -1 x))
 
       ;;;
       ;;; SQUARE ROOTS (stub)

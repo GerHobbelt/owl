@@ -1,5 +1,26 @@
 #| doc
-This library defines arbitrary precision integer arithmetic.
+This library defines arbitrary precision integer arithmetic. Some of the
+functions are only defined for integers, whereas others are typically
+extended to handle also more complex kinds of numbers.
+
+Operations to be extended typically export both the operation defined for
+integers only, and a corresponding mk-* version which calls a given function
+in case the types of inputs are not integers. This allows extending the
+definitions in other modules while checking the most common cases of integer
+inputs in first branches.
+
+Owl currently has 24 bits available for encoding a value in an immediate
+value, meaning a value that does not have to be stored in memory. A fixnum,
+or a fixed size number, is a number which fits these bits. The sign of a
+fixnum is stored the type of the immediate object.
+
+When a number is bigger or smaller than the maximum fixnum, it is converted
+to an allocated integer. In this case the representation of the number is a
+linked sequence of base 2²⁴ digits of the number starting from the least
+significant digits. Again the sign of the number is stored in the type.
+
+A valid fixnum zero is always positive, and a valid negative bignum has the
+negative type only at the root node.
 |#
 
 (define-library (owl math integer)
@@ -99,6 +120,7 @@ This library defines arbitrary precision integer arithmetic.
       (define (big-unimplemented op a b)
          (error "Math too high:" (list op a b)))
 
+      ;; negate val → -val | #f
       (define (negate num)
          (case (type num)
             (type-fix+
@@ -108,8 +130,7 @@ This library defines arbitrary precision integer arithmetic.
             (type-fix- (to-fix+ num)) ;; -a -> a
             (type-int+ (to-int- num)) ;; A -> -A
             (type-int- (to-int+ num)) ;; -A -> A
-            (else
-               (big-bad-args 'negate num #false))))
+            (else #f)))
 
 
 

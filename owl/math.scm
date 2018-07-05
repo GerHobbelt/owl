@@ -1,4 +1,4 @@
-#|
+#| doc
 This library exports the usual arbitrary precision bignum arithmetic functions.
 You can also use specific (owl math X) libraries if necessary.
 |#
@@ -15,7 +15,7 @@ You can also use specific (owl math X) libraries if necessary.
       even? odd? fixnum? ediv
 
       ;; from (owl math rational)
-      numerator denumerator gcd
+      numerator denominator gcd
 
       ;; full ones
       (exports (owl math complex))
@@ -38,7 +38,7 @@ You can also use specific (owl math X) libraries if necessary.
 
       ;; rational, exported as such
       (only (owl math rational)
-         numerator denumerator gcd)
+         numerator denominator gcd)
 
       ;; trailing versions with all cases
       (owl math complex)

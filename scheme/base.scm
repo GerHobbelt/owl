@@ -400,9 +400,6 @@
          (syntax-rules ()
             ((let* . stuff) (lets . stuff))))
 
-      (define denominator
-         denumerator) ;; maybe rename at owl side
-
       (define-missing-bad write-u8)
       (define-missing-bad write-string)
       (define-missing-bad write-char)
