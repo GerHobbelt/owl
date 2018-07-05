@@ -36,7 +36,7 @@ c/vm.c: c/_vm.c
 	# make a vm without a bundled heap
 	echo 'static void *heap = 0;' | cat - $? >$@
 
-manual.md: bin/vm doc/manual.md owl/*.scm owl/*/*.scm scheme/*.scm
+manual.md: doc/manual.md owl/*.scm owl/*/*.scm scheme/*.scm
 	bin/ol -r bin/tada.scm -d owl -d scheme -o manual.md
 
 manual.man: manual.md

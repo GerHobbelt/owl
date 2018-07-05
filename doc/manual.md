@@ -1,11 +1,3 @@
----
-title: "Owl Lisp v0.1.18 manual"
-author: Aki Helin
-date: 2018-05-17
-geometry: "left=3cm,right=3cm,top=2cm,bottom=2cm"
-output: pdf_document
----
-
 Owl Lisp is a simple purely functional programming language. 
 It is essentially R7RS Scheme, 
    apart from having only immmutable data structures 

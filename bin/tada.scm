@@ -5,11 +5,24 @@
    (owl sys)
    (owl args)
    (owl proof)
+   (owl date)
    (only (owl io) write-to))
 
 ;; todo: per-function documentation: simple arg case
 ;; todo: per-function documentation: type (function vs macro)
 ;; todo: per-function documentation: well formed comments
+
+(define (make-markdown-prelude)
+   (lets ((d m y H M S (date (time))))
+(str
+"---
+title: \"Owl Lisp v" *owl-version* " manual\"
+date: " y "-" m "-" d "
+geometry: \"left=3cm,right=3cm,top=2cm,bottom=2cm\"
+output: pdf_document
+---
+
+")))
 
 ;;; File system
 
@@ -194,6 +207,7 @@
                   (open-output-file output-path)))
             (for-each print docs)
             (print "Writing to " output-path)
+            (print-to output-port (make-markdown-prelude))
             (print-to output-port prelude)
             (for-each
                (λ (doc-node)
