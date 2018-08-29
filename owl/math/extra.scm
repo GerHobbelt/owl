@@ -23,6 +23,7 @@
       negative?
       min max minl maxl
       < > >= <=
+      + - * /
       ; inv-mod mod-solve
       )
 
@@ -240,6 +241,9 @@
       (define +
          (case-lambda
             ((a b) (add a b))
+            ((a) a)
+            (() 0)
+            ((a b c) (add a (add b c)))
             (xs (fold add 0 xs))))
 
       (define sub -)
@@ -265,7 +269,7 @@
       (define /
          (case-lambda
             ((a b) (div a b))
-            ((a) (rational 1 a))
+            ((a) (div 1 a))
             ((a . bs) (div a (product bs)))))
 
       ;; fold but stop on first false
@@ -871,6 +875,7 @@
                            (loop data 0 (+ limit bin))))
                      (else
                         (loop (cdr data) (+ count 1) limit)))))))
+
 
 ))
 
