@@ -20,6 +20,7 @@
       close-port              ;; fd → _
       start-base-threads      ;; start stdio and sleeper threads
       wait-write              ;; fd → ? (no failure handling yet)
+      when-readable           ;; fd → fd, block thread until readable
 
       ;; stream-oriented blocking (for the writing thread) io
       blocks->port            ;; ll fd → ll' n-bytes-written, don't close fd
@@ -148,17 +149,18 @@
       (define stream-block-size
          #x8000)
 
+      (define (when-readable port)
+         (interact 'iomux (tuple 'read port))
+         port)
+
       (define (try-get-block fd block-size block?)
          ;; stdio ports are in blocking mode, so poll always
          (if (stdio-port? fd)
-            (interact 'iomux (tuple 'read fd)))
+            (when-readable fd))
          (let ((res (sys-read fd block-size)))
             (if (eq? res #true) ;; would block
                (if block?
-                  (begin
-                     ;(interact sid 5)
-                     (interact 'iomux (tuple 'read fd))
-                     (try-get-block fd block-size #true))
+                  (try-get-block (when-readable fd) block-size #true)
                   res)
                res))) ;; is #false, eof or bvec
 
@@ -207,7 +209,7 @@
                      #true)
                   (begin
                      ;(interact sid 5) ;; delay rounds
-                     (interact 'iomux (tuple 'read fd))
+                     (when-readable fd)
                      (loop rounds))))))
 
       (define socket-type-tcp 0)
@@ -218,6 +220,8 @@
 
       (define (open-udp-socket port)
          (sys-port->non-blocking (sys-prim 3 port socket-type-udp #false)))
+
+      (define *max-udp-packet* 65507)
 
       ;; port → (ip . bvec) | #false, nonblocking
       (define (check-udp-packet port)
@@ -230,10 +234,7 @@
       (define (wait-udp-packet port)
          (let ((res (check-udp-packet port)))
             (or res
-               (begin
-                  ;(interact sid socket-read-delay)
-                  (interact 'iomux (tuple 'read port))
-                  (wait-udp-packet port)))))
+               (wait-udp-packet (when-readable port)))))
 
       ;; port → null | ((ip . bvec) ...)
       (define (udp-packets port)
@@ -303,10 +304,7 @@
             (if res
                (lets ((ip fd res))
                   (values ip (sys-port->non-blocking fd)))
-               (begin
-                  ;(interact sid socket-read-delay)
-                  (interact 'iomux (tuple 'read sock))
-                  (tcp-client sock)))))
+               (tcp-client (when-readable sock)))))
 
       ;; port → ((ip . fd) ... . null|#false), CLOSES SOCKET
       (define (socket-clients sock)
