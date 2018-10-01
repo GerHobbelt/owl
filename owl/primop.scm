@@ -32,26 +32,23 @@
          (C raw type-bytecode))
 
       (define (app a b)
-         (if (eq? a '())
+         (if (null? a)
             b
             (cons (car a) (app (cdr a) b))))
 
       ;; l -> fixnum | #false if too long
       (define (len l)
          (let loop ((l l) (n 0))
-            (if (eq? l '())
+            (if (null? l)
                n
-               (lets ((n o (fx+ n 1)))
-                  (if o #false (loop (cdr l) n))))))
+               (lets ((n o (fxadd n 1)))
+                  (and (eq? o 0) (loop (cdr l) n))))))
 
       (define (func lst)
-         (lets
-            ((arity (car lst))
-             (lst (cdr lst))
-             (len (len lst)))
+         (lets ((arity lst lst))
             (bytes->bytecode
-               (ilist 34 arity 0 len
-                  (app lst (list 17)))))) ;; fail if arity mismatch
+               (ilist 2 arity 0 (len lst)
+                  (app lst (list 61)))))) ;; fail if arity mismatch
 
       ;; changing any of the below 3 primops is tricky. they have to be recognized by the primop-of of
       ;; the repl which builds the one in which the new ones will be used, so any change usually takes
@@ -83,10 +80,10 @@
       (define sys         (func '(4 27 4 5 6 7 24 7)))
       (define sizeb       (func '(2 28 4 5 24 5)))
       (define raw         (func '(3 59 4 5 6 24 6)))
-      (define eq?         (func '(3 54 4 5 6 24 6)))
-      (define fxband      (func '(3 55 4 5 6 24 6)))
-      (define fxbor       (func '(3 56 4 5 6 24 6)))
-      (define fxbxor      (func '(3 57 4 5 6 24 6)))
+      (define eq?         (func '(3 7 4 5 6 24 6)))
+      (define fxand       (func '(3 18 4 5 6 24 6)))
+      (define fxior       (func '(3 29 4 5 6 24 6)))
+      (define fxxor       (func '(3 33 4 5 6 24 6)))
       (define type        (func '(2 15 4 5 24 5)))
       (define ref         (func '(3 47 4 5 6 24 6)))
 
@@ -108,56 +105,54 @@
       (define mkblack (func '(5 48 4 5 6 7 8 24 8)))
       (define mkred (func '(5 176 4 5 6 7 8 24 8)))
 
-      (define null '())
-
       (define apply-error "implementation restriction: please fold a long list instead of applying a function")
 
       (define apply
          (case-lambda
             ((fn l)
-               (if (eq? l null) (fn)
+               (if (null? l) (fn)
                   (lets ((a l l))
-                     (if (eq? l null) (fn a)
+                     (if (null? l) (fn a)
                         (lets ((b l l))
-                           (if (eq? l null) (fn a b)
+                           (if (null? l) (fn a b)
                               (lets ((c l l))
-                                 (if (eq? l null) (fn a b c)
+                                 (if (null? l) (fn a b c)
                                     (lets ((d l l))
-                                       (if (eq? l null) (fn a b c d)
+                                       (if (null? l) (fn a b c d)
                                           (lets ((e l l))
-                                             (if (eq? l null) (fn a b c d e)
+                                             (if (null? l) (fn a b c d e)
                                                 (car apply-error)))))))))))))
             ((fn a l)
-               (if (eq? l null) (fn a)
+               (if (null? l) (fn a)
                   (lets ((b l l))
-                     (if (eq? l null) (fn a b)
+                     (if (null? l) (fn a b)
                         (lets ((c l l))
-                           (if (eq? l null) (fn a b c)
+                           (if (null? l) (fn a b c)
                               (lets ((d l l))
-                                 (if (eq? l null) (fn a b c d)
+                                 (if (null? l) (fn a b c d)
                                     (lets ((e l l))
-                                       (if (eq? l null) (fn a b c d e)
+                                       (if (null? l) (fn a b c d e)
                                           (car apply-error)))))))))))
             ((fn a b l)
-               (if (eq? l null) (fn a b)
+               (if (null? l) (fn a b)
                   (lets ((c l l))
-                     (if (eq? l null) (fn a b c)
+                     (if (null? l) (fn a b c)
                         (lets ((d l l))
-                           (if (eq? l null) (fn a b c d)
+                           (if (null? l) (fn a b c d)
                               (lets ((e l l))
-                                 (if (eq? l null) (fn a b c d e)
+                                 (if (null? l) (fn a b c d e)
                                     (car apply-error)))))))))
             ((fn a b c l)
-               (if (eq? l null) (fn a b c)
+               (if (null? l) (fn a b c)
                   (lets ((d l l))
-                     (if (eq? l null) (fn a b c d)
+                     (if (null? l) (fn a b c d)
                         (lets ((e l l))
-                           (if (eq? l null) (fn a b c d e)
+                           (if (null? l) (fn a b c d e)
                               (car apply-error)))))))
             ((fn a b c d l)
-               (if (eq? l null) (fn a b c d)
+               (if (null? l) (fn a b c d)
                   (lets ((e l l))
-                     (if (eq? l null) (fn a b c d e)
+                     (if (null? l) (fn a b c d e)
                         (car apply-error)))))
             (x
                (car apply-error))))
@@ -171,26 +166,29 @@
             (tuple 'cons         51 2 1 cons)
             (tuple 'car         105 1 1 car) ;; opcode: 1 << 6 | 41
             (tuple 'cdr         169 1 1 cdr) ;; opcode: 2 << 6 | 41
-            (tuple 'eq?          54 2 1 eq?)
-            (tuple 'fxband       55 2 1 fxband)
-            (tuple 'fxbor        56 2 1 fxbor)
-            (tuple 'fxbxor       57 2 1 fxbxor)
+            (tuple 'eq?           7 2 1 eq?)
             (tuple 'type         15 1 1 type)
             (tuple 'ref          47 2 1 ref)
             (tuple 'mkt          23 'any 1 mkt) ;; mkt type v0..vn t
+            (tuple 'fxand        18 2 1 fxand)
+            (tuple 'fxband       18 2 1 fxand) ; FIXME: remove after fasl update
+            (tuple 'fxior        29 2 1 fxior)
+            (tuple 'fxbor        29 2 1 fxior) ; FIXME: remove after fasl update
             (tuple 'bind         32 1 #false bind)  ;; (bind thing (lambda (name ...) body)), fn is at CONT so arity is really 1
+            (tuple 'fxxor        33 2 1 fxxor)
+            (tuple 'fxbxor       33 2 1 fxxor) ; FIXME: remove after fasl update
             (tuple 'set          45 3 1 set)   ;; (set tuple pos val) -> tuple'
             (tuple 'lesser?      44 2 1 lesser?)  ;; (lesser? a b)
             (tuple 'listuple     35 3 1 listuple)  ;; (listuple type size lst)
             (tuple 'mkblack      48 4 1 mkblack) ;; (mkblack l k v r)
             (tuple 'mkred       176 4 1 mkred)   ;; ditto, opcode: FFRED << 6 | 48
             (tuple 'ff-bind      49 1 #false ff-bind)  ;; SPECIAL ** (ffbind thing (lambda (name ...) body))
-            (tuple 'fxsub        21 2 2 'fxsub) ;; (fxsub a b) -> lo u
-            (tuple 'fxadd        22 2 2 'fxadd) ;; (fxadd a b) -> lo hi
-            (tuple 'fxqr         26 3 3 'fxqr)   ;; (fxdiv ah al b) -> qh ql r
-            (tuple 'fx+          38 2 2 fx+) ; FIXME: remove after fasl update
+            (tuple 'fx-          21 2 2 fxsub) ;; (fxsub a b) -> lo u
+            (tuple 'fx+          22 2 2 fxadd) ;; (fxadd a b) -> lo hi
+            (tuple 'fxqr         26 3 3 fxqr)  ;; (fxdiv ah al b) -> qh ql r
+            (tuple 'fxadd        22 2 2 fxadd) ; FIXME: remove after fasl update
             (tuple 'fx*          39 2 2 fx*)   ;; (fx* a b)      ;; 2 out
-            (tuple 'fx-          40 2 2 fx-) ; FIXME: remove after fasl update
+            (tuple 'fxsub        21 2 2 fxsub) ; FIXME: remove after fasl update
             (tuple 'fx>>         58 2 2 fx>>)   ;; (fx>> a b) -> hi lo, lo are the lost bits
             (tuple 'sys-prim     63 4 1 sys-prim)))
 
@@ -243,9 +241,9 @@
       ;; non-primop instructions that can report errors
       (define (instruction-name op)
          (cond
-            ((eq? op 17) 'arity-error)
             ((eq? op 32) 'bind)
             ((eq? op 50) 'run)
+            ((eq? op 61) 'arity-error)
             (else #false)))
 
       (define (primop-name pop)

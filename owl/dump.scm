@@ -20,6 +20,7 @@
       (owl syscall)
       (owl ff)
       (owl symbol)
+      (owl bytevector)
       (owl vector)
       (owl equal)
       (owl function)
@@ -54,18 +55,18 @@
                ((symbol? node)
                   (let ((trail (put trail node 1)))
                      (put trail tag
-                        (cons node (get trail tag null)))))
+                        (cons node (get trail tag #n)))))
                ((raw? node) trail)
                (else
                   (fold walk
                      (put trail node #true)
                      (tuple->list node)))))
          (define trail
-            (walk (put empty tag null) node))
+            (walk (put empty tag #n) node))
 
          (get
-            (walk (put empty tag null) node)
-            tag null))
+            (walk (put empty tag #n) node)
+            tag #n))
 
       ;; FIXME - fails with variable fixnum size and usual vectors
       (define (file->string path)
@@ -97,10 +98,8 @@
       ;; walk over raw string using primops and look for bytes > 127
       (define (high-point? str pos)
          (if (lesser? (ref str pos) 128)
-            (lets ((pos underflow? (fx- pos 1)))
-               (if underflow?
-                  #false
-                  (high-point? str pos)))
+            (lets ((pos underflow (fxsub pos 1)))
+               (and (eq? underflow 0) (high-point? str pos)))
             #true))
 
       ;; utf-8 decode if necessary (avoids some constant overhead, which is useful if there are 2 quadriollion args)
@@ -131,7 +130,7 @@
                (cons 10
                   (render-byte-array bytes 0)))
             ((null? (cdr bytes))
-               (render (car bytes) null))
+               (render (car bytes) #n))
             (else
                (let ((this (car bytes)))
                   (render this
@@ -169,7 +168,7 @@
 
       (define (render-native-ops nops)
          (runes->string
-            (foldr render null
+            (foldr render #n
                (ff-fold
                   (λ (tl func info)
                      (lets ((opcode new-func c-code info))
@@ -178,7 +177,7 @@
                            ;; all of these end to an implicit goto apply
                            (ilist "      case " opcode ":" c-code "break;\n" tl)
                            tl)))
-                  null nops))))
+                  #n nops))))
 
 
       ; nodes = ((func . #(opcode warpper src)) ...)
@@ -190,7 +189,7 @@
                (begin
                   ;(print " - no native instructions selected")
                   (list->ff all))
-               (let loop ((code 0) (obs all) (out null)) ;; <- can start at 0 after cleaning up the old code
+               (let loop ((code 0) (obs all) (out #n)) ;; <- can start at 0 after cleaning up the old code
                   (cond
                      ((null? obs)
                         (list->ff out))
@@ -215,8 +214,7 @@
             #false))
 
       (define (show-func val)
-         (cons 'bytecode
-            (map (H ref val) (iota 0 1 (sizeb val)))))
+         (cons 'bytecode (bytevector->list val)))
 
       ; native-ops → (obj → obj')
       ;; fixme: rewrite...
@@ -250,7 +248,7 @@
                         (clone-code original extras)
                         (error "bug: no original code found for superinstruction " opcode)))))
             (else
-               (let ((bytes (map (H ref bc) (iota 0 1 (sizeb bc)))))
+               (let ((bytes (bytevector->list bc)))
                   (if (eq? (cadr bytes) 0)
                      (error "bug: vm speciazation instruction probably referencing code from current vm: " bytes))
                   (raw bytes type-bytecode))))) ; <- reallocate it
@@ -286,12 +284,12 @@
       ; ob → ((nrefs . ob) ..)
       (define (all-code-refs ob)
          (lets ((refs this (code-refs empty ob)))
-            (ff-fold (λ (out x n) (cons (cons n x) out)) null this)))
+            (ff-fold (λ (out x n) (cons (cons n x) out)) #n this)))
 
       ;; _ → ((bytecode . bytecode) ...)
       (define (codes-of ob)
          (lets ((refs this (code-refs empty ob)))
-            (ff-fold (λ (out x n) (cons (cons x x) out)) null this)))
+            (ff-fold (λ (out x n) (cons (cons x x) out)) #n this)))
 
       ;; ob percent → (codevec ...)
       (define (most-linked-code ob perc)

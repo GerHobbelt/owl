@@ -41,7 +41,7 @@
                   (cons exp found))
                (else found)))
 
-         (C walk null))
+         (C walk #n))
 
 
       ;;;
@@ -66,7 +66,7 @@
                   (if (pattern exp) (cons exp vals) #false))
                (else #false)))
 
-         (match-pattern pattern exp null))
+         (match-pattern pattern exp #n))
 
 
       ;;;
@@ -76,7 +76,7 @@
       ; store nulls to variables in exp
       (define (init-variables exp literals dict)
          (fold
-            (λ (dict key) (cons (cons key null) dict))
+            (λ (dict key) (cons (cons key #n) dict))
             dict
             (diff (symbols-of exp) literals)))
 
@@ -96,7 +96,7 @@
       (define (match-pattern pattern literals form fail)
          (let loop
             ((pattern pattern) (form form) (collect? #false)
-               (fail fail) (dictionary null))
+               (fail fail) (dictionary #n))
             (cond
                ((symbol? pattern)
                   (cond
@@ -131,16 +131,16 @@
                                (new-dict dictionary)
                                (form form))
                               (call/cc
-                                 (lambda (ret)
+                                 (λ (ret)
                                  (if (and new-dict (pair? form))
                                     (loop (cddr pattern) form #false
-                                       (lambda (argh)
+                                       (λ (argh)
                                           (ret
                                              (next new-dict form
                                                 (call/cc
-                                                   (lambda (ret)
+                                                   (λ (ret)
                                                       (loop (car pattern) (car form)
-                                                         #true (lambda (x) (ret #false))
+                                                         #t (λ (x) (ret #f))
                                                          new-dict)))
                                                 (cdr form))))
                                        new-dict)
@@ -161,12 +161,12 @@
 
       (define (try-pattern pattern literals form)
          (call/cc
-            (lambda (ret)
+            (λ (ret)
                (match-pattern
                   pattern
                   (cons (car form) literals)
                   form
-                  (lambda (argh) (ret #false))))))
+                  (λ (argh) (ret #f))))))
 
       ;; given dictionary resulting from pattern matching, decide how many times an ellipsis
       ;; rewrite should be done. owl uses minimum repetition of length more than one, so that
@@ -325,7 +325,7 @@
                    (template-symbols (symbols-of template))
                    (fresh-symbols
                      (filter
-                        (lambda (x) (and (unbound? x) (not (memq x literals))))
+                        (λ (x) (and (unbound? x) (not (memq x literals))))
                         (diff template-symbols pattern-symbols))))
                   (list pattern fresh-symbols template)))
             patterns templates))
@@ -345,7 +345,7 @@
 
          (define (expand-list exps env free)
             (if (null? exps)
-               (values null free)
+               (values #n free)
                (lets
                   ((this free (expand (car exps) env free abort))
                    (tail free (expand-list (cdr exps) env free)))
@@ -451,8 +451,7 @@
                    (templates (list-ref rules 3))
                    (rules
                      (make-pattern-list literals patterns templates
-                        (lambda (sym)
-                           (not (env-get-raw env sym #false)))))
+                        (λ (sym) (not (env-get-raw env sym #f)))))
                    (transformer
                      (make-transformer literals rules env)))
                   (let ((env (env-set-macro env keyword transformer)))

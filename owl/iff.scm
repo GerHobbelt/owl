@@ -60,7 +60,7 @@
          (lets
             ((this (get ff tag iff-nan))
              (st (if (eq? this iff-nan) st
-                     (op st (nrev null taken) this))))
+                     (op st (nrev #n taken) this))))
             (ff-fold
                (λ (st digit more)
                   (if digit
@@ -72,11 +72,11 @@
          (ff-fold
             (λ (st k v)
                (if k
-                  (iff-walk op st v (ncons k null))
+                  (iff-walk op st v (ncons k #n))
                   st))
             (ff-fold op st (get ff tag empty))
             ff))
 
       (define (iff->list iff)
-         (ifold (lambda (tail n v) (cons (cons n v) tail)) null iff))
+         (ifold (λ (tail n v) (cons (cons n v) tail)) #n iff))
 ))

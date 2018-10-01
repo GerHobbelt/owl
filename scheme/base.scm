@@ -250,6 +250,7 @@
       (only (owl variable) link-variable)
       (owl string)
       (owl primop)
+      (owl math)
       (owl math extra)
       (owl bytevector)
       (owl vector)
@@ -259,8 +260,7 @@
       (owl list-extra)
       (owl io)
       (owl boolean)
-      (owl char)
-      (owl math))
+      (owl char))
 
    (begin
 
@@ -283,7 +283,7 @@
 
       (define features
          (let ((owl-state (link-variable '*state*)))
-            (λ () (get (owl-state) 'features null))))
+            (λ () (get (owl-state) 'features '()))))
 
       ;; grr, scheme member functions don't follow the argument conventions of other functions used in owl...
 
@@ -342,7 +342,7 @@
             (and (integer? n) n)))
 
       (define (number->string/base n base)
-         (list->string (render-number n null base)))
+         (list->string (render-number n '() base)))
 
       (define number->string
          (case-lambda
@@ -463,4 +463,5 @@
       (define-missing-bad call-with-port)
       (define-missing-bad bytevector-u8-set!)
       (define-missing-bad bytevector-copy!)
+
 ))

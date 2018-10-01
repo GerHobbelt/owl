@@ -1,6 +1,8 @@
-;;;
-;;; COMMAND LINE ARGUMENT HANDLER
-;;;
+#| doc
+This library makes it easy to write tools which use command line arguments 
+in the usual way.
+|#
+
 
 (define-library (owl args)
 
@@ -106,7 +108,7 @@
             ((dashy? (car args))
                (cond
                   ((string=? (car args) "--")
-                     (walk rules null dict (append (reverse (cdr args)) others)))
+                     (walk rules #n dict (append (reverse (cdr args)) others)))
                   ((select-rule (car args) rules) =>
                      (λ (rule)
                         (lets
@@ -125,7 +127,7 @@
                                           (put dict id
                                              (if (getf rule 'plural)
                                                 ;; put values to a list if this is a multi argument
-                                                (append (get dict id null) (list value))
+                                                (append (get dict id #n) (list value))
                                                 value))
                                           others)
                                        (fail
@@ -148,7 +150,7 @@
       ; + cook, pred, terminal, multi, id
 
       (define (process-arguments args rules error-msg cont)
-         (let ((res (walk rules args empty null)))
+         (let ((res (walk rules args empty #n)))
             (if res
                (lets ((dict others res))
                   (cont dict others))
@@ -222,14 +224,13 @@
                            (string-append ", " (getf rule 'comment))
                            "")
                         (if (getf rule 'default)
-                           (foldr string-append "]"
-                              (list " [" (getf rule 'default)))
+                           (string-append " [" (getf rule 'default) "]")
                            "")
                         (if (getf rule 'mandatory) " (mandatory)" "")
                         (if (getf rule 'plural) " (can be several)" "")
                         (if (getf rule 'terminal) " (terminal)" "")
                         nl)))
-               null rules)))
+               #n rules)))
 
       (define print-rules
          (B display format-rules))

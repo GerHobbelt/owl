@@ -67,13 +67,13 @@
 
       (define (rol x n)
          (word
-            (bor
+            (bior
                (<< x n)
                (>> x (- 32 n)))))
 
       (define (ror x n)
          (word
-            (bor
+            (bior
                (>> x n)
                (<< x (- 32 n)))))
 
@@ -94,21 +94,21 @@
              (b ll (uncons ll #false))
              (c ll (uncons ll #false))
              (d ll (uncons ll #false)))
-            (values (bor (bor d (<< c 8))
-                         (bor (<< b 16) (<< a 24)))
+            (values (bior (fxbor d (<< c 8))
+                         (bior (<< b 16) (<< a 24)))
                     ll)))
 
       (define (grab-initial-words ll)
          (lets ((a ll (uncons ll #false)))
             (if a ;;something in stream
-               (let loop ((ll (cons a ll)) (ws null) (n 0))
+               (let loop ((ll (cons a ll)) (ws #n) (n 0))
                   (cond
                      ((= n 16)
                         (values ws ll))
                      (else
                         (lets ((x ll (grab-word ll)))
                            (loop ll (cons x ws) (+ n 1))))))
-               (values #false null))))
+               (values #f #n))))
 
       (define (xor-poss x n ps lst)
          (if (eq? n 1)
@@ -118,7 +118,7 @@
             (xor-poss x (- n 1) ps (cdr lst))))
 
       (define (sha1-step a b c d e f k w)
-         (values (word (+ (rol a 5) f e k w)) a (word (rol b 30)) c d))
+         (values (word (+ (rol a 5) (+ (+ f e) (+ k w)))) a (word (rol b 30)) c d))
 
       (define bnot
          (C bxor #xffffffff))
@@ -127,7 +127,7 @@
          (let loop ((i 0) (a h0) (b h1) (c h2) (d h3) (e h4) (ws (reverse ws)))
             (cond
                ((< i 20)
-                  (lets ((f (bor (band b c) (band (bnot b) d)))
+                  (lets ((f (bior (band b c) (band (bnot b) d)))
                          (k #x5a827999)
                          (a b c d e
                            (sha1-step a b c d e f k (car ws))))
@@ -139,7 +139,7 @@
                            (sha1-step a b c d e f k (car ws))))
                      (loop (+ i 1) a b c d e (cdr ws))))
                ((< i 60)
-                  (lets ((f (bor (bor (band b c) (band b d)) (band c d)))
+                  (lets ((f (bior (bior (band b c) (band b d)) (band c d)))
                          (k #x8f1bbcdc)
                          (a b c d e
                            (sha1-step a b c d e f k (car ws))))
@@ -167,7 +167,7 @@
          (ilist d c b a tail)))
 
    (define (ws->bytes ws)
-      (foldr uint32->bytes null ws))
+      (foldr uint32->bytes #n ws))
 
    ;; silly version for now
    (define (hash-bytes->string bs)
@@ -175,7 +175,7 @@
          (foldr
             (λ (b tl)
                (append (cdr (string->list (number->string (+ #x100 b) 16))) tl))
-            null bs)))
+            #n bs)))
 
    (define sha1-format-result
       (B hash-bytes->string ws->bytes))
@@ -241,17 +241,14 @@
             x)))
 
    (define (make-hmac hasher blocksize)
-      (lambda (key msg)
+      (λ (key msg)
          (lets
             ((key (any->bytes key)) ;; we want to UTF-8 encode it
              (msg (any->bytes msg)) ;; ditto
              (key (if (> (length key) blocksize) (hasher key) key))
-             (key
-               (append key
-                  (map (λ (x) 0)
-                     (iota 0 1 (- blocksize (length key))))))
-             (o-pad (map (λ (x) #x5c) (iota 0 1 blocksize)))
-             (i-pad (map (λ (x) #x36) (iota 0 1 blocksize))))
+             (key (append key (make-list (- blocksize (length key)) 0)))
+             (o-pad (make-list blocksize #x5c))
+             (i-pad (make-list blocksize #x36)))
             (hasher
                (append (list-xor o-pad key)
                   (hasher (append (list-xor i-pad key) msg)))))))
@@ -299,7 +296,7 @@
             (lets
                ((S1 (bxor (bxor (ror e 6) (ror e 11)) (ror e 25)))
                 (ch (bxor (band e f) (band g (bnot e))))
-                (temp1 (word (+ h S1 ch (car ws) (car ks))))
+                (temp1 (word (+ h (+ (+ S1 ch) (+ (car ws) (car ks))))))
                 (S0 (bxor (bxor (ror a 2) (ror a 13)) (ror a 22)))
                 (maj (bxor (bxor (band a b) (band a c)) (band b c)))
                 (temp2 (+ S0 maj)))

@@ -30,7 +30,7 @@
 
       (define (closurize-list closurize exps used)
          (if (null? exps)
-            (values null used)
+            (values #n used)
             (lets
                ((this used (closurize (car exps) used #true))
                 (tail used (closurize-list closurize (cdr exps) used)))
@@ -85,7 +85,7 @@
                (closurize-call closurize rator rands used))
             ((lambda formals body)
                (lets
-                  ((body bused (closurize body null #true))
+                  ((body bused (closurize body #n #t))
                    (clos (diff bused formals)))
                   (values
                      (if close?
@@ -94,7 +94,7 @@
                      (union used clos))))
             ((lambda-var fixed? formals body)
                (lets
-                  ((body bused (closurize body null #true))
+                  ((body bused (closurize body #n #t))
                    (clos (diff bused formals)))
                   (values
                      (if close?
@@ -106,7 +106,7 @@
                (if close?
                   ;; a normal value requiring a closure, and first node only
                   (lets
-                     ((func this-used (closurize func null #false)) ;; no used, don't close
+                     ((func this-used (closurize func #n #f)) ;; no used, don't close
                       (else this-used (closurize else this-used #false))) ;; same used, dont' close rest
                      (values
                         (tuple 'closure-case (tuple 'case-lambda func else) this-used)  ;; used the ones in here
@@ -125,7 +125,7 @@
 
       (define (literalize-list literalize exps used)
          (if (null? exps)
-            (values null used)
+            (values #n used)
             (lets
                ((this used (literalize (car exps) used))
                 (tail used (literalize-list literalize (cdr exps) used)))
@@ -177,7 +177,7 @@
                ;; for closing it and the one in literals will be the executable
                ;; part to close against.
                (lets
-                  ((body bused (literalize body null))
+                  ((body bused (literalize body #n))
                    (closure-exp (tuple 'closure formals body clos bused))
                    (used (append used (list (cons closure-tag closure-exp)))))
                   (values
@@ -189,13 +189,13 @@
                      used)))
             ((closure-var fixed? formals body clos) ;; clone branch, merge later
                (lets
-                  ((body bused (literalize body null))
+                  ((body bused (literalize body #n))
                    (closure-exp (tuple 'closure-var fixed? formals body clos bused))
                    (used (append used (list (cons closure-tag closure-exp)))))
                   (values (tuple 'make-closure (+ 1 (length used)) clos bused) used)))
             ((closure-case body clos) ;; clone branch, merge later
                (lets
-                  ((body bused (literalize body null))
+                  ((body bused (literalize body #n))
                    (closure-exp (tuple 'closure-case body clos bused))
                    (used (append used (list (cons closure-tag closure-exp)))))
                   (values (tuple 'make-closure (+ 1 (length used)) clos bused) used)))
@@ -209,8 +209,8 @@
 
       (define (build-closures exp env)
          (lets
-            ((exp used (closurize exp null #true))
-             (exp lits (literalize exp null)))
+            ((exp used (closurize exp #n #t))
+             (exp lits (literalize exp #n)))
             (if (and (pair? lits) (uncompiled-closure? (car lits)))
                (ok (cdar lits) env)
                (error "Bad closurize output: "

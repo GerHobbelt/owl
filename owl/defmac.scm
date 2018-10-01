@@ -203,19 +203,14 @@
          (syntax-rules (lambda λ)
             ((define op a b . c)
                (define op (begin a b . c)))
-            ((define ((op . args) . more) . body)
-               (define (op . args) (lambda more . body)))
             ((define (op . args) body)
-               (define op
-                  (letrec ((op (lambda args body))) op)))
+               (_define op (rlambda (op) ((lambda args body)) op)))
             ((define name (lambda (var ...) . body))
                (_define name (rlambda (name) ((lambda (var ...) . body)) name)))
             ((define name (λ (var ...) . body))
                (_define name (rlambda (name) ((lambda (var ...) . body)) name)))
             ((define op val)
                (_define op val))))
-
-      (define list (lambda x x))
 
       ;; fixme, should use a print-limited variant for debugging
       (define-syntax define*

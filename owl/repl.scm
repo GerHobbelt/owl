@@ -83,8 +83,7 @@
                ((and (pair? lst) (null? (cdr lst)) (list? (car lst)))
                   (cons 10
                      (let ((ind (+ ind 2)))
-                        (append (map (λ (x) 32) (iota 0 1 ind))
-                           (format-error (car lst) ind)))))
+                        (append (make-list ind 32) (format-error (car lst) ind)))))
                ((pair? lst)
                   (render (car lst)
                      (cons 32
@@ -100,7 +99,7 @@
          (H match (list 'unquote symbol?)))
 
       (define (mark-loaded env path)
-         (let ((loaded (env-get env '*loaded* null)))
+         (let ((loaded (env-get env '*loaded* #n)))
             (if (member path loaded)
                env
                (env-set env '*loaded*
@@ -173,7 +172,7 @@
 
       ;; just be quiet
       (define repl-load-prompt
-         (λ (val result?) null))
+         (λ (val result?) #n))
 
       ;; load and save path to *loaded*
 
@@ -181,11 +180,11 @@
          (lets
             ((exps ;; find the file to read
                (or
-                  (file->exp-stream path sexp-parser (silent-syntax-fail null))
+                  (file->exp-stream path sexp-parser (silent-syntax-fail #n))
                   (file->exp-stream
                      (string-append (env-get env '*owl* "NA") path)
                      sexp-parser
-                     (silent-syntax-fail null)))))
+                     (silent-syntax-fail #n)))))
             (if exps
                (lets
                   ((current-prompt (env-get env '*interactive* #false)) ; <- switch prompt during loading
@@ -210,8 +209,7 @@
          (cond
             ((function? thing) thing)
             ((string? thing)
-               (string->regex
-                  (foldr string-append "" (list "m/" thing "/"))))
+               (string->regex (string-append "m/" thing "/")))
             ((symbol? thing)
                (thing->rex (symbol->string thing)))
             (else #false)))
@@ -263,7 +261,7 @@
                      (bytes->string
                         (foldr
                            (λ (x tl) (render x (cons #\space tl)))
-                           null
+                           #n
                            (cons "Words: "
                               (sort string<?
                                  (map symbol->string
@@ -285,14 +283,14 @@
                                  (if (not (null? matches))
                                     (print
                                        (str "   " (car lib) ": " (fold str "" (interleave ", " matches)))))))
-                           (env-get env '*libraries* null))
+                           (env-get env '*libraries* #n))
                         (prompt env (repl-message)))
                      (else
                         (prompt env "I would have preferred a regex or a symbol.")))
                   (repl env in)))
             ((libraries libs)
                (print "Currently defined libraries:")
-               (for-each print (map car (env-get env library-key null)))
+               (for-each print (map car (env-get env library-key #n)))
                (prompt env (repl-message))
                (repl env in))
             ((expand)
@@ -315,9 +313,9 @@
 
       ;; → (name ...) | #false
       (define (exported-names env lib-name)
-         (let ((libp (assoc lib-name (env-get env library-key null))))
+         (let ((libp (assoc lib-name (env-get env library-key #n))))
             (if libp
-               (env-fold (λ (out name value) (cons name out)) null (cdr libp))
+               (env-fold (λ (out name value) (cons name out)) #n (cdr libp))
                #false)))
 
       ;; todo: this uses direct environment access - move to lib-env or handle here?
@@ -326,7 +324,7 @@
       ;;               | (exports <lib)
       ;; TODO - use env-keep and check bindings from result instead to avoid absraction violation
       (define (build-export names env fail)
-         (let loop ((names names) (unbound null) (module empty-env))
+         (let loop ((names names) (unbound #n) (module empty-env))
             (cond
                ((null? names)
                   (cond
@@ -431,12 +429,12 @@
                         (if (null? tl)
                            (string->list ".scm")
                            (cons #\/ tl))))
-                  null iset))))
+                  #n iset))))
 
       ;; try to find and parse contents of <path> and wrap to (begin ...) or call fail
       (define (repl-include env path fail)
          (lets
-            ((include-dirs (env-get env includes-key null))
+            ((include-dirs (env-get env includes-key #n))
              (conv (λ (dir) (list->string (append (string->list dir) (cons #\/ (string->list path))))))
              (paths (map conv include-dirs))
              (contentss (map file->list paths))
@@ -475,12 +473,12 @@
             (values 'error (list "Bad library name:" iset))))
 
       (define (any->string obj)
-         (list->string (render obj null)))
+         (list->string (render obj #n)))
 
       (define (library-import env exps fail repl)
          (fold
             (λ (env iset)
-               (lets ((status lib (call/cc (λ (ret) (import-set->library iset (env-get env library-key null) ret)))))
+               (lets ((status lib (call/cc (λ (ret) (import-set->library iset (env-get env library-key #n) ret)))))
                   (cond
                      ((eq? status 'needed)
                         (lets ((status env (try-autoload env repl lib)))
@@ -494,7 +492,7 @@
                      ((eq? status 'ok)
                         (env-fold env-put-raw env lib)) ;; <- TODO env op, should be in (owl env)
                      ((eq? status 'circular)
-                        (fail (list "Circular dependency causing reload of" (bytes->string (render lib null)))))
+                        (fail (list "Circular dependency causing reload of" (bytes->string (render lib #n)))))
                      (else
                         (fail (list "BUG: bad library load status: " status))))))
             env exps))
@@ -521,13 +519,13 @@
 
       (define (choose-branch bs env fail)
          (cond
-            ((null? bs) null) ;; nothing matches, no else
+            ((null? bs) bs) ;; nothing matches, no else
             ((match `(else . ,list?) (car bs)) (cdar bs))
             ((pair? (car bs))
                (if (match-feature
                         (caar bs)
-                        (env-get env features-key null)
-                        (env-get env library-key null)
+                        (env-get env features-key #n)
+                        (env-get env library-key #n)
                         fail)
                   (cdar bs)
                   (choose-branch (cdr bs) env fail)))
@@ -610,7 +608,7 @@
                            (ok
                               (repl-message
                                  (list->string
-                                    (foldr render null
+                                    (foldr render #n
                                        (cons ";; Imported " (cdr exp)))))
                               envp))))
                   ((definition? exp)
@@ -623,7 +621,7 @@
                                )
                               (ok
                                  (repl-message
-                                    (bytes->string (render ";; Defined " (render (cadr exp) null))))
+                                    (bytes->string (render ";; Defined " (render (cadr exp) #n))))
                                  (bind-toplevel env))))
                         ((fail reason)
                            (fail
@@ -654,7 +652,7 @@
                      (lets/cc ret
                         ((exps (map cadr (cdr exp))) ;; drop the quotes
                          (name exps (uncons exps #false))
-                         (libs (env-get env library-key null))
+                         (libs (env-get env library-key #n))
                          ;; mark the current library as being loaded for circular dependency detection
                          (env (env-set env library-key (cons (cons name 'loading) libs)))
                          (fail
@@ -662,7 +660,7 @@
                               (ret (fail (list "Library" name "failed:" reason)))))
                          (lib-env
                            (fold
-                              (λ (lib-env key) (env-set lib-env key (env-get env key null)))
+                              (λ (lib-env key) (env-set lib-env key (env-get env key #n)))
                               *owl-core* library-exports))
                          (lib-env (env-set lib-env current-library-key name)))
                         (tuple-case (repl-library exps lib-env repl fail) ;; anything else must be incuded explicitly
@@ -676,13 +674,13 @@
                                  (ok
                                     (repl-message
                                        (list->string
-                                          (foldr render null
+                                          (foldr render #n
                                              (list ";; Library " name " added" ))))
                                     (env-set env library-key
                                        (cons (cons name library)
                                           (remove ;; drop the loading tag for this library
                                              (B (C equal? name) car)
-                                             (env-get lib-env library-key null))))))) ; <- lib-env may also have just loaded dependency libs
+                                             (env-get lib-env library-key #n))))))) ; <- lib-env may also have just loaded dependency libs
                            ((error reason not-env)
                               (fail
                                  (list "Library" name "failed to load because" reason))))))
@@ -746,8 +744,8 @@
       (define (repl-port env fd)
          (repl env
             (if (eq? fd stdin)
-               (λ () (fd->exp-stream stdin sexp-parser (silent-syntax-fail null)))
-               (fd->exp-stream fd sexp-parser (silent-syntax-fail null)))))
+               (λ () (fd->exp-stream stdin sexp-parser (silent-syntax-fail #n)))
+               (fd->exp-stream fd sexp-parser (silent-syntax-fail #n)))))
 
       (define (repl-file env path)
          (let ((fd (if (equal? path "-") stdin (open-input-file path))))

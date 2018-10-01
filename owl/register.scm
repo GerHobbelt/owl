@@ -37,7 +37,7 @@
          (let ((val (get usages reg #false)))
             (if val
                usages
-               (put usages reg null))))
+               (put usages reg #n))))
 
       ; set value to (reg) -> would be cool to have it in reg
 
@@ -47,7 +47,7 @@
       ; return a list of registers from uses (where the value has been moved to), or
       ; some list of low registers if this one is outside the available ones
       (define (use-list uses reg)
-         (let ((opts (filter (C < highest-register) (get uses reg null))))
+         (let ((opts (filter (C < highest-register) (get uses reg #n))))
             (cond
                ((< reg highest-register)
                   opts)
@@ -148,7 +148,7 @@
                            (rtl-rename code
                               (λ (reg) (if (eq? reg old) new reg))
                               new
-                              (lambda () (drop #false)))))))
+                              (λ () (drop #f)))))))
                      (if new-code
                         (cont new new-code) ; remapping success
                         (retarget-first code old (cdr news) uses cont)))))))
@@ -218,7 +218,7 @@
                         ; retarget the sole argument if possible
                         (let ((good (use-list uses to)))
                            (retarget-first more to good uses
-                              (lambda (to-new more-new)
+                              (λ (to-new more-new)
                                  (if (eq? to to-new)
                                     (pass)
                                     (rtl-retard
@@ -226,18 +226,18 @@
                      ;; fixme: no register retargeting for multiple-return-value primops
                      (else
                         '(call/cc
-                           (lambda (ret)
+                           (λ (ret)
                               (fold
-                                 (lambda (pass ato)
+                                 (λ (pass ato)
                                     (let ((good (use-list uses ato)))
                                        (retarget-first more ato good uses
-                                          (lambda (ato-new more-new)
+                                          (λ (ato-new more-new)
                                              (if (eq? ato ato-new)
                                                 pass
                                                 (ret
                                                    (rtl-retard
                                                       (tuple 'prim op args
-                                                         (map (lambda (to) (if (eq? to ato) ato-new to)) to)
+                                                         (map (λ (to) (if (eq? to ato) ato-new to)) to)
                                                          more-new))))))))
                                  pass to)))
                         (pass)))))

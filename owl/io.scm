@@ -20,6 +20,7 @@
       close-port              ;; fd → _
       start-base-threads      ;; start stdio and sleeper threads
       wait-write              ;; fd → ? (no failure handling yet)
+      when-readable           ;; fd → fd, block thread until readable
 
       ;; stream-oriented blocking (for the writing thread) io
       blocks->port            ;; ll fd → ll' n-bytes-written, don't close fd
@@ -126,9 +127,9 @@
       (define read-mode
          sys-O_RDONLY)
       (define (output-mode)
-         (bor (bor (sys-O_WRONLY) (sys-O_CREAT)) (sys-O_TRUNC)))
+         (bior (bior (sys-O_WRONLY) (sys-O_CREAT)) (sys-O_TRUNC)))
       (define (append-mode)
-         (bor (bor (sys-O_WRONLY) (sys-O_CREAT)) (sys-O_APPEND)))
+         (bior (bior (sys-O_WRONLY) (sys-O_CREAT)) (sys-O_APPEND)))
 
       (define (open-input-file path)
          (sys-open path (read-mode) 0))
@@ -148,17 +149,18 @@
       (define stream-block-size
          #x8000)
 
+      (define (when-readable port)
+         (interact 'iomux (tuple 'read port))
+         port)
+
       (define (try-get-block fd block-size block?)
          ;; stdio ports are in blocking mode, so poll always
          (if (stdio-port? fd)
-            (interact 'iomux (tuple 'read fd)))
+            (when-readable fd))
          (let ((res (sys-read fd block-size)))
             (if (eq? res #true) ;; would block
                (if block?
-                  (begin
-                     ;(interact sid 5)
-                     (interact 'iomux (tuple 'read fd))
-                     (try-get-block fd block-size #true))
+                  (try-get-block (when-readable fd) block-size #true)
                   res)
                res))) ;; is #false, eof or bvec
 
@@ -207,7 +209,7 @@
                      #true)
                   (begin
                      ;(interact sid 5) ;; delay rounds
-                     (interact 'iomux (tuple 'read fd))
+                     (when-readable fd)
                      (loop rounds))))))
 
       (define socket-type-tcp 0)
@@ -218,6 +220,8 @@
 
       (define (open-udp-socket port)
          (sys-port->non-blocking (sys-prim 3 port socket-type-udp #false)))
+
+      (define *max-udp-packet* 65507)
 
       ;; port → (ip . bvec) | #false, nonblocking
       (define (check-udp-packet port)
@@ -230,10 +234,7 @@
       (define (wait-udp-packet port)
          (let ((res (check-udp-packet port)))
             (or res
-               (begin
-                  ;(interact sid socket-read-delay)
-                  (interact 'iomux (tuple 'read port))
-                  (wait-udp-packet port)))))
+               (wait-udp-packet (when-readable port)))))
 
       ;; port → null | ((ip . bvec) ...)
       (define (udp-packets port)
@@ -244,7 +245,7 @@
                      (pair
                         (wait-udp-packet sock)
                         (loop sock))))
-               null)))
+               #n)))
 
       (define open-socket open-tcp-socket)
 
@@ -303,17 +304,14 @@
             (if res
                (lets ((ip fd res))
                   (values ip (sys-port->non-blocking fd)))
-               (begin
-                  ;(interact sid socket-read-delay)
-                  (interact 'iomux (tuple 'read sock))
-                  (tcp-client sock)))))
+               (tcp-client (when-readable sock)))))
 
       ;; port → ((ip . fd) ... . null|#false), CLOSES SOCKET
       (define (socket-clients sock)
          (lets ((ip cli (tcp-client sock)))
             (if ip
                (pair (cons ip cli) (socket-clients sock))
-               null)))
+               #n)))
 
       ;; port → ((ip . fd) ... . null|#false), CLOSES SOCKET
       (define (tcp-clients port)
@@ -343,7 +341,7 @@
             ((eq? len output-buffer-size)
                (and
                   (write-really (list->bytevector (reverse out)) fd)
-                  (printer lst 0 null fd)))
+                  (printer lst 0 #n fd)))
             ((null? lst)
                (write-really (list->bytevector (reverse out)) fd))
             (else
@@ -363,36 +361,36 @@
                (write-really (bytevector-copy vec top end) port))))
 
       (define (write-bytes port byte-list)
-         (printer byte-list 0 null port))
+         (printer byte-list 0 #n port))
 
       (define (print-to to . stuff)
-         (printer (foldr render '(10) stuff) 0 null to))
+         (printer (foldr render '(10) stuff) 0 #n to))
 
       (define (writer-to names)
          (let ((serialize (make-serializer names)))
             (λ (to obj)
-               (printer (serialize obj '()) 0 null to))))
+               (printer (serialize obj '()) 0 #n to))))
 
       (define write-to
          (writer-to
             (put #empty map "map")))
 
       (define (display-to to obj)
-         (printer (render obj '()) 0 null to))
+         (printer (render obj '()) 0 #n to))
 
       (define print
          (case-lambda
             ((obj) (print-to stdout obj))
-            (xs (printer (foldr render '(#\newline) xs) 0 null stdout))))
+            (xs (printer (foldr render '(#\newline) xs) 0 #n stdout))))
 
       (define write
          (H write-to stdout))
 
       (define (print*-to to lst)
-         (printer (foldr render '(10) lst) 0 null to))
+         (printer (foldr render '(10) lst) 0 #n to))
 
       (define (print* lst)
-         (printer (foldr render '(10) lst) 0 null stdout))
+         (printer (foldr render '(10) lst) 0 #n stdout))
 
       (define-syntax output
          (syntax-rules ()
@@ -434,10 +432,10 @@
          (let ((block (read-bytevector 4096 port)))
             (cond
                ((eof-object? block)
-                  (bytevectors->list (reverse buff)))
+                  (bytevector-concatenate->list (reverse buff)))
                ((not block)
                   ;; read error
-                  (bytevectors->list (reverse buff)))
+                  (bytevector-concatenate->list (reverse buff)))
                (else
                   (read-blocks->list port (cons block buff))))))
 
@@ -454,7 +452,7 @@
       (define (file->vector path) ; path -> vec | #false
          (let ((port (maybe-open-file path)))
             (if port
-               (let ((data (read-blocks port null)))
+               (let ((data (read-blocks port #n)))
                   (maybe-close-port port)
                   data)
                (begin
@@ -464,7 +462,7 @@
       (define (file->list path) ; path -> vec | #false
          (let ((port (maybe-open-file path)))
             (if port
-               (let ((data (read-blocks->list port null)))
+               (let ((data (read-blocks->list port #n)))
                   (maybe-close-port port)
                   data)
                (begin
@@ -516,9 +514,9 @@
                            (block-stream fd #true))
                         (begin
                            (close-port fd)
-                           null)))
+                           #n)))
                   ((not block)
-                     null)
+                     #n)
                   (else
                      (cons block
                         (block-stream fd tail?)))))))
@@ -538,7 +536,7 @@
                (cond
                   ((eof-object? block)
                      (close-port fd)
-                     null)
+                     #n)
                   ((not block)
                      (list 'io-error))
                   ((eq? block #true) ;; will block
@@ -579,11 +577,11 @@
                (block-stream->port (bs) fd))))
 
       (define (byte-stream->port bs fd)
-         (let loop ((bs bs) (n stream-block-size) (out null))
+         (let loop ((bs bs) (n stream-block-size) (out #n))
             (cond
                ((eq? n 0)
                   (if (write-really (list->bytevector (reverse out)) fd)
-                     (loop bs stream-block-size null)
+                     (loop bs stream-block-size #n)
                      #false))
                ((pair? bs)
                   (loop (cdr bs) (- n 1) (cons (car bs) out)))
@@ -595,7 +593,7 @@
                   (loop (bs) n out)))))
 
       (define (byte-stream->lines ll)
-         (let loop ((ll ll) (out null))
+         (let loop ((ll ll) (out #n))
             (cond
                ((pair? ll)
                   (lets ((byte ll ll))
@@ -606,11 +604,11 @@
                                  (if (and (pair? out) (eq? #\return (car out)))
                                     (cdr out)
                                     out)))
-                           (loop ll null))
+                           (loop ll #n))
                         (loop ll (cons byte out)))))
                ((null? ll)
                   (if (null? out)
-                     null
+                     #n
                      (list
                         (list->string (reverse out)))))
                (else
@@ -621,7 +619,7 @@
          (byte-stream->lines
             (utf8-decoder
                (port->byte-stream fd)
-               (λ (self line ll) null))))
+               (λ (self line ll) #n))))
 
       (define (file->byte-stream path)
          (let ((fd (open-input-file path)))
@@ -643,7 +641,7 @@
       ;;; new io muxer thread
 
       (define (delelt lst x) ;; lst x →  lst' | #false if not there
-         (let loop ((lst lst) (out null))
+         (let loop ((lst lst) (out #n))
             (if (null? lst)
                out
                (lets ((a lst lst))
@@ -653,7 +651,7 @@
 
       ;; (... (x . foo) ...) x => (... ...) (x . foo)
       (define (grabelt lst x)
-         (let loop ((lst lst) (out null))
+         (let loop ((lst lst) (out #n))
             (if (null? lst)
                (values out #false)
                (let ((a (car lst)))
@@ -669,7 +667,7 @@
          (if (null? alarms)
             (begin
                (print-to stderr "ERROR: fd read with timeout had no matching alarm")
-               null)
+               #n)
             (let ((this (car alarms)))
                (if (eq? (cdr this) envelope)
                   (cdr alarms)
@@ -780,7 +778,7 @@
                            (muxer rs ws alarms))
                         (lets
                            ((timeout
-                              (if (single-thread?) (min *max-fixnum* (- (caar alarms) now)) 0))
+                              (if (single-thread?) (min fx-greatest (- (caar alarms) now)) 0))
                             ((waked x) <= (_poll2 rs ws timeout)))
                            (cond
                               (waked
@@ -812,7 +810,7 @@
       (define (start-muxer . id)
          (thread
             (if (null? id) 'iomux (car id))
-            (muxer null null null)))
+            (muxer #n #n #n)))
 
       ;; start normally mandatory threads (apart form meta which will be removed later)
       (define (start-base-threads)

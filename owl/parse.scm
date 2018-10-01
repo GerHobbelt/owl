@@ -64,6 +64,19 @@
             ((pair? r) (ok (cons (car r) l) (cdr r) (car r)))
             (else      (byte l (r) ok))))
 
+      (define (byte-if pred)
+         (λ (l r ok)
+            (cond
+               ((null? r)
+                  (backtrack l r eof-error))
+               ((pair? r)
+                  (lets ((x xt r))
+                     (if (pred x)
+                        (ok (cons x l) xt x)
+                        (backtrack l r 'bad-byte))))
+               (else
+                  ((byte-if pred) l (r) ok)))))
+
       (define (imm x)
          (λ (l r ok)
             (cond
@@ -71,7 +84,7 @@
                   (backtrack l r eof-error))
                ((pair? r)
                   (if (eq? (car r) x)
-                     (ok (cons (car r) l) (cdr r) x)
+                     (ok (cons x l) (cdr r) x)
                      (backtrack l r 'bad-byte)))
                (else
                   ((imm x) l (r) ok)))))
@@ -97,14 +110,13 @@
       (define (star-vals a vals)
          (λ (l r ok)
             (a
-               (cons
-                  (λ (l r why) (ok l r (reverse vals))) l)
-                r
-                (λ (l r val)
-                   ((star-vals a (cons val vals)) l r ok)))))
+               (cons (λ (l r why) (ok l r (reverse vals))) l)
+               r
+               (λ (l r val)
+                  ((star-vals a (cons val vals)) l r ok)))))
 
       (define star
-         (C star-vals null))
+         (C star-vals #n))
 
       (define (drop l x)
          (if (eq? (car l) x)
@@ -141,7 +153,7 @@
                   (parses 42 l r ok ((a . b) ...) body)))))
 
       (define greedy-star
-         (C greedy-star-vals null))
+         (C greedy-star-vals #n))
 
       (define (greedy-plus a)
          (parses
@@ -178,12 +190,6 @@
              (as (star parser)))
             (cons a as)))
 
-      (define (byte-if pred)
-         (parses
-            ((a byte)
-             (verify (pred a) "checked"))
-            a))
-
       ; #b10xxxxxx
       (define extension-byte
          (parses
@@ -194,8 +200,7 @@
       (define (byte-between lo hi)
          (byte-if
             (λ (x)
-               (and (lesser? lo x)
-                    (lesser? x hi)))))
+               (and (lesser? lo x) (lesser? x hi)))))
 
       (define rune
          (one-of
@@ -226,7 +231,7 @@
          (values l r v))
 
       (define (parse-head parser ll def)
-         (lets ((l r val (parser null ll parser-succ)))
+         (lets ((l r val (parser #n ll parser-succ)))
             (if l (cons val r) def)))
 
       ;; computes rest of parser stream
@@ -253,7 +258,7 @@
             ;; only up to last byte byte needed for recognition in order to avoid blocking
             (let ((rest (fast-forward ll)))
                (if (and (null? rest) (whitespace? ll))
-                  (cont null)
+                  (cont #n)
                   (begin
                      (error-reporter msg)
                      (cont rest))))))
@@ -266,17 +271,17 @@
             (let loop ((ll (port->byte-stream fd)))
                (lets
                   ((lp r val
-                      (parser null ll parser-succ)))
+                     (parser #n ll parser-succ)))
                   (cond
                      (lp ;; something parsed successfully
                         (pair val (loop r)))
                      ((null? r) ;; end of input
                         ;; typically there is whitespace, so this does not happen
-                        null)
+                        #n)
                      ((function? fail)
                         (fail loop r val))
                      (else
-                        null))))))
+                        #n))))))
 
       (define (file->exp-stream path parser fail)
          ;(print "file->exp-stream: trying to open " path)
@@ -287,11 +292,11 @@
                #false)))
 
       (define (try-parse parser data maybe-path maybe-error-msg fail-fn)
-         (lets ((l r val (parser null data parser-succ)))
+         (lets ((l r val (parser #n data parser-succ)))
             (cond
                ((not l)
                   (if fail-fn
-                     (fail-fn 0 null)
+                     (fail-fn 0 #n)
                      #false))
                ((lpair? r) =>
                   (λ (r)

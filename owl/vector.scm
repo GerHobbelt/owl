@@ -1,45 +1,42 @@
-;;;
-;;; Vectors
-;;;
-;
-; vectors are one-dimensional data structures indexable by natural numbers,
-; having O(n log_256 n) access and memory use (effectively O(1)). They are
-; mainly intended to be used for static data requiring efficient (modulo
-; owl) iteration and random access.
-;
-; in owl, vectors are implemented as complete 256-ary trees. small vectors
-; fitting to one node of the tree are of raw or allocated type 11, meaning
-; they usually take 8+4n or 4+n bytes of memory, depending on whether the
-; values are normal descriptors or fixnums in the range 0-255.
-;
-; large vectors are 256-ary trees. each dispatch node in the tree handles
-; one byte of an index, and nodes starting from root each dispatch the
-; highest byte of an index. when only one byte is left, one reads the
-; reached leaf node, or the leaf node stored to the dispatch node.
-;
-; thus reading the vector in order corresponds to breadth-first walk
-; of the tree. notice that since no number > 0 has 0 as the highest
-; byte, the first dispatch position of the root is always free. this
-; position contains the size of the vector, so that it is accessable
-; in O(1) without space overhead or special case handling. leaf nodes
-; have the size as part of the normal owl object header.
+#| doc
+Vectors are one-dimensional data structures indexable by natural numbers,
+having O(n log_256 n) access and memory use (effectively O(1)). They are
+mainly intended to be used for static data requiring efficient (modulo
+owl) iteration and random access.
 
-;; order example using binary trees
-;
-;           (0 1)                 bits 0 and 1, only 1 can have children
-;              |                  dispatch the top bit
-;            (2 3)                bits from top, 10 11, numbers ending here 2 and 3
-;            /   \                dispatch top and second bit
-;           /     \
-;       (4 5)     (6 7)           bits from top, (100 101) (110 111)
-;       /  |       |  \
-;      /   |       |   \
-; (9 8) (10 11) (12 13) (14 15)   etc
-;
-; vectors use the same, but with 256-ary trees, which works well because
-; it is half of owl's fixnum base, so dispatching can be done easily without
-; shifting, and not too wide to make array mutations too bulky later.
+In owl, vectors are implemented as complete 256-ary trees. Small vectors
+fitting to one node of the tree are of raw or allocated type 11, meaning
+they usually take 8+4n or 4+n bytes of memory, depending on whether the
+values are normal descriptors or fixnums in the range 0-255.
 
+Large vectors are 256-ary trees. Each dispatch node in the tree handles
+one byte of an index, and nodes starting from root each dispatch the
+highest byte of an index. When only one byte is left, one reads the
+reached leaf node, or the leaf node stored to the dispatch node.
+
+Reading the vector in order corresponds to breadth-first walk
+of the tree. Notice that since no number > 0 has 0 as the highest
+byte, the first dispatch position of the root is always free. This
+position contains the size of the vector, so that it is accessable
+in O(1) without space overhead or special case handling. Leaf nodes
+have the size as part of the normal owl object header.
+
+Order example using binary trees:
+
+```
+           (0 1)                 bits 0 and 1, only 1 can have children
+              |                  dispatch the top bit
+            (2 3)                bits from top, 10 11, numbers ending here 2 and 3
+            /   \                dispatch top and second bit
+           /     \
+       (4 5)     (6 7)           bits from top, (100 101) (110 111)
+       /  |       |  \
+      /   |       |   \
+ (9 8) (10 11) (12 13) (14 15)   etc
+```
+
+Vectors use the same order, but with 256-ary trees.
+|#
 
 (define-library (owl vector)
 
@@ -86,7 +83,7 @@
    (begin
 
       ;; number of bits each vector tree node dispatches from index
-      (define *vec-bits* (>> *fixnum-bits* 1))
+      (define *vec-bits* (>> fx-width 1))
       ; (define *vec-bits* 8) ;; legacy
 
       (define *vec-leaf-size* (<< 1 *vec-bits*))
@@ -208,7 +205,7 @@
       ; note, a blank vector must use a raw one, since there are no such things as 0-tuples
 
       (define empty-vector
-         (raw null type-bytevector))
+         (raw #n type-bytevector))
 
       (define (make-leaf rvals n raw?)
          (if raw?
@@ -227,7 +224,7 @@
          (cond
             ((eq? n *vec-leaf-size*) ; flush out to leaves
                (let ((leaf (make-leaf out n raw?)))
-                  (chunk-list lst null (cons (make-leaf out n raw?) leaves) 0 #true (+ len n))))
+                  (chunk-list lst #n (cons (make-leaf out n raw?) leaves) 0 #true (+ len n))))
             ((null? lst) ; partial (last) leaf
                (if (null? out)
                   (values (reverse leaves) len)
@@ -239,7 +236,7 @@
             (else (chunk-list (lst) out leaves n raw? len))))
 
       (define (grab l n)
-         (let loop ((l l) (n n) (taken null))
+         (let loop ((l l) (n n) (taken #n))
             (cond
                ((null? l) (values (reverse taken) l))
                ((eq? n 0) (values (reverse taken) l))
@@ -248,7 +245,7 @@
 
       (define (merge-each l s)
          (cond
-            ((null? l) null)
+            ((null? l) l)
             ((null? s) l)
             ((number? (car l))
                (cons (car l)
@@ -261,7 +258,7 @@
 
       (define (merger l n)
          (if (null? l)
-            null
+            #n
             (lets ((these l (grab l n)))
                (if (null? l)
                   these
@@ -279,14 +276,14 @@
       (define (cut-at lst pos out)
          (cond
             ((null? lst)
-               (values (reverse out) null))
+               (values (reverse out) #n))
             ((eq? pos 0)
                (values (reverse out) lst))
             (else
                (cut-at (cdr lst) (- pos 1) (cons (car lst) out)))))
 
       (define (levels lst width)
-         (lets ((here below (cut-at lst width null)))
+         (lets ((here below (cut-at lst width #n)))
             (if (null? below)
                (list here)
                (cons here (levels below (* width *vec-leaf-size*)))))) ; everything below the first level branches 256-ways
@@ -306,12 +303,12 @@
                      ;((number? (car this)) ;; skip size field at roo
                      ;   (cons (car this) (loop below (cdr this))))
                      (else
-                        (lets ((here below (cut-at below *vec-leaf-size* null)))
+                        (lets ((here below (cut-at below *vec-leaf-size* #n)))
                            ;; attach up to 256 subtrees to this leaf
                            (cons
                               (listuple type-vector-dispatch (+ 1 (length here)) (cons (car this) here))
                               (loop below (cdr this))))))))
-            null (levels lst *vec-leaf-max*)))
+            #n (levels lst *vec-leaf-max*)))
 
       ; handle root here, since it is special in having 255 subtrees only (0-slot is empty and has size)
       (define (merge-chunks ll len)
@@ -337,7 +334,7 @@
             empty-vector
             ;; leaves are chunked specially, so do that in a separate pass. also
             ;; compute length to avoid possibly forcing a computation twice.
-            (lets ((chunks len (chunk-list l null null 0 #t 0)))
+            (lets ((chunks len (chunk-list l #n #n 0 #t 0)))
                ;; convert the list of leaf vectors to a tree
                (merge-chunks chunks len))))
 
@@ -381,7 +378,7 @@
          (let loop ((end (vector-length v)) (pos 0))
             (let ((this (vec-leaf-of v pos)))
                (iter-leaf-of this
-                  (λ () (let ((pos (+ pos *vec-leaf-size*))) (if (< pos end) (loop end pos) null)))))))
+                  (λ () (let ((pos (+ pos *vec-leaf-size*))) (if (< pos end) (loop end pos) #n)))))))
 
       (define (iter-leaf-range v p n t)
          (if (eq? n 0)
@@ -399,11 +396,11 @@
                      (iter-leaf-of (vec-leaf-of v p)
                         (λ () (iter-range-really v (+ p *vec-leaf-size*) (- n *vec-leaf-size*))))
                      ;; last leaf reached, iter prefix and stop
-                     (iter-leaf-range (vec-leaf-of v p) 0 n null)))
-               ((eq? n 0) null)
+                     (iter-leaf-range (vec-leaf-of v p) 0 n #n)))
+               ((eq? n 0) #n)
                ((lesser? n (- *vec-leaf-size* start))
                   ;; the whole range is in a part of this leaf
-                  (iter-leaf-range (vec-leaf-of v p) start n null))
+                  (iter-leaf-range (vec-leaf-of v p) start n #n))
                (else
                   ;; this is the first leaf. iter a suffix of it.
                   (lets
@@ -417,7 +414,7 @@
             (cond
                ((< p e)
                   (iter-range-really v p (- e p)))
-               ((= p e) null)
+               ((= p e) #n)
                (else (error "vec-iter-range: bad range " (cons p e))))
             (error "vec-iter-range: end outside of vector: " e)))
 
@@ -446,7 +443,7 @@
 
       (define (vec-iterr-loop v p)
          (if (eq? type-fix- (type p))
-            null
+            #n
             (iterr-any-leaf (vec-leaf-of v p)
                (λ () (vec-iterr-loop v (- p *vec-leaf-size*))))))
 
@@ -456,7 +453,7 @@
              (last (band end *vec-leaf-max*)))
             (if (eq? last 0) ; vec is empty or ends to a full leaf
                (if (eq? end 0) ; blank vector
-                  null
+                  #n
                   (vec-iterr-loop v (- end 1))) ; start from previous leaf
                (vec-iterr-loop v (- end 1)))))
 
@@ -472,7 +469,7 @@
             ;; convert raw vectors directly to allow this to be used also for large chunks
             ;; which are often seen near IO code
             (bytevector->list vec)
-            (vec-foldr cons null vec)))
+            (vec-foldr cons #n vec)))
 
       (define (leaf-data leaf)
          (if (eq? (type leaf) type-bytevector)
@@ -509,7 +506,7 @@
                (if (< pos end)
                   (let ((data (leaf-data (vec-leaf-of vec pos))))
                      (pair data (loop (+ pos *vec-leaf-size*))))
-                  null))))
+                  #n))))
 
       ;; fixme: temporary vector append!
       (define (vec-cat a b)

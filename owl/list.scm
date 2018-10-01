@@ -1,13 +1,14 @@
 (define-library (owl list)
 
    (export
-      null pair? null?
+      pair? null?
       caar cadr cdar cddr
       list?
       zip fold foldr map for-each
       memq assq last
       fold-map foldr-map
-      append reverse
+      append concatenate
+      reverse
       filter remove
       every any
       unfold
@@ -26,14 +27,11 @@
 
    (begin
 
-      ;; constants are always inlined, so you pay just one byte of source for readability
-      (define null '())
-
       ;; any -> bool
       (define (pair? x) (eq? type-pair (type x)))
 
       ;; any -> bool
-      (define null? (C eq? null))
+      (define null? (C eq? #n))
 
       ;; '((a . b) . c) -> a
       (define caar (B car car))
@@ -54,8 +52,8 @@
       ;; fn as bs -> ((fn a b) ...), zip values of lists together with a function
       (define (zip op a b)
          (cond
-            ((null? a) null)
-            ((null? b) null)
+            ((null? a) a)
+            ((null? b) b)
             (else
                (let ((hd (op (car a) (car b))))
                   (cons hd (zip op (cdr a) (cdr b)))))))
@@ -73,7 +71,7 @@
 
       (define (unfold op st end?)
          (if (end? st)
-            null
+            #n
             (lets ((this st (op st)))
                (cons this (unfold op st end?)))))
 
@@ -92,12 +90,12 @@
             (op (car lst)
                (foldr op st (cdr lst)))))
 
-      (example (foldr cons null '(a b c)) = '(a b c))
+      (example (foldr cons #n '(a b c)) = '(a b c))
 
       ;; fn lst -> lst', run a function to all elements of a list
       (define (map fn lst)
          (if (null? lst)
-            null
+            #n
             (lets
                ((hd tl lst)
                 (hd (fn hd))) ;; compute head first
@@ -109,7 +107,7 @@
       ;; fn lst -> _, run a function to all elements of a list for side effects
       (define (for-each op lst)
          (if (null? lst)
-            null
+            #n
             (begin
                (op (car lst))
                (for-each op (cdr lst)))))
@@ -140,25 +138,25 @@
          (last '(1 2 3) 'a) = 3
          (last '() 'a) = 'a)
 
-      (define (app a b app)
+      (define (append2 a b)
          (if (null? a)
             b
-            (cons (car a) (app (cdr a) b app))))
+            (cons (car a) (append2 (cdr a) b))))
 
-      (define (appl l appl)
-         (if (null? (cdr l))
-            (car l)
-            (app (car l) (appl (cdr l) appl) app)))
+      ;; list-of-lists -> list, SRFI-1
+      (define (concatenate lst)
+         (if (pair? lst)
+            (if (null? (cdr lst))
+               (car lst) ; don't recurse down the list just to append nothing
+               (append2 (car lst) (concatenate (cdr lst))))
+            lst))
 
       ;; append list ... -> list', join lists
       ;;    (append '(1) '() '(2 3)) = '(1 2 3)
       (define append
          (case-lambda
-            ((a b) (app a b app))
-            ((a b . cs) (app a (app b (appl cs appl) app) app))
-            ((a) a)
-            (() null)))
-
+            ((a b) (append2 a b))
+            (lst (concatenate lst))))
 
       (example
          (append '(1 2 3) '(a b c)) = '(1 2 3 a b c))
@@ -171,7 +169,7 @@
             (rev-loop (cdr a) (cons (car a) b))))
 
       ;; lst -> lst', reverse a list
-      (define reverse (C rev-loop null))
+      (define reverse (C rev-loop #n))
 
       (example
          (reverse '(1 2 3)) = '(3 2 1))
@@ -199,9 +197,9 @@
                (find-tail pred (cdr lst)))))
 
       (define (take-while pred lst)
-         (let loop ((lst lst) (taken null))
+         (let loop ((lst lst) (taken #n))
             (cond
-               ((null? lst) (values (reverse taken) null))
+               ((null? lst) (values (reverse taken) #n))
                ((pred (car lst)) (loop (cdr lst) (cons (car lst) taken)))
                (else (values (reverse taken) lst)))))
 
@@ -216,7 +214,7 @@
 
       ;; pred lst -> 'list, SRFI-1
       (define (filter pred lst)
-         (foldr (λ (x tl) (if (pred x) (cons x tl) tl)) null lst))
+         (foldr (λ (x tl) (if (pred x) (cons x tl) tl)) #n lst))
 
       ;; pred lst -> 'list, SRFI-1
       (define (remove pred lst)
@@ -239,7 +237,7 @@
             (every null? l) = #false))
 
       (define (fold-map o s l)
-         (let loop ((s s) (l l) (r null))
+         (let loop ((s s) (l l) (r #n))
             (if (null? l)
                (values s (reverse r))
                (lets ((s a (o s (car l))))
@@ -247,7 +245,7 @@
 
       (define (foldr-map o s l)
          (if (null? l)
-            (values s null)
+            (values s #n)
             (lets
                ((a (car l))
                 (s l (foldr-map o s (cdr l))))
@@ -273,7 +271,7 @@
 
       (define (intersect a b)
          (cond
-            ((null? a) null)
+            ((null? a) #n)
             ((memq (car a) b)
                (cons (car a)
                   (intersect (cdr a) b)))
@@ -289,7 +287,7 @@
 
       (define (interleave mid lst)
          (if (null? lst)
-            null
+            #n
             (let loop ((a (car lst)) (as (cdr lst)))
                (if (null? as)
                   (list a)
@@ -297,7 +295,7 @@
 
       ;; lst → a b, a ++ b == lst, length a = length b | length b + 1
       (define (halve lst)
-         (let walk ((t lst) (h lst) (out null))
+         (let walk ((t lst) (h lst) (out #n))
             (if (null? h)
                (values (reverse out) t)
                (let ((h (cdr h)))

@@ -1,17 +1,18 @@
-;; Tuples are an early simple data structure for holding multiple values.
-;; *You should probably not be using them*.
-;; Values are indexed from 1 and there is little error detection
-;;   apart from range checks.
-;;
-;; ```
-;;  > (define x (list->tuple '(a b c)))
-;;  > (ref x 1)
-;;  'a
-;;  > (size x)
-;;  3
-;;  > (equal? x (tuple 'a 'b 'c))
-;;  #true
-;; ```
+#| doc
+Tuples are an early simple data structure for holding multiple values.
+Values are indexed from 1 and there is little error detection
+   apart from range checks.
+
+```
+  > (define x (list->tuple '(a b c)))
+  > (ref x 1)
+  'a
+  > (size x)
+  3
+  > (equal? x (tuple 'a 'b 'c))
+  #true
+```
+|#
 
 (define-library (owl tuple)
 
@@ -32,8 +33,8 @@
          (eq? (type x) type-tuple))
 
       (define (tuple-length x)
-         (lets ((len u (fx- (object-size x) 1)))
-            (and (not u) len)))
+         (lets ((len u (fxsub (object-size x) 1)))
+            (and (eq? u 0) len)))
 
       (define (list->tuple lst)
          (let ((l (len lst)))
@@ -49,5 +50,5 @@
                (cons (ref tuple pos) lst))))
 
       (define (tuple->list tuple)
-         (read-tuple tuple (tuple-length tuple) null))
+         (read-tuple tuple (tuple-length tuple) #n))
 ))

@@ -1,6 +1,6 @@
-;;;
-;;; Symbols
-;;;
+#| doc
+Functions for handling symbols.
+|#
 
 (define-library (owl symbol)
 

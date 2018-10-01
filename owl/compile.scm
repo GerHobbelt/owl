@@ -11,6 +11,7 @@
       (owl defmac)
       (owl math)
       (owl list)
+      (owl bytevector)
       (only (owl syscall) error)
       (owl function)
       (owl symbol)
@@ -177,7 +178,7 @@
                ((var sym)
                   (rtl-variable regs sym cont))
                ((make-closure lpos env lit)
-                  (many regs (env->loadable env) null
+                  (many regs (env->loadable env) #n
                      (λ (regs envp)
                         (rtl-close regs lpos envp lit cont))))
                (else
@@ -192,7 +193,7 @@
          (if one?
             one
             (λ (regs args cont)
-               (many regs args null cont))))
+               (many regs args #n cont))))
 
 
       (define rtl-simple (rtl-arguments #true))
@@ -201,7 +202,7 @@
 
       ; -> [reg] + regs'
       (define (rtl-bind regs formals)
-         (let loop ((regs regs) (formals formals) (taken null))
+         (let loop ((regs regs) (formals formals) (taken #n))
             (if (null? formals)
                (tuple (reverse taken) regs)
                (let ((this (next-free-register regs)))
@@ -262,7 +263,7 @@
       (define (rtl-safe-registers n call)
          (let loop
             ((hp (+ (length call) (+ a0 1)))
-             (safe null)
+             (safe #n)
              (n n))
             (cond
                ((= n 0)
@@ -352,7 +353,7 @@
          ;   (cond
          ;      ((eq? type-bytecode t) ;; raw bytecode
          ;         (let ((op (ref obj 0)))
-         ;            (if (eq? op 17)
+         ;            (if (eq? op 61)
          ;               (tuple 'code (ref obj 1))
          ;               #false)))
          ;      ((eq? t type-proc)
@@ -501,7 +502,7 @@
 
       (define (formals->regs formals pos)
          (if (null? formals)
-            null
+            #n
             (cons (tuple 'var (car formals) pos)
                (formals->regs (cdr formals) (+ pos 1)))))
 
@@ -512,7 +513,7 @@
             (reverse (formals->regs formals a0))
             (if (null? clos)
                (list
-                  (tuple 'env null 2)        ; <- really just empty
+                  (tuple 'env #n 2)          ; <- really just empty
                   (tuple 'lit literals 1))   ; <- may be empty
                (list
                   (tuple 'lit literals 2)    ; <- may be empty
@@ -558,7 +559,7 @@
       (define (bytecode->list thing)
          (cond
             ((bytecode? thing)
-               (map (H ref thing) (iota 0 1 (sizeb thing))))
+               (bytevector->list thing))
             ((function? thing)
                ;; get the bytecode
                (bytecode->list (ref thing 1)))
@@ -568,7 +569,7 @@
       (define (rtl-case-lambda rtl exp clos literals)
          (tuple-case exp
             ((lambda-var fixed? formals body)
-               (rtl-plain-lambda rtl exp clos literals null))
+               (rtl-plain-lambda rtl exp clos literals #n))
             ((lambda formals body) ;; soon to be deprecated
                (rtl-case-lambda rtl
                   (tuple 'lambda-var #true formals body)
@@ -589,11 +590,11 @@
             ((closure formals body clos literals)
                (rtl-plain-lambda rtl-procedure
                   (tuple 'lambda-var #true formals body)
-                  clos (rtl-literals rtl-procedure literals) null))
+                  clos (rtl-literals rtl-procedure literals) #n))
             ((closure-var fixed? formals body clos literals)
                (rtl-plain-lambda rtl-procedure
                   (tuple 'lambda-var fixed? formals body)
-                  clos (rtl-literals rtl-procedure literals) null))
+                  clos (rtl-literals rtl-procedure literals) #n))
             ((closure-case body clos literals)
                (lets
                   ((lits (rtl-literals rtl-procedure literals))

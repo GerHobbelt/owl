@@ -16,11 +16,8 @@
 
    (begin
 
-      (define (char? x)
-         (let ((t (type x)))
-            (or
-               (eq? t type-fix+)
-               (eq? t type-int+))))
+      (define (char? obj)
+         (eq? (type obj) type-fix+))
 
       (define char=? =)
       (define char<? <)

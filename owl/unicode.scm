@@ -1,10 +1,6 @@
-;;;
-;;; Unicode and UTF-8
-;;;
-
-;; todo: remove dependencies to remaining few bignum ops
-;; fixme: check for code point validity in string conversions
-;; fixme: force the string conversion errors to be handled explicitly
+#| doc
+UTF-8 encoding and decoding.
+|#
 
 (define-library (owl unicode)
 
@@ -68,12 +64,12 @@
       ; -> ll' rout'
       ;(define (extra-encode rout val tag n here)
       ;   (if (eq? n 0) ; make the last leading byte out of val
-      ;      (cons (bor tag val) rout)
+      ;      (cons (bior tag val) rout)
       ;      (lets
       ;         ((here (band val here)) ; take the current payload bits
       ;          (val (>> val 6)))
       ;         (cons
-      ;            (bor #b10000000 here) ; add extra byte tag
+      ;            (bior #b10000000 here) ; add extra byte tag
       ;            (extra-encode rout val tag (- n 1))))))
 
       (define (valid-code-point? val)
@@ -107,18 +103,18 @@
                (cons point tl))
             ((< point #b100000000000) ; 5 + 6 bits
                (ilist
-                  (bor (band (>> point 6) #x1f) #xc0)
+                  (fxbor (fxband (>> point 6) #x1f) #xc0)
                   (ext point)
                   tl))
             ((< point #b10000000000000000) ; 4 + 2*6 bits
                (ilist
-                  (bor (band (>> point 12) #x0f) #xe0)
+                  (fxbor (fxband (>> point 12) #x0f) #xe0)
                   (ext (>> point 6))
                   (ext point)
                   tl))
             ((< point #b1000000000000000000000) ; 3 + 3*6 bits
                (ilist
-                  (bor (band (>> point 18) #b111) #xf0)
+                  (fxbor (fxband (>> point 18) #b111) #xf0)
                   (ext (>> point 12))
                   (ext (>> point 6))
                   (ext point)
@@ -128,7 +124,7 @@
 
       ; ll -> list | #false
       (define (utf8-encode thing)
-         (foldr encode-point null thing))
+         (foldr encode-point #n thing))
 
 
       ;;;
@@ -138,7 +134,7 @@
       ;; compute the minimal sizes using the encoder to avoid silly bugs
       (define (min-nbyte n)
          (let loop ((cp 1))
-            (if (= (length (encode-point cp null)) n)
+            (if (= (length (encode-point cp #n)) n)
                cp
                (loop (<< cp 1)))))
 
@@ -159,7 +155,7 @@
             ((pair? lst)
                (let ((hd (car lst)))
                   (if (eq? #b10000000 (fxband #b11000000 hd))
-                     (get-extension-bytes (cdr lst) (- n 1) (bor (<< val 6) (band hd #b111111)) min)
+                     (get-extension-bytes (cdr lst) (- n 1) (fxbor (<< val 6) (band hd #b111111)) min)
                      ;; not a valid continuation byte -> error
                      (values #false lst))))
             (else
@@ -174,10 +170,10 @@
                ((eq? #b11000000 (fxband hd #b11100000))
                   ; 2-byte char with top bits 110, 5 bits here
                   (get-extension-bytes (cdr lst) 1 (fxband #b11111 hd) min-2byte))
-               ((eq? #b11100000 (fxband #b11110000 hd))
+               ((eq? #b11100000 (fxband hd #b11110000))
                   ; 3-byte char, 4 bits here
                   (get-extension-bytes (cdr lst) 2 (fxband #b1111 hd) min-3byte))
-               ((eq? #b11110000 (fxband #b11111000 hd))
+               ((eq? #b11110000 (fxband hd #b11111000))
                   ; 4-byte char, 3 bits here
                   (get-extension-bytes (cdr lst) 3 (fxband #b111 hd) min-4byte))
                (else
@@ -203,11 +199,11 @@
 
       ; ll -> lst' | #false
       (define (utf8-decode lst)
-         (decoder lst null #false))
+         (decoder lst #n #false))
 
       ; ll -> lst', rewrite all errors with #
       (define (utf8-sloppy-decode lst)
-         (decoder lst null 35))
+         (decoder lst #n 35))
 
 
       ; byte-ll fail → cp-ll | (cp ... . (fail self line data))
@@ -217,7 +213,7 @@
          (let loop ((ll ll) (line 0))
             (cond
                ((null? ll)
-                  null)
+                  #n)
                ((pair? ll)
                   (lets ((val ll (decode-char ll)))
                      (cond
@@ -242,15 +238,15 @@
       ;;; decoding byte-lists to code points
 
       (define (two-byte-point a b)
-         (bor (<< (fxband a #x1f) 6) (fxband b #x3f)))
+         (fxbor (<< (fxband a #x1f) 6) (fxband b #x3f)))
 
       (define (three-byte-point a b c)
-         (bor (bor (<< (fxband a #x0f) 12) (<< (fxband b #x3f) 6))
+         (fxbor (fxbor (<< (fxband a #x0f) 12) (<< (fxband b #x3f) 6))
             (fxband c #x3f)))
 
       (define (four-byte-point a b c d)
-         (bor
-            (bor (<< (fxband a #x07) 18) (<< (fxband b #x3f) 12))
-            (bor (<< (fxband c #x3f)  6)     (fxband d #x3f))))
+         (fxbor
+            (fxbor (<< (fxband a #x07) 18) (<< (fxband b #x3f) 12))
+            (fxbor (<< (fxband c #x3f)  6)     (fxband d #x3f))))
 
 ))

@@ -114,7 +114,7 @@
 
       (define is-less #false)
       (define is-equal #true)
-      (define is-greater null)
+      (define is-greater #null)
 
       (define (compare-bytes a b pos end)
          (if (eq? pos end)
@@ -262,6 +262,6 @@
 
       (define (start-symbol-interner initial-symbols)
          (thunk->thread 'intern
-            (initialize-interner initial-symbols null)))
+            (initialize-interner initial-symbols #n)))
 
 ))

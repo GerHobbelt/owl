@@ -1,90 +1,100 @@
-;;; A typical way to make data structures for holding key-value in
-;;; Lisp systems is to make an association list. An association list
-;;; is a list of pairs, where the car holds the key, and cdr holds the
-;;; value. While easy to define and use, they have the downside of slowing
-;;; down linearly as the size of the association list grows.
-;;;
-;;; Owl has finite functions, or ffs, which behave like association
-;;; lists, but they slow down only logarithmically as they get more keys.
-;;; They are internally represented as red-black trees.
-;;;
-;;; `#empty` or `@()` can be used to refer to an empty finite function.
-;;; `put` adds or rewrites the value of a key, `get` fetches the value
-;;; or returns the third argument if the key is not found. `del` removes
-;;; a key from a ff.
-;;;
-;;; ```
-;;;   > (define f (put (put #empty 'foo 100) 'bar 42))
-;;;   > f
-;;;   @(foo 100 bar 42)
-;;;   > (ff? f)
-;;;   #true
-;;;   > (get f 'foo #f)
-;;;   100
-;;;   > (get f 'x #f)
-;;;   #f
-;;;   > (get (del f 'foo) 'foo #f)
-;;;   #f
-;;; ```
-;;; A finite function maps keys to values. As the name implies, a ff
-;;; can also be called to do just that. If one argument is given and it
-;;; is defined, the value is returned. In case of an undefined value, either
-;;; an error is signaled or the second default argument is returned, if
-;;; it is specified.
-;;;
-;;; ```
-;;;   > (f 'foo)
-;;;   100
-;;;   > (f 'x 'not-there)
-;;;   'not-there
-;;;   > (map f '(foo bar))
-;;;   '(100 42)
-;;; ```
-;;;
-;;; Many list functions have corresponding functions for ffs, where
-;;; usually a function receiving the list element just receives two
-;;; arguments, being a particular key and value pair. The name of the
-;;; function is typically prefixed with ff-.
-;;;
-;;; ```
-;;;   (get @(a 1) 'a #f) → 1
-;;;
-;;;   (get @(a 1) 'x #f) → #f
-;;;
-;;;   (put @(a 1 b 2) 'c 3) → @(a 1 b 2 c 3)
-;;;
-;;;   (del @(a 1 b 2) 'a) → @(b 2)
-;;;
-;;;   (fupd ff key value) → ff', like put, but for an existing key
-;;;
-;;;   (keys @(foo 1 bar 2)) → '(foo bar)
-;;;
-;;;   (ff-union @(a 100 b 200) @(b 2 c 3) +) → @(a 100 b 202 c 3)
-;;;
-;;;   (ff-diff @(a 1 b 2 c 3) @(a 10 b 20)) → @(c 3)
-;;;
-;;;   (ff-fold (λ (o k v) (cons (cons k v) o)) #n @(foo 1 bar 2) →
-;;;      '((bar . 2) (foo . 1))
-;;;
-;;;   (ff-foldr (λ (o k v) (cons (cons k v) o)) #n @(foo 1 bar 2) →
-;;;      '((foo . 1) (bar . 2))
-;;;   (ff-map @(a 1 b 2 c 3) (λ (k v) (square v))) → @(a 1 b 4 c 9)
-;;;
-;;;   (ff-iter ff) → a lazy list of key-value pairs
-;;;
-;;;   (list->ff '((a . 1) (b . 2))) → @(a 1 b 2)
-;;;
-;;;   (ff->list @(a 1 b 2)) → '((a . 1) (b . 2))
-;;;
-;;; ```
+#| doc
+A typical way to make data structures for holding key-value mappings in
+Lisp systems is to make an association list. An association list
+is a list of pairs, where the car holds the key, and cdr holds the corresponding
+value. While easy to define and use, they have the downside of slowing
+down linearly as the size of the number of associations grows.
 
-;; fixme: ff unit tests went missing at some point. add with lib-compare vs naive alists.
-;; fixme: ffc[ad]r are no longer needed as primitives
+Another way to think about such a data structure is to view it as a
+partial function. When the function is applied to a key, the associated
+value if any is returned.
 
-; Note: objects in owl are *ordered*. The gc was specifically
-; designed to preserve order in order to improve locality and
-; allow O(log n) maps (called ffs to avoid collision with
-; the standard map function) of arbitrary objects.
+Owl has finite functions, or ffs, which behave like association
+lists, but they slow down only logarithmically as they get more keys.
+The semantics are exactly those of an association list using `eq?`
+for comparing keys. Finite functions are internally represented as
+red-black trees with compacted nodes, so a finite function will
+not add any memory overhead compared to association lists.
+
+`#empty` or `##()` can be used to refer to an empty finite function.
+`put` adds or rewrites the value of a key, `get` fetches the value
+or returns the third argument if the key is not found. `del` removes
+a key from a ff.
+
+```
+  > (define f (put (put #empty 'foo 100) 'bar 42))
+  > f
+  ##(foo 100 bar 42)
+  > (ff? f)
+  #true
+  > (get f 'foo #f)
+  100
+  > (get f 'x #f)
+  #f
+  > (get (del f 'foo) 'foo #f)
+  #f
+```
+
+One can also apply a finite function to an argument. The result
+will be the value mapped to that key, if any.
+If the value is not defined in the function, an error is signaled.
+As with many other such functions, you can also pass a second default
+value for a finite function, in which case it is returned if the key
+is not defined.
+;;;
+```
+  > (f 'foo)
+  100
+  > (f 'x 'not-there)
+  'not-there
+  > (map f '(foo bar))
+  '(100 42)
+```
+
+Many list functions have corresponding functions for ffs, where
+usually a function receiving the list element just receives two
+arguments, being a particular key and value pair. The name of the
+function is typically prefixed with ff-.
+
+```
+  (get ##(a 1) 'a #f) → 1
+
+  (get ##(a 1) 'x #f) → #f
+
+  (put ##(a 1 b 2) 'c 3) → ##(a 1 b 2 c 3)
+
+  (del ##(a 1 b 2) 'a) → ##(b 2)
+
+  (fupd ff key value) → ff', like put, but for an existing key
+
+  (keys ##(foo 1 bar 2)) → '(foo bar)
+
+  (ff-union ##(a 100 b 200) ##(b 2 c 3) +) → ##(a 100 b 202 c 3)
+
+  (ff-diff ##(a 1 b 2 c 3) ##(a 10 b 20)) → ##(c 3)
+
+  (ff-fold (λ (o k v) (cons (cons k v) o)) #n ##(foo 1 bar 2) →
+     '((bar . 2) (foo . 1))
+
+  (ff-foldr (λ (o k v) (cons (cons k v) o)) #n ##(foo 1 bar 2) →
+     '((foo . 1) (bar . 2))
+  (ff-map ##(a 1 b 2 c 3) (λ (k v) (square v))) → ##(a 1 b 4 c 9)
+
+  (ff-iter ff) → a lazy list of key-value pairs
+
+  (list->ff '((a . 1) (b . 2))) → ##(a 1 b 2)
+
+  (ff->list ##(a 1 b 2)) → '((a . 1) (b . 2))
+
+```
+
+Other programming languges typically use hashing to obtain a
+similar data structure. Owl has an order preserving garbage
+collector, which makes it possible to compare order as well as
+equality of objects. This makes it easy to build efficient tree
+data structures without complex key hashing and collision checks.
+
+|#
 
 (define-library (owl ff)
 
@@ -246,7 +256,7 @@
             ;((with-ff (name l k v r) . rest)
             ;   (lets ((l k v r (explode name))) . rest))
             ((with-ff (name l k v r) . rest)
-               (ff-bind name (lambda (l k v r) . rest)))
+               (ff-bind name (λ (l k v r) . rest)))
             ))
 
       ;; FIXME: misleading names!
@@ -472,8 +482,8 @@
                      (λ () (ff-iterrate l tl)))))
             tl))
 
-      (define ff-iter (C ff-iterate null))
-      (define ff-iterr (C ff-iterrate null))
+      (define ff-iter (C ff-iterate #n))
+      (define ff-iterr (C ff-iterrate #n))
 
       ;; note: ff-map will switch argument order in the generic equivalent
       ;; fixme, also much faster if types are used directly
@@ -497,7 +507,7 @@
          (ff-foldr
             (λ (lst k v)
                (cons (cons k v) lst))
-            null ff))
+            #n ff))
 
 
       ;;;
@@ -640,7 +650,7 @@
             ((getf ff key) (get ff key #false))))
 
       (define (keys ff)
-         (ff-foldr (λ (out k v) (cons k out)) null ff))
+         (ff-foldr (λ (out k v) (cons k out)) #n ff))
 
       (let ((ff (list->ff '((a . 1) (b . 2) (c . 3)))))
          (example
@@ -650,8 +660,8 @@
             (ff->list (put ff 'd 42)) = '((a . 1) (b . 2) (c . 3) (d . 42))
             (ff->list (del ff 'a)) = '((b . 2) (c . 3))
             (ff->list (del ff 'x)) = '((a . 1) (b . 2) (c . 3))
-            (ff-fold (lambda (out k v) (cons v out)) null ff) = '(3 2 1)
-            (ff-foldr (lambda (out k v) (cons v out)) null ff) = '(1 2 3)
+            (ff-fold (λ (out k v) (cons v out)) #n ff) = '(3 2 1)
+            (ff-foldr (λ (out k v) (cons v out)) #n ff) = '(1 2 3)
             (keys ff) = '(a b c)
             (get ff 'a 0) = 1
             (get ff 'x 0) = 0

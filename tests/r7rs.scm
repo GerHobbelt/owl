@@ -4,15 +4,15 @@
 
 #|
 
-Testing block comments. They could also be nested on second thought...
+Testing block comments. #| They can also be nested. |#
 
 |#
 
 ;; test |symbol| syntax
 
 (let
-   ((a '|foo bar|)
-    (b (string->symbol "foo bar")))
+   ((a '|foo bar\x20;baz|)
+    (b (string->symbol "foo\x20;bar baz")))
    (if (not (eq? a b))
       (print "symbolic failure 1")))
 
@@ -71,5 +71,7 @@ Testing block comments. They could also be nested on second thought...
    (if (not (= (foo 10) 1))
       (print (list 'letrec* 'got (foo 10)))))
 
+;; transparent line break
 ;; shouldn't have printed anything before this
-(print "all done")
+(print "all \
+   done")
