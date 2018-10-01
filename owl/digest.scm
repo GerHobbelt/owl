@@ -94,7 +94,7 @@
              (b ll (uncons ll #false))
              (c ll (uncons ll #false))
              (d ll (uncons ll #false)))
-            (values (bior (fxbor d (<< c 8))
+            (values (bior (fxior d (<< c 8))
                          (bior (<< b 16) (<< a 24)))
                     ll)))
 

@@ -194,7 +194,7 @@
       (define extension-byte
          (parses
             ((b byte)
-             (verify (eq? #b10000000 (fxband b #b11000000)) "Bad extension byte"))
+             (verify (eq? #b10000000 (fxand b #b11000000)) "Bad extension byte"))
             b))
 
       (define (byte-between lo hi)

@@ -435,8 +435,8 @@
       ;; (size  x)         n                       n               #false
       ;; (sizeb x)       #false                    n               #false
 
-      (define (immediate? obj) (eq? (fxband obj 0) 0))
-      (define (allocated? obj) (lesser? (fxbor 0 obj) obj))
+      (define (immediate? obj) (eq? (fxand obj 0) 0))
+      (define (allocated? obj) (lesser? (fxior 0 obj) obj))
       (define raw? sizeb)
       (define (record? x) (eq? type-record (type x)))
 

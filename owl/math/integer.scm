@@ -94,10 +94,10 @@ negative type only at the root node.
 
       (define-syntax to-fix+
          (syntax-rules ()
-            ((to-fix+ n) (fxbxor 0 n))))
+            ((to-fix+ n) (fxxor 0 n))))
 
       (define to-fix-
-         (H fxbxor (create-type type-fix-)))
+         (H fxxor (create-type type-fix-)))
 
       (define (to-int+ n)
          (mkt type-int+ (ncar n) (ncdr n)))
@@ -112,7 +112,7 @@ negative type only at the root node.
          (ncons 0 *big-one*))
 
       (define (fixnum? x)
-         (eq? (fxbor (type x) type-fix-) type-fix-))
+         (eq? (fxior (type x) type-fix-) type-fix-))
 
       (define (big-bad-args op a b)
          (error "Bad math:" (list op a b)))
@@ -262,7 +262,7 @@ negative type only at the root node.
       (define (add-number-big a big)
          (lets
             ((b bs big)
-             (new overflow (fxadd a b)))
+             (new overflow (fx+ a b)))
             (if (eq? overflow 0)
                (ncons new bs)
                (if (null? bs)
@@ -278,11 +278,11 @@ negative type only at the root node.
             ((null? b)
                (if (eq? carry 0) a (add-number-big carry a)))
             (else
-               (lets ((r o (fxadd (ncar a) (ncar b))))
+               (lets ((r o (fx+ (ncar a) (ncar b))))
                   (if (eq? carry 0)
                      (ncons r (add-big (ncdr a) (ncdr b) o))
-                     (lets ((r o2 (fxadd r carry)))
-                        (ncons r (add-big (ncdr a) (ncdr b) (fxbor o o2)))))))))
+                     (lets ((r o2 (fx+ r carry)))
+                        (ncons r (add-big (ncdr a) (ncdr b) (fxior o o2)))))))))
 
       ;;;
       ;;; SUBSTRACTION
@@ -291,7 +291,7 @@ negative type only at the root node.
       (define-syntax sub-small->pick-sign
          (syntax-rules ()
             ((sub-small->pick-sign a b)
-               (lets ((r u (fxsub a b)))
+               (lets ((r u (fx- a b)))
                   (if (eq? u 0)
                      r
                      (lets ((r _ (fx- b a))) ;; could also fix here by adding or bitwise
@@ -299,7 +299,7 @@ negative type only at the root node.
 
       ; bignum - fixnum -> either
       (define (sub-big-number a b leading?)
-         (lets ((r underflow (fxsub (ncar a) b)))
+         (lets ((r underflow (fx- (ncar a) b)))
             (cond
                ((not (eq? underflow 0))
                   (let ((tail (sub-big-number (ncdr a) underflow #f)))
@@ -337,10 +337,10 @@ negative type only at the root node.
                   a
                   (sub-big-number a borrow leading?)))
             (else
-               (lets ((r u (fxsub (ncar a) (ncar b))))
+               (lets ((r u (fx- (ncar a) (ncar b))))
                   (if (not (eq? borrow 0))
-                     (lets ((r u2 (fxsub r 1)))
-                        (let ((tail (sub-digits (ncdr a) (ncdr b) (fxbor u u2) #f)))
+                     (lets ((r u2 (fx- r 1)))
+                        (let ((tail (sub-digits (ncdr a) (ncdr b) (fxior u u2) #f)))
                            (cond
                               (tail (ncons r tail))
                               (leading? r)
@@ -371,7 +371,7 @@ negative type only at the root node.
       ; add bits, output is negative
 
       (define (add-small->negative a b)
-         (lets ((r overflow (fxadd a b)))
+         (lets ((r overflow (fx+ a b)))
             (if (eq? overflow 0)
                (to-fix- r)
                (mkt type-int- r *big-one*))))
@@ -390,7 +390,7 @@ negative type only at the root node.
       (define-syntax add-small->positive
          (syntax-rules ()
             ((add-small->positive a b)
-               (lets ((r overflow (fxadd a b)))
+               (lets ((r overflow (fx+ a b)))
                   (if (eq? overflow 0) r (ncons r *big-one*))))))
 
       (define (mk-sub no)
@@ -511,7 +511,7 @@ negative type only at the root node.
       ;;; BITWISE OPERATIONS
       ;;;
 
-      ; fxband, fxbor, fxbxor -> result
+      ; fxand, fxior, fxxor -> result
       ; fx>> -> hi + lo
 
       (define (shift-right-walk this rest n first?)
@@ -524,7 +524,7 @@ negative type only at the root node.
             (let ((next (ncar rest)))
                (lets ((hi lo (fx>> next n)))
                   (lets
-                     ((this (fxbor this lo))
+                     ((this (fxior this lo))
                       (tail (shift-right-walk hi (ncdr rest) n #false)))
                      (cond
                         (tail (ncons this tail))
@@ -585,7 +585,7 @@ negative type only at the root node.
                #n
                (ncons last #n))
             (lets ((hi lo (fx>> (ncar num) n)))
-               (ncons (fxbor last lo)
+               (ncons (fxior last lo)
                   (shift-left (ncdr num) n hi)))))
 
       ; << quarantees n is a fixnum
@@ -646,7 +646,7 @@ negative type only at the root node.
             ((null? b) 0)
             (else
                (lets
-                  ((this (fxband (ncar a) (ncar b)))
+                  ((this (fxand (ncar a) (ncar b)))
                    (tail (big-band (ncdr a) (ncdr b))))
                   (cond
                      ((eq? tail 0) this)
@@ -662,7 +662,7 @@ negative type only at the root node.
             ((null? b) a)
             (else
                (lets
-                  ((this (fxbor (ncar a) (ncar b)))
+                  ((this (fxior (ncar a) (ncar b)))
                    (tail (big-bior (ncdr a) (ncdr b))))
                   (ncons this tail)))))
 
@@ -673,7 +673,7 @@ negative type only at the root node.
             ((null? b) a)
             (else
                (lets
-                  ((this (fxbxor (ncar a) (ncar b)))
+                  ((this (fxxor (ncar a) (ncar b)))
                    (tail (big-bxor-digits (ncdr a) (ncdr b))))
                   (if (null? tail)
                      (if (eq? this 0)
@@ -694,14 +694,14 @@ negative type only at the root node.
          (case (type a)
             (type-fix+
                (case (type b)
-                  (type-fix+ (fxband a b))
-                  (type-int+ (fxband a (ncar b)))
+                  (type-fix+ (fxand a b))
+                  (type-int+ (fxand a (ncar b)))
                   (else
                      (big-bad-args 'band a b))))
             (type-int+
                (case (type b)
                   (type-fix+
-                     (fxband (ncar a) b))
+                     (fxand (ncar a) b))
                   (type-int+
                      (big-band a b))
                   (else
@@ -716,16 +716,16 @@ negative type only at the root node.
          (case (type a)
             (type-fix+
                (case (type b)
-                  (type-fix+ (fxbor a b))
+                  (type-fix+ (fxior a b))
                   (type-int+
-                     (ncons (fxbor a (ncar b))
+                     (ncons (fxior a (ncar b))
                         (ncdr b)))
                   (else
                      (big-bad-args 'bior a b))))
             (type-int+
                (case (type b)
                   (type-fix+
-                     (ncons (fxbor b (ncar a))
+                     (ncons (fxior b (ncar a))
                         (ncdr a)))
                   (type-int+
                      (big-bior a b))
@@ -738,15 +738,15 @@ negative type only at the root node.
          (case (type a)
             (type-fix+
                (case (type b)
-                  (type-fix+ (fxbxor a b))
+                  (type-fix+ (fxxor a b))
                   (type-int+
-                     (ncons (fxbxor a (ncar b)) (ncdr b)))
+                     (ncons (fxxor a (ncar b)) (ncdr b)))
                   (else
                      (big-bad-args 'bxor a b))))
             (type-int+
                (case (type b)
                   (type-fix+
-                     (ncons (fxbxor b (ncar a)) (ncdr a)))
+                     (ncons (fxxor b (ncar a)) (ncdr a)))
                   (type-int+
                      (big-bxor a b))
                   (else
@@ -775,7 +775,7 @@ negative type only at the root node.
             (else
                (lets
                   ((lo hi (fx* a (ncar b)))
-                   (lo o (fxadd lo carry))
+                   (lo o (fx+ lo carry))
                    (hi _ (fx+ hi o)))
                      (ncons lo (mult-num-big a (ncdr b) hi))))))
 
@@ -975,7 +975,7 @@ negative type only at the root node.
             ((eq? a b) (- n 1))
             ((lesser? a b) (- n 1))
             (else
-               (lets ((b overflow (fxadd b b)))
+               (lets ((b overflow (fx+ b b)))
                   (if (eq? overflow 0)
                      (shift-local-up a b (nat-succ n))
                      (- n overflow))))))
@@ -1166,7 +1166,7 @@ negative type only at the root node.
                ((x tl n)
                 (lo hi (fx* x d))
                 (tl carry (rmul (ncdr n) d))
-                (lo over (fxadd lo carry))
+                (lo over (fx+ lo carry))
                 (hi _ (fx+ hi over)))
                   (values (ncons lo tl) hi))))
 
@@ -1276,7 +1276,7 @@ negative type only at the root node.
                      (divex bit bp a b out))))
             (else ; shift + substract = amortized O(2b) + O(log a)
                (divex bit bp (- a (<< b bp))
-                  b (ncons (fxbor bit (ncar out)) (ncdr out))))))
+                  b (ncons (fxior bit (ncar out)) (ncdr out))))))
 
       (define divex-start (ncons 0 #n))
 

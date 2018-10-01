@@ -44,7 +44,7 @@
             ((is-class? class)
                (λ (x)
                   ;; out-of-bound access returns #f, which matches 1
-                  (lesser? 0 (fxband (ref classes x) class))))))
+                  (lesser? 0 (fxand (ref classes x) class))))))
 
       (define is-exactness? (is-class? #x40))
       (define is-radix? (is-class? #x20))
@@ -61,13 +61,13 @@
       (define (digit-char? base)
          (if (eq? base 16)
             is-xdigit?
-            (λ (x) (lesser? (fxbxor x #\0) base))))
+            (λ (x) (lesser? (fxxor x #\0) base))))
 
       (define (bytes->number digits base)
          (fold
             (λ (n digit)
                (+ (* n base)
-                  (fxband (if (lesser? #\9 digit) (lets ((d _ (fx- digit 7))) d) digit) 15)))
+                  (fxand (if (lesser? #\9 digit) (lets ((d _ (fx- digit 7))) d) digit) 15)))
             0 digits))
 
       (define get-sign
@@ -103,7 +103,7 @@
                                  char)
                               (get-epsilon #\d))))
                         char))))
-               (getf bases (fxbor char 32))) ;; switch to lower case
+               (getf bases (fxior char 32))) ;; switch to lower case
             (get-epsilon 10)))
 
       (define (get-natural base)
@@ -264,7 +264,7 @@
                          (skip (get-imm #\;)))
                         (bytes->number hexes 16)))))
                char)
-            (get-rune-if (λ (x) (eq? (fxbor (eq? x delimiter) (eq? x #\\)) #f)))))
+            (get-rune-if (λ (x) (eq? (fxior (eq? x delimiter) (eq? x #\\)) #f)))))
 
       (define (get-transparent-break parser)
          (get-parses

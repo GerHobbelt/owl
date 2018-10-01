@@ -94,7 +94,7 @@ UTF-8 encoding and decoding.
 
       ; grab low 6 bits of a number
       (define (ext n)
-         (fxbor extension
+         (fxior extension
             (band n #b111111)))
 
       (define (encode-point point tl)
@@ -103,18 +103,18 @@ UTF-8 encoding and decoding.
                (cons point tl))
             ((< point #b100000000000) ; 5 + 6 bits
                (ilist
-                  (fxbor (fxband (>> point 6) #x1f) #xc0)
+                  (fxior (fxand (>> point 6) #x1f) #xc0)
                   (ext point)
                   tl))
             ((< point #b10000000000000000) ; 4 + 2*6 bits
                (ilist
-                  (fxbor (fxband (>> point 12) #x0f) #xe0)
+                  (fxior (fxand (>> point 12) #x0f) #xe0)
                   (ext (>> point 6))
                   (ext point)
                   tl))
             ((< point #b1000000000000000000000) ; 3 + 3*6 bits
                (ilist
-                  (fxbor (fxband (>> point 18) #b111) #xf0)
+                  (fxior (fxand (>> point 18) #b111) #xf0)
                   (ext (>> point 12))
                   (ext (>> point 6))
                   (ext point)
@@ -154,8 +154,8 @@ UTF-8 encoding and decoding.
                (values #false lst))
             ((pair? lst)
                (let ((hd (car lst)))
-                  (if (eq? #b10000000 (fxband #b11000000 hd))
-                     (get-extension-bytes (cdr lst) (- n 1) (fxbor (<< val 6) (band hd #b111111)) min)
+                  (if (eq? #b10000000 (fxand #b11000000 hd))
+                     (get-extension-bytes (cdr lst) (- n 1) (fxior (<< val 6) (band hd #b111111)) min)
                      ;; not a valid continuation byte -> error
                      (values #false lst))))
             (else
@@ -165,17 +165,17 @@ UTF-8 encoding and decoding.
       (define (decode-char lst)
          (let ((hd (car lst)))
             (cond
-               ((eq? 0 (fxband hd #b10000000))
+               ((eq? 0 (fxand hd #b10000000))
                   (values hd (cdr lst)))
-               ((eq? #b11000000 (fxband hd #b11100000))
+               ((eq? #b11000000 (fxand hd #b11100000))
                   ; 2-byte char with top bits 110, 5 bits here
-                  (get-extension-bytes (cdr lst) 1 (fxband #b11111 hd) min-2byte))
-               ((eq? #b11100000 (fxband hd #b11110000))
+                  (get-extension-bytes (cdr lst) 1 (fxand #b11111 hd) min-2byte))
+               ((eq? #b11100000 (fxand hd #b11110000))
                   ; 3-byte char, 4 bits here
-                  (get-extension-bytes (cdr lst) 2 (fxband #b1111 hd) min-3byte))
-               ((eq? #b11110000 (fxband hd #b11111000))
+                  (get-extension-bytes (cdr lst) 2 (fxand #b1111 hd) min-3byte))
+               ((eq? #b11110000 (fxand hd #b11111000))
                   ; 4-byte char, 3 bits here
-                  (get-extension-bytes (cdr lst) 3 (fxband #b111 hd) min-4byte))
+                  (get-extension-bytes (cdr lst) 3 (fxand #b111 hd) min-4byte))
                (else
                   ; invalid leading byte
                   (values #false lst)))))
@@ -238,15 +238,15 @@ UTF-8 encoding and decoding.
       ;;; decoding byte-lists to code points
 
       (define (two-byte-point a b)
-         (fxbor (<< (fxband a #x1f) 6) (fxband b #x3f)))
+         (fxior (<< (fxand a #x1f) 6) (fxand b #x3f)))
 
       (define (three-byte-point a b c)
-         (fxbor (fxbor (<< (fxband a #x0f) 12) (<< (fxband b #x3f) 6))
-            (fxband c #x3f)))
+         (fxior (fxior (<< (fxand a #x0f) 12) (<< (fxand b #x3f) 6))
+            (fxand c #x3f)))
 
       (define (four-byte-point a b c d)
-         (fxbor
-            (fxbor (<< (fxband a #x07) 18) (<< (fxband b #x3f) 12))
-            (fxbor (<< (fxband c #x3f)  6)     (fxband d #x3f))))
+         (fxior
+            (fxior (<< (fxand a #x07) 18) (<< (fxand b #x3f) 12))
+            (fxior (<< (fxand c #x3f)  6)     (fxand d #x3f))))
 
 ))

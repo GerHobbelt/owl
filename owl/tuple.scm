@@ -33,7 +33,7 @@ Values are indexed from 1 and there is little error detection
          (eq? (type x) type-tuple))
 
       (define (tuple-length x)
-         (lets ((len u (fxsub (object-size x) 1)))
+         (lets ((len u (fx- (object-size x) 1)))
             (and (eq? u 0) len)))
 
       (define (list->tuple lst)
