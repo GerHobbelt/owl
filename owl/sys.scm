@@ -72,7 +72,9 @@ This library defines various system calls and wrappers for calling them.
       get-environment
       get-heap-bytes-written
       get-heap-max-live
-      )
+
+      execvp
+      system)
 
    (import
       (owl defmac)
@@ -83,7 +85,8 @@ This library defines various system calls and wrappers for calling them.
       (owl syscall)
       (owl port)
       (owl list)
-      (owl vector))
+      (owl vector)
+      (only (owl primop) halt))
 
    (begin
 
@@ -396,6 +399,7 @@ This library defines various system calls and wrappers for calling them.
             ports))
 
       ;; → #false = fork failed, #true = ok, we're in child, n = ok, child pid is n
+
       (define (fork)
          (let ((pid (sys 18)))
             (or (eq? pid 0) pid)))
@@ -569,4 +573,46 @@ This library defines various system calls and wrappers for calling them.
 
       (define (get-heap-max-live)
          (sys 9 9))
+
+
+      ;;;
+      ;;; Derived utilities
+      ;;;
+
+      (define (check-file dir path)
+         (let ((full (string-append dir "/" path)))
+            (if (file? full)
+               full
+               #false)))
+
+      (define (resolve-program p)
+         (if (m/^\// p)
+            p ;; absolute path
+            (fold
+               (λ (res option)
+                  (or res
+                     (check-file option p)))
+               #false
+               (cons (getcwd)
+                  (c/:/ (or (getenv "PATH") ""))))))
+
+      (define (execvp args)
+         (let ((cmd (resolve-program (car args))))
+            (if cmd
+               (exec cmd args)
+               #false)))
+
+      (define (system args)
+         (let ((pid (fork)))
+            (cond
+               ((eq? pid #false) ;; fork failed
+                  #f)
+               ((eq? pid #true) ;; we're in child process
+                  (or (execvp args) (halt 1)))
+               (else
+                  ;; otherwise we're in parent process.
+                  ;; wait and check if the child process terminates
+                  ;; normally with a zero status
+                  (equal? (wait pid) '(1 . 0))))))
+
 ))
