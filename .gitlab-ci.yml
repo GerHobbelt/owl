@@ -1,29 +1,8 @@
 image: gcc
 
 stages:
-  - fasl
-  - binary
-  - documentation
+  - build
 
-fasl fixedpoint:
-  stage: fasl
-  script: make fasl/ol.fasl
-  artifacts:
-    paths:
-      - bin/vm
-      - fasl/ol.fasl
-
-binary:
-  stage: binary
-  script: make bin/ol
-  artifacts:
-    paths:
-      - bin/ol
-  dependencies:
-    - fasl fixedpoint
-
-documentation:
-  stage: documentation
-  script: make documentation
-  dependencies:
-    - binary
+full build:
+  stage: build
+  script: make
