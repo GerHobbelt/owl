@@ -10,26 +10,17 @@ export CFLAGS = -Wall -O2
 export CC = gcc
 export LDFLAGS
 
+
 ## Pseudo targets
 
-all: documentation owl
-
-documentation: doc/ol.1.gz doc/ovm.1.gz manual.md
-
+all: owl documentation
 owl: bin/ol
+documentation: owl doc/ol.1.gz doc/ovm.1.gz manual.md
 
 
-## fasl (plain bytecode) image boostrap
+### Lisp boostrap
 
-fasl/boot.fasl: bin/vm fasl/init.fasl
-	# start bootstrapping with the bundled init.fasl image
-	bin/vm fasl/init.fasl -r bin/fasl-build.scm bin/vm fasl/init.fasl -r owl/ol.scm -o $@
-
-fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
-	# selfcompile boot.fasl until a fixed point is reached
-	bin/vm fasl/init.fasl -r bin/fasl-build.scm -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
-
-## building just the virtual machine to run fasl images
+## virtual machine
 
 bin/vm: c/vm.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $?
@@ -39,29 +30,19 @@ c/_vm.c: c/ovm.c
 	sed -f bin/compact.sed $? >$@
 
 c/vm.c: c/_vm.c
-	# make a vm without a bundled heap
 	echo 'static void *heap = 0;' | cat - $? >$@
 
+## bytecode image (fixedpoint)
 
-## Documentation
+fasl/boot.fasl: bin/vm fasl/init.fasl
+	# start bootstrapping with the bundled init.fasl image
+	bin/vm fasl/init.fasl -r bin/fasl-build.scm bin/vm fasl/init.fasl -r owl/ol.scm -o $@
 
-doc/ol.1.gz: doc/ol.1
-	gzip -9n <$? >$@
+fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
+	# selfcompile boot.fasl until a fixed point is reached
+	bin/vm fasl/init.fasl -r bin/fasl-build.scm -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
 
-doc/ovm.1.gz: doc/ovm.1
-	gzip -9n <$? >$@
-
-manual.md: doc/manual.md owl/*.scm owl/*/*.scm scheme/*.scm
-	bin/ol -r bin/tada.scm -d owl -d scheme -o manual.md
-
-manual.man: manual.md
-	pandoc $? -s -t man >$@
-
-manual.pdf: manual.md
-	pandoc --latex-engine xelatex -o $@ $?
-
-
-## building standalone image out of the fixed point fasl image
+## binary image
 
 c/ol.c: fasl/ol.fasl
 	# compile the repl using the fixed point image
@@ -75,7 +56,29 @@ bin/ol: c/ol.c
 	mv bin/olp $@
 
 
-## running unit tests manually
+### Documentation
+
+## manual pages
+
+doc/ol.1.gz: doc/ol.1
+	gzip -9n <$? >$@
+
+doc/ovm.1.gz: doc/ovm.1
+	gzip -9n <$? >$@
+
+## other documentation
+
+manual.md: doc/manual.md owl/*.scm owl/*/*.scm scheme/*.scm
+	bin/ol -r bin/tada.scm -d owl -d scheme -o manual.md
+
+manual.man: manual.md
+	pandoc $? -s -t man >$@
+
+manual.pdf: manual.md
+	pandoc --latex-engine xelatex -o $@ $?
+
+
+### Tests
 
 fasltest: bin/vm fasl/ol.fasl
 	sh tests/run all bin/vm fasl/ol.fasl
@@ -88,14 +91,15 @@ random-test: bin/vm bin/ol fasl/ol.fasl
 	sh tests/run random bin/ol
 
 
-## data
+## Automatically generated data
 
 owl/unicode-char-folds.scm:
 	echo "(define char-folds '(" >owl/unicode-char-folds.scm
 	curl http://www.unicode.org/Public/6.0.0/ucd/CaseFolding.txt | grep "[0-9A-F]* [SFC]; " | sed -re 's/ #.*//' -e 's/( [SFC])?;//g' -e 's/^/ /' -e 's/ / #x/g' -e 's/ /(/' -e 's/$$/)/' | tr "[A-F]" "[a-f]" >> owl/unicode-char-folds.scm
 	echo '))' >>owl/unicode-char-folds.scm
 
-## meta
+
+## Installation
 
 install: bin/ol bin/vm doc/ol.1.gz doc/ovm.1.gz
 	-mkdir -p $(DESTDIR)$(PREFIX)$(BINDIR)
