@@ -10,7 +10,14 @@ export CFLAGS = -Wall -O2
 export CC = gcc
 export LDFLAGS
 
-all owl: bin/ol manual.md
+## Pseudo targets
+
+all: documentation owl
+
+documentation: doc/ol.1.gz doc/ovm.1.gz manual.md
+
+owl: bin/ol
+
 
 ## fasl (plain bytecode) image boostrap
 
@@ -35,6 +42,15 @@ c/vm.c: c/_vm.c
 	# make a vm without a bundled heap
 	echo 'static void *heap = 0;' | cat - $? >$@
 
+
+## Documentation
+
+doc/ol.1.gz: doc/ol.1
+	gzip -9n <$? >$@
+
+doc/ovm.1.gz: doc/ovm.1
+	gzip -9n <$? >$@
+
 manual.md: doc/manual.md owl/*.scm owl/*/*.scm scheme/*.scm
 	bin/ol -r bin/tada.scm -d owl -d scheme -o manual.md
 
@@ -43,6 +59,7 @@ manual.man: manual.md
 
 manual.pdf: manual.md
 	pandoc --latex-engine xelatex -o $@ $?
+
 
 ## building standalone image out of the fixed point fasl image
 
@@ -80,12 +97,6 @@ owl/unicode-char-folds.scm:
 
 ## meta
 
-doc/ol.1.gz: doc/ol.1
-	gzip -9n <$? >$@
-
-doc/ovm.1.gz: doc/ovm.1
-	gzip -9n <$? >$@
-
 install: bin/ol bin/vm doc/ol.1.gz doc/ovm.1.gz
 	-mkdir -p $(DESTDIR)$(PREFIX)$(BINDIR)
 	-mkdir -p $(DESTDIR)$(PREFIX)$(MANDIR)/man1
@@ -107,7 +118,4 @@ clean:
 	-rm -f tmp/*
 	-rm -f bin/ol bin/ol-old bin/vm
 
-fasl-update: fasl/ol.fasl
-	cp fasl/ol.fasl fasl/init.fasl
-
-.PHONY: all clean fasl-update fasltest install owl random-test test uninstall
+.PHONY: all documentation owl clean install uninstall random-test test fasltest
