@@ -20,7 +20,7 @@ binary:
     paths:
       - bin/ol
   dependencies:
-    - fasl
+    - fasl fixedpoint
 
 documentation:
   stage: documentation
