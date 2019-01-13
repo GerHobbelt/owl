@@ -15,6 +15,7 @@ fasl fixedpoint:
 
 binary:
   stage: binary
+  dependencies: fasl
   script: make bin/ol
   artifacts:
     paths:
@@ -22,5 +23,6 @@ binary:
 
 documentation:
   stage: documentation
+  dependencies: binary
   script: make documentation
 
