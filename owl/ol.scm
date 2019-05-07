@@ -2,7 +2,7 @@
 ;;; ol.scm: an Owl read-eval-print loop.
 ;;;
 
-#| Copyright (c) 2012-2018 Aki Helin
+#| Copyright (c) 2012-2019 Aki Helin
  |
  | Permission is hereby granted, free of charge, to any person obtaining a
  | copy of this software and associated documentation files (the "Software"),
@@ -39,7 +39,7 @@
 (define *interactive* #false) ;; be verbose
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
 (define *owl-names* #empty)
-(define *owl-version* "0.1.19a")
+(define *owl-version* "0.1.19")
 
 (import
    (owl intern)
