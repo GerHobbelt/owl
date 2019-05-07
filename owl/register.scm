@@ -26,9 +26,10 @@
       (scheme base))
 
    (begin
-      ;; fixme: temp register limit
-      (define highest-register 95) ;; atm lower than NR in ovm.c
-      (define n-registers (+ highest-register 1))
+
+      (define highest-register 90)
+
+      (define n-registers (+ highest-register 1)) ;; see also c/ovm.c:/define.NR/
 
       ; reg-touch U r -> mark as live -> make sure it has a value
       ; (must be in some register)

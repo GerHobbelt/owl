@@ -81,7 +81,7 @@
          ;(type-byte-of val)
 
       (define (enc-immediate val tail)
-         (ilist 0 (type-byte-of val) (send-number (fxbxor 0 val) tail))) ; cast to fix+ via fxbxor
+         (ilist 0 (type-byte-of val) (send-number (fxxor 0 val) tail))) ; cast to fix+ via fxxor
 
       (define (partial-object-closure seen obj)
          (cond
@@ -145,7 +145,7 @@
                   (lets
                      ;; nuke padding bytes since the vm/decoder must fill these while loading
                      ;; (because different word size may require more/less padding)
-                     ((t (fxband (type-byte-of val) #b11111))
+                     ((t (fxand (type-byte-of val) #b11111))
                       (bs (sizeb val)))
                      (ilist 2 t
                         (send-number bs
@@ -232,7 +232,7 @@
 
       (define (get-nat ll fail top)
          (lets ((ll b (grab ll fail)))
-            (if (eq? 0 (fxband b 128)) ; leaf case
+            (if (eq? 0 (fxand b 128)) ; leaf case
                (values ll (bior (<< top 7) b))
                (get-nat ll fail (bior (<< top 7) (band b low7))))))
 
@@ -240,7 +240,7 @@
          (lets
             ((ll type (grab ll fail))
              (ll val  (get-nat ll fail 0)))
-            (values ll (fxbxor (create-type type) val)))) ; cast via fxbxor
+            (values ll (fxxor (create-type type) val)))) ; cast via fxxor
 
       (define nan "not here") ; eq?-unique
 

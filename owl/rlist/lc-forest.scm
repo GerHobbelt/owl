@@ -181,7 +181,7 @@ Threfore we have a total complexity of O(log n) for access and update.
          (if (eq? depth 1)
             tree
             (lets ((depth _ (fx>> depth 1)))
-               (if (eq? (fxband path depth) 0)
+               (if (eq? (fxand path depth) 0)
                   (pick (car tree) path depth)
                   (pick (cdr tree) path depth)))))
 
@@ -203,7 +203,7 @@ Threfore we have a total complexity of O(log n) for access and update.
          (let loop ((rl rl) (d 0) (dp 1) (pos pos))
             (node-case rl
                ((snd tree rl)
-                  (lets ((posp u (fxsub pos d)))
+                  (lets ((posp u (fx- pos d)))
                      (if (eq? u 0)
                         (loop rl d dp posp)
                         (pick tree pos d))))
@@ -211,7 +211,7 @@ Threfore we have a total complexity of O(log n) for access and update.
                   (lets
                      ((d dp)
                       (dp _ (fx+ dp dp))
-                      (posp u (fxsub pos d)))
+                      (posp u (fx- pos d)))
                      (if (eq? u 0)
                         (loop rl d dp posp)
                         (pick tree pos d))))
@@ -223,7 +223,7 @@ Threfore we have a total complexity of O(log n) for access and update.
          (if (eq? depth 1)
             val
             (lets ((depth _ (fx>> depth 1)))
-               (if (eq? (fxband path depth) 0)
+               (if (eq? (fxand path depth) 0)
                   (cons (set (car tree) path depth val) (cdr tree))
                   (cons (car tree) (set (cdr tree) path depth val))))))
 
@@ -231,7 +231,7 @@ Threfore we have a total complexity of O(log n) for access and update.
          (let loop ((rl rl) (d 0) (dp 1) (pos pos))
             (node-case rl
                ((snd tree rl)
-                  (lets ((posp u (fxsub pos d)))
+                  (lets ((posp u (fx- pos d)))
                      (if (eq? u 0)
                         (snd tree (loop rl d dp posp))
                         (snd (set tree pos d val) rl))))
@@ -239,7 +239,7 @@ Threfore we have a total complexity of O(log n) for access and update.
                   (lets
                      ((d dp)
                       (dp _ (fx+ dp dp))
-                      (posp u (fxsub pos d)))
+                      (posp u (fx- pos d)))
                      (if (eq? u 0)
                         (fst tree (loop rl d dp posp))
                         (fst (set tree pos d val) rl))))

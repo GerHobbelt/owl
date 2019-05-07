@@ -88,13 +88,13 @@ This library implements bytecode assembly.
          (if (> op #xff)
             (output-code
                (>> op 8)
-               (cons (fxband op #xff) lst))
+               (cons (fxand op #xff) lst))
             (cons op lst)))
 
       (define (ld-encode val)
          (lets
             ((n _ (fx- (<< val 6) 59)) ; 59 == (-(ld = 10) >> 1 & 63)
-             (n (fxbor n (type val)))
+             (n (fxior n (type val)))
              (n _ (fx+ n n)))
             n))
 
@@ -189,11 +189,11 @@ This library implements bytecode assembly.
                (cond
                   ((simple-value? val) =>
                      (λ (i)
-                        (ilist (fxbor (inst->op 'ldi) i) to
+                        (ilist (fxior (inst->op 'ldi) i) to
                            (assemble cont fail))))
                   ((fixnum? val)
                      (let ((val (ld-encode val)))
-                        (ilist (fxband val #xff) (>> val 8) to
+                        (ilist (fxand val #xff) (>> val 8) to
                            (assemble cont fail))))
                   (else
                      (fail (list "cannot assemble a load for " val)))))
@@ -211,7 +211,7 @@ This library implements bytecode assembly.
                    (len (length else)))
                   (if (> len #xffff)
                      (fail (list "invalid jump offset: " len))
-                     (ilist (fxbor (inst->op 'jeqi) i) a (fxband len #xff) (>> len 8) (append else then)))))
+                     (ilist (fxior (inst->op 'jeqi) i) a (fxand len #xff) (>> len 8) (append else then)))))
             ((jeq a b then else)
                (lets
                   ((then (assemble then fail))
@@ -219,7 +219,7 @@ This library implements bytecode assembly.
                    (len (length else)))
                   (if (> len #xffff)
                      (fail (list "invalid jump offset: " len))
-                     (ilist (inst->op 'jeq) a b (fxband len #xff) (>> len 8) (append else then)))))
+                     (ilist (inst->op 'jeq) a b (fxand len #xff) (>> len 8) (append else then)))))
             (else
                ;(print "assemble: what is " code)
                (fail (list "Unknown opcode " code)))))
@@ -249,8 +249,8 @@ This library implements bytecode assembly.
                            (ilist
                               (if fixed? 2 25)
                               (if fixed? arity (- arity 1)) ;; last is the optional one
-                              (>> len 8)        ;; jump hi
-                              (fxband len #xff) ;; jump lo
+                              (>> len 8)       ;; jump hi
+                              (fxand len #xff) ;; jump lo
                               (append bytes
                                  (if (null? tail)
                                     (list 61) ;; force error
