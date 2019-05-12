@@ -6,7 +6,7 @@ Queues (double-ended lists)
 ;;   - halve the list instead of full reversal to keep more
 ;;     efficient access to both ends of the list.
 
-note, the nice name snoc (reverse of cons) comes from Okasaki's book
+;; note, the nice name snoc (reverse of cons) comes from Okasaki's book
 
 
 (define-library (owl queue)
