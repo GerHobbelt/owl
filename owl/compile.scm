@@ -1,6 +1,6 @@
-;;;
-;;; Compile AST to a code instruction tree suitable for assembly
-;;;
+#| doc
+Compile AST to a code instruction tree suitable for assembly
+|#
 
 (define-library (owl compile)
 
