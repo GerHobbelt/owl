@@ -1,6 +1,6 @@
-;;;
-;;; Register allocation
-;;;
+#| doc
+Register allocation
+|#
 
 ; Earlier compilation steps produce RTL that has an unbounded set
 ; of registers. Register allocation handles limiting them to the

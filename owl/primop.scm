@@ -1,4 +1,6 @@
-;; VM primops
+#| doc
+VM primops
+|#
 
 (define-library (owl primop)
    (export

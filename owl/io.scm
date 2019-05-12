@@ -1,6 +1,6 @@
-;;;
-;;; Simple direct blocking IO (replaces the old thread-based one)
-;;;
+#| doc
+Simple direct blocking IO (replaces the old thread-based one)
+|#
 
 (define-library (owl io)
 
