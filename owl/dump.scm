@@ -1,7 +1,6 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting to become more like a compiler entry point
-;;;
+#| doc
+Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting to become more like a compiler entry point
+|#
 
 (define-library (owl dump)
 

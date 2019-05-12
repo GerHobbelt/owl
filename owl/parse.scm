@@ -1,6 +1,6 @@
-;;;
-;;; owl cfg parsing combinators and macros
-;;;
+#| doc
+owl cfg parsing combinators and macros
+|#
 
 (define-library (owl parse)
 
@@ -45,7 +45,7 @@
 
    (begin
 
-      ;; (parser l r ok) 
+      ;; (parser l r ok)
       ;;   → (ok l' r' val) | (backtrack l r why)
       ;   ... → l|#f r result|error
 

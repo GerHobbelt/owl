@@ -1,6 +1,6 @@
-;;;
-;;; Value interning and conversions
-;;;
+#| doc
+Value interning and conversions
+|#
 
 ; have mappings:
 ;  - strings->symbol
