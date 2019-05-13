@@ -859,18 +859,24 @@ static word prim_sys(word op, word a, word b, word c) {
       case 44:  {
          char *host = (char *) (word *) a + W;
          struct addrinfo *res;
+         int nth = immval(b);
          int rv = getaddrinfo(host, NULL, NULL, &res);
          if (rv == 0) {
             word rv = IFALSE;
+            while (nth--) {
+               if (res) 
+                  res = res->ai_next;
+               if (!res)
+                  return INULL;
+            }
             if (res->ai_addr->sa_family == AF_INET6) {
                char *n = (char *) &((struct sockaddr_in6*)res->ai_addr)->sin6_addr;
                rv = mkraw(TBVEC, 6);
-               memcpy((word *)rv + 1, n, 4);
+               memcpy((word *)rv + 1, n, 6);
             } else if (res->ai_addr->sa_family == AF_INET) {
-               //char *n = (char *) &((struct sockaddr_in *) addr)->sin_addr.s_addr;
                char *n = (char *) &((struct sockaddr_in*)res->ai_addr)->sin_addr;
                rv = mkraw(TBVEC, 4);
-               memcpy((word *)rv + 1, n, 6);
+               memcpy((word *)rv + 1, n, 4);
             }
             freeaddrinfo(res);
             return rv;

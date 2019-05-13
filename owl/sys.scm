@@ -617,8 +617,15 @@ This library defines various system calls and wrappers for calling them.
                   ;; normally with a zero status
                   (equal? (wait pid) '(1 . 0))))))
 
+      ;; prefer ipv4 
       (define (resolve-host hostname)
-         (if (string? hostname)
-            (sys 44 hostname)
-            #false))
+         (let loop ((offset 0) (last #false))
+            (let ((res (sys 44 hostname offset)))
+               (cond
+                  ((or (not res) (null? res)) ;; no result or last one
+                     last)
+                  ((= (vector-length res) 4) ;; ipv4 result
+                     res)
+                  (else
+                     (loop (+ offset 1) res))))))
 ))
