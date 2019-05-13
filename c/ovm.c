@@ -18,6 +18,7 @@
 #include <sys/wait.h>
 #include <termios.h>
 #include <stdio.h>
+#include <netdb.h>
 
 #ifndef EMULTIHOP
 #define EMULTIHOP -1
@@ -855,6 +856,22 @@ static word prim_sys(word op, word a, word b, word c) {
          return IFALSE;
       case 43:
          return do_poll(a, b, c);
+      case 44:  {
+         char *host = (char *) (word *) a + W;
+         struct addrinfo *res;
+         int rv = getaddrinfo(host, NULL, NULL, &res);
+         if (rv == 0) {
+            char *addr = (char *) res->ai_addr;
+            word rv = F(4);
+            /* cast based on family to a byte vector of length 4 or 6 */
+            /* add an offset parameter to get nth mapping in result chain */
+            if (res->ai_family == AF_INET6) {
+               rv = F(6);
+            }
+            freeaddrinfo(res);
+            return rv;
+         }
+         return IFALSE; }
       default:
          return IFALSE;
    }
