@@ -72,6 +72,8 @@ This library defines various system calls and wrappers for calling them.
       get-environment
       get-heap-bytes-written
       get-heap-max-live
+      
+      resolve-host
 
       execvp
       system)
@@ -615,4 +617,8 @@ This library defines various system calls and wrappers for calling them.
                   ;; normally with a zero status
                   (equal? (wait pid) '(1 . 0))))))
 
+      (define (resolve-host hostname)
+         (if (string? hostname)
+            (sys 44 hostname)
+            #false))
 ))

@@ -861,12 +861,14 @@ static word prim_sys(word op, word a, word b, word c) {
          struct addrinfo *res;
          int rv = getaddrinfo(host, NULL, NULL, &res);
          if (rv == 0) {
-            char *addr = (char *) res->ai_addr;
-            word rv = F(4);
-            /* cast based on family to a byte vector of length 4 or 6 */
-            /* add an offset parameter to get nth mapping in result chain */
-            if (res->ai_family == AF_INET6) {
-               rv = F(6);
+            struct sockaddr *addr = res->ai_addr;
+            word rv = IFALSE;
+            if (addr->sa_family == AF_INET6) {
+               rv = F(6); // temp
+            } else if (addr->sa_family == AF_INET) {
+               char *n = (char *) &((struct sockaddr_in *) addr)->sin_addr.s_addr;
+               rv = mkraw(TBVEC, 4);
+               memcpy((word *)rv + 1, n, 4);
             }
             freeaddrinfo(res);
             return rv;
