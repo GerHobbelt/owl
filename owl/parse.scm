@@ -23,7 +23,9 @@ owl cfg parsing combinators and macros
       parse-head
       backtrack
       try-parse
+      first-match          ;; parser data fail-val → result data'
       word
+      maybe
 
       ;; old ones
       fd->exp-stream
@@ -41,6 +43,7 @@ owl cfg parsing combinators and macros
       (owl math)
       (owl unicode)
       (owl io)
+      (owl proof)
       (owl syscall))
 
    (begin
@@ -100,6 +103,10 @@ owl cfg parsing combinators and macros
          (λ (l r ok)
             (a (cons (λ (l r why) (b l r ok)) l) r ok)))
 
+      (define (maybe x val)
+         (either x
+            (epsilon val)))
+      
       (define (seq a b)
          (λ (l r ok)
             (a l r
@@ -306,4 +313,22 @@ owl cfg parsing combinators and macros
                   (else
                      ;; full match
                      val)))))
+      
+      (define (first-match parser data fail-val)
+         (let loop ((try (λ () (parser #n data parser-succ))))
+            (lets ((l r val (try)))
+                (cond
+                  ((not l)
+                     (values fail-val r))
+                  (else
+                     (values val r))))))
+      
+      (example
+         (first-match byte '(1 2) 'x) = (values 1 '(2))
+         (first-match (imm 42) '(1 2) 'x) = (values 'x '(1 2))
+         (first-match (seq (imm 1) (imm 2)) '(1 1 2) 'x) = (values 'x '(1 1 2))
+         (first-match (seq (imm 1) (imm 1)) '(1 1 2) 'x) = (values '(1 . 1) '(2))
+         (first-match (plus (byte-if even?)) '(2 4 8 9) 'x) = (values '(2 4 8) '(9))
+         (first-match (plus (one-of (imm 1) (imm 2))) '(1 2 3 4) 'x) = (values '(1 2) '(3 4))
+         )
 ))
