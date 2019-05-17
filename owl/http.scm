@@ -19,6 +19,20 @@
       ;;; HTTP parsing
       ;;;
 
+      (define get-byte-url-decoding
+         (get-either
+            (get-parses
+               ((skip (get-imm #\+)))
+               #\space)
+            ;(get-parses
+            ;   ((skip (get-imm #\%))
+            ;    (a get-hex)
+            ;    (b get-hex))
+            ;   (+ (<< a 4) b))
+            (get-parses
+               ((val get-byte))
+               val)))
+      
       (define get-nonspace
          (get-byte-if (λ (x) (not (eq? x #\space)))))
 
@@ -27,21 +41,51 @@
             ((skip (get-either (get-imm #\return) (get-epsilon #f)))
              (skip (get-imm #\newline)))
             #t))
-    
-      ;; temp 
-      (define get-query
+   
+      (define get-query-path
          (get-parses
-            ((chars (get-greedy-plus get-nonspace)))
+            ((chars (get-greedy-plus (get-byte-if (λ (x) (not (memq x '(#\space #\newline #\? #\#))))))))
             (list->string chars)))
-      
+     
+      (define get-key-value
+         (get-parses
+            ((key (get-greedy-plus (get-byte-if (λ (x) (not (memq x '(#\space #\newline #\& #\# #\=)))))))
+             (value
+                (get-either
+                   (get-parses
+                      ((skip (get-imm #\=))
+                       (val (get-greedy-plus (get-byte-if (λ (x) (not (memq x '(#\space #\newline #\& #\#))))))))
+                      (list->string val))
+                   (get-epsilon #f))))
+            (cons (list->string key)
+                  value)))
+         
       (define maybe-get-query-params
          (get-either
             (get-parses
                ((skip (get-imm #\?))
+                (first get-key-value)
+                (rest (get-greedy-star
+                         (get-parses
+                            ((skip (get-imm #\&))
+                             (val get-key-value))
+                            val))))
+               (cons first rest))
+            (get-epsilon #f)))
+             
+      (define maybe-get-query-fragment
+         (get-either
+            (get-parses
+               ((skip (get-imm #\#))
                 (vals (get-greedy-plus get-nonspace))) ;; temp
                (list->string vals))
             (get-epsilon #f)))
-             
+     
+      (define (maybe-put ff key val)
+         (if val
+            (put ff key val)
+            ff))
+       
       (define get-first-line
          (get-parses
             ((method 
@@ -56,52 +100,58 @@
                   (get-word "TRACE" 'trace)
                   (get-word "CONNECT" 'connect)))
              (skip (get-imm #\space))
-             (query get-query)
+             (path get-query-path)
              (query-params maybe-get-query-params)
+             (query-fragment maybe-get-query-fragment)
              (skip (get-word " HTTP/1." 'foo))
              (ver-char (get-either (get-imm #\0) (get-imm #\1)))
              (skip get-crlf))
             (-> #empty
                (put 'method method)
-               (put 'query query)
+               (put 'path path)
+               (maybe-put 'query-params query-params)
+               (maybe-put 'query-fragment query-fragment)
                )))
 
-      (define get-header-line
-         (get-parses
-            ((key (get-greedy-plus (get-byte-if (λ (x) (not (eq? x #\:))))))
-             (skip (get-imm #\:))
-             (skip (get-maybe (get-imm #\space) #f))
-             (val (get-greedy-plus (get-byte-if (λ (x) (not (eq? x #\newline))))))
-             ;(val (get-greedy-plus (get-byte-if (λ (x) (and (not (eq? x #\return) (not (eq? x #\newline))))))))
-             (skip get-crlf)
-             )
-            (cons (list->string key) (list->string val))
-            ;(cons key #f)
-            ))
-       
-      ;; doing string->symbol on all would cause memory leak
       (define (known-header->symbol str)
          (cond
             ((string-ci=? str "Host") 'host)
             ((string-ci=? str "User-Agent") 'user-agent)
             ((string-ci=? str "Referer") 'referer) ;; originally Referrer
             ((string-ci=? str "Origin") 'origin) ;; Origin > Referer, https://wiki.mozilla.org/Security/Origin
-            ((string-ci=? str "X-sid") 'x-sid)
             ((string-ci=? str "Cookie") 'cookie)
             ((string-ci=? str "Content-type") 'content-type)
             ((string-ci=? str "Content-length") 'content-length)
             ((string-ci=? str "Accept-Language") 'accept-language)
             ((string-ci=? str "Accept") 'accept) ;; text/html, text/plain, ...
             ((string-ci=? str "Accept-Encoding") 'accept-encoding)
+            ((string-ci=? str "Connection") 'connection)
             (else #false)))
+      
+      (define get-header-line
+         (get-parses
+            ((key (get-greedy-plus (get-byte-if (λ (x) (not (eq? x #\:))))))
+             (skip (get-imm #\:))
+             (skip (get-maybe (get-imm #\space) #f))
+             (val (get-greedy-plus (get-byte-if (λ (x) (not (eq? x #\newline))))))
+             (skip get-crlf))
+            (lets
+               ((key (list->string key))
+                (key (or (known-header->symbol key) key)))
+               (cons key (list->string val)))))
 
       (define get-http 
          (get-parses
             ((req get-first-line)
              (headers (get-greedy-plus get-header-line))
              (skip get-crlf))
-            (put req 'headers headers)
-            ))
+            (fold
+               (λ (req pair)
+                  (if (symbol? (car pair))
+                     (put req (car pair) (cdr pair))
+                     (put req 'headers
+                        (cons pair (get req 'headers #null)))))
+               req headers)))
                
       (define (hex-val a)
          (cond
@@ -111,19 +161,7 @@
             ((< 64 a 71) (- a 55))
             (else #false)))
 
-      (define get-byte-url-decoding
-         (get-either
-            (get-parses
-               ((skip (get-imm #\+)))
-               #\space)
-            ;(get-parses
-            ;   ((skip (get-imm #\%))
-            ;    (a get-hex)
-            ;    (b get-hex))
-            ;   (+ (<< a 4) b))
-            (get-parses
-               ((val get-rune)) ;; <- overly permissive, but works for now
-               val)))
+      
 
 
    (define (parse-http-or lst val)
@@ -141,7 +179,7 @@
             (parse-http-or lst #f))))
 
    (lets ((res tail 
-(parse-http "GET /foo?bar=bax+quux HTTP/1.1
+(parse-http "GET /foo?bar=foo+bar&baz=42#lol HTTP/1.1
 Host: localhost
 User-Agent: foo/1.0
 Accept: text/html,text/plain,application/xml;q=0.9,*/*;q=0.8
