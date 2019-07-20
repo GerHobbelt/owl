@@ -127,9 +127,15 @@ owl cfg parsing combinators and macros
          (C star-vals #n))
 
       (define (drop l x)
-         (if (eq? (car l) x)
-            (cdr l)
-            (cons (car l) (drop (cdr l) x))))
+         (cond
+            ;((eq? l #null)
+            ;   l)
+            ((eq? (car l) x)
+               (cdr l))
+            ((eq? (type (car l)) type-fix+)
+               (cons (car l) (drop (cdr l) x)))
+            (else
+               (drop (cdr l) x))))
 
       (define (greedy-star-vals a vals)
          (λ (l r ok)
