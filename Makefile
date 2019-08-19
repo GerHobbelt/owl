@@ -27,7 +27,8 @@ bin/vm: c/vm.c
 
 c/_vm.c: c/ovm.c
 	# remove comments and most white-space
-	sed -f bin/compact.sed $? >$@
+	#sed -f bin/compact.sed $? >$@
+	cp c/ovm.c c/_vm.c
 
 c/vm.c: c/_vm.c
 	echo 'static void *heap = 0;' | cat - $? >$@
@@ -90,6 +91,15 @@ random-test: bin/vm bin/ol fasl/ol.fasl
 	sh tests/run random bin/vm fasl/ol.fasl
 	sh tests/run random bin/ol
 
+## Library mode test
+
+libtest.c: libtest.scm c/lib.c bin/ol
+	bin/ol --bare -o libtest.c libtest.scm
+	sed -i 's/int main/int secondary/' libtest.c
+	cat c/lib.c >> libtest.c
+
+libtest: libtest.c
+	cc -o libtest libtest.c
 
 ## Automatically generated data
 
