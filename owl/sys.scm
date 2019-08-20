@@ -67,8 +67,8 @@ This library defines various system calls and wrappers for calling them.
       set-terminal-rawness
       mem-string      ;; pointer to null terminated string → raw string
       mem-strings     ;; **string → (raw-string ...)
-      ;peek-word       ;; these are mainly for internal (owl sys) use
-      ;peek-byte       ;;
+      peek-word       ;; these are mainly for internal (owl sys) use
+      peek-byte       ;;
       get-environment
       get-heap-bytes-written
       get-heap-max-live
