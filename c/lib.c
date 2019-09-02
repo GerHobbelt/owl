@@ -46,10 +46,16 @@ void print_list(word ptr) {
 
 int main(int nargs, char **argv) {
    uint8_t foo[] = {11, 22, 33, 44, 0, 0, 0, 0};
+   printf("vm init\n");
    init();
-   print_list(tuple_call((uint8_t *) &foo, 4, 8, 42));
-   print_list(tuple_call((uint8_t *) &foo, 3, 9, 43));
-   print_list(tuple_call((uint8_t *) &foo, 1, 9, 44));
+   printf("null call\n");
+   library_call(INULL); // empty command line
+   printf("11 call\n");
+   library_call(F(11));
+   printf("22 call\n");
+   library_call(F(22));
+   printf("33 call\n");
+   library_call(F(33));
    return 0;
 }
 

@@ -93,13 +93,13 @@ random-test: bin/vm bin/ol fasl/ol.fasl
 
 ## Library mode test
 
-libtest.c: libtest.scm c/lib.c bin/ol
-	bin/ol --bare -o libtest.c libtest.scm
+libtest.c: libtest.scm c/lib.c
+	bin/vm fasl/boot.fasl --mode library -o libtest.c libtest.scm
 	sed -i 's/int main/int secondary/' libtest.c
 	cat c/lib.c >> libtest.c
 
 libtest: libtest.c
-	cc -o libtest libtest.c
+	gcc -fsanitize=address -o libtest libtest.c
 
 ## Automatically generated data
 

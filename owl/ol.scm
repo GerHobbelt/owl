@@ -72,6 +72,13 @@
          (bytes->string (vector->list data))
          #false)))
 
+(define (choose-mode s)
+   (cond
+      ((equal? s "program") 'program) ;; threads and IO, handle command line arguments
+      ((equal? s "library") 'library) ;; threads and IO, nothing else
+      ((equal? s "plain")   'plain)   ;; just the program
+      (else #false)))
+
 (define command-line-rules
    (cl-rules
      `((help     "-h" "--help")
@@ -91,7 +98,10 @@
        ;(interactive "-i" "--interactive" comment "use builtin interactive line editor")
        ;(debug    "-d" "--debug" comment "Define *debug* at toplevel verbose compilation")
        ;(linked  #false "--most-linked" has-arg cook ,string->integer comment "compile most linked n% bytecode vectors to C")
-       (bare #false "--bare" comment "output the bare fasl-encoded result"))))
+       (mode     "-m" "--mode"    cook ,choose-mode 
+          default "program"
+          comment "output wrapping: program, library, plain")
+       )))
 
 (define brief-usage-text "Usage: ol [args] [file] ...")
 
@@ -153,22 +163,24 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                   (if (function? val)
                      (begin
                         (compiler val
+                           
                            ;; output path
                            (cond
                               ((get opts 'output #false) => self) ; requested with -o
                               ((equal? path "-") path) ; stdin → stdout
                               (else (c-source-name path)))
-                           ;; inverse option on command line, add here if set
-                           (if (get opts 'bare #false)
-                              (put opts 'no-utf8-decode #true)
-                              (put opts 'want-threads #true))
+                           
+                           opts
+                           
                            ;; to be customizable via command line opts
                            (let ((opt (abs (get opts 'optimize 0))))
                               (cond
                                  ((>= opt 2) val) ;; compile everything to native extended primops for -O2
                                  ((= opt 1) usual-suspects) ;; compile some if -O1
                                  (else #false))) ;; otherwise use bytecode and plain vm
+                           
                            (getf opts 'custom-runtime))
+                        
                            0)
                      (begin
                         (print "The last value should be a function of one value (the command line arguments), but it is instead " val)

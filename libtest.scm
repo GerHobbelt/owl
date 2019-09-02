@@ -1,18 +1,21 @@
 
 (import 
-   (only (owl sys) peek-byte))
+   (only 
+      (owl syscall) 
+      library-exit))
 
-(define (read-memory ptr len)
-   (if (eq? len 0)
-      #null
-      (cons (peek-byte ptr)
-         (read-memory (+ ptr 1) (- len 1)))))
-
-(define (echo nth)
-   (λ (arg)
-      (lets ((ptr len max seed arg))
-         (values
-            (read-memory ptr len)
-            (echo (+ nth 1))))))
-
-(echo 0)
+(λ (arg)
+   (print "Hello, we have threading")
+   (print "Arg is " arg)
+   (library-exit 
+      11
+      (λ (a)
+         (library-exit 
+            22
+            (λ (a)
+               (library-exit 
+                  33
+                  (λ (x)
+                     42)))))))
+                  
+            
