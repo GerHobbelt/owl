@@ -62,7 +62,7 @@
          (syscall 22 ts #n))
 
       (define (library-exit rval)
-         (syscall rval #f #f))
+         (syscall 24 rval #f))
          
       ;; macro for calling from code directly
       (define-syntax par
