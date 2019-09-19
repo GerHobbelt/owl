@@ -56,6 +56,9 @@ bin/ol: c/ol.c
 	test '!' -f $@ || mv $@ bin/ol-old
 	mv bin/olp $@
 
+c/ol-small.c: fasl/ol.fasl
+	# small version for release
+	bin/vm fasl/ol.fasl --run owl/ol.scm -s none -o $@
 
 ### Documentation
 
