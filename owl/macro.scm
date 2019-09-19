@@ -1,4 +1,6 @@
-;; This library implements hygienic macro expansion.
+#| doc
+This library implements hygienic macro expansion.
+|#
 
 (define-library (owl macro)
 

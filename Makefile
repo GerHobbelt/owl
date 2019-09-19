@@ -27,7 +27,8 @@ bin/vm: c/vm.c
 
 c/_vm.c: c/ovm.c
 	# remove comments and most white-space
-	sed -f bin/compact.sed $? >$@
+	#sed -f bin/compact.sed $? >$@
+	cp c/ovm.c c/_vm.c
 
 c/vm.c: c/_vm.c
 	echo 'static void *heap = 0;' | cat - $? >$@
@@ -55,6 +56,9 @@ bin/ol: c/ol.c
 	test '!' -f $@ || mv $@ bin/ol-old
 	mv bin/olp $@
 
+c/ol-small.c: fasl/ol.fasl
+	# small version for release
+	bin/vm fasl/ol.fasl --run owl/ol.scm -s none -o $@
 
 ### Documentation
 
@@ -89,7 +93,6 @@ test: bin/ol
 random-test: bin/vm bin/ol fasl/ol.fasl
 	sh tests/run random bin/vm fasl/ol.fasl
 	sh tests/run random bin/ol
-
 
 ## Automatically generated data
 

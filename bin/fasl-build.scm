@@ -1,5 +1,3 @@
-,load "owl/sys.scm" ;; fixme: remove after fasl update
-
 (import (owl sys))
 
 (define (build-stat args)

@@ -1,7 +1,6 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting to become more like a compiler entry point
-;;;
+#| doc
+Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting to become more like a compiler entry point
+|#
 
 (define-library (owl dump)
 
@@ -40,6 +39,7 @@
       (only (owl queue) qnull))
 
    (begin
+      
       ;;;
       ;;; Symbols must be properly interned in a repl.
       ;;;
@@ -349,16 +349,17 @@
          (λ (entry path opts native . custom-runtime) ; <- this is the usual compile-owl
             (lets
                ((path (get opts 'output "-")) ; <- path argument deprecated
+                (mode (opts 'mode 'program)) ;; 'program | 'library | 'plain
+                (mode (if (getf opts 'bare) 'plain mode))
                 (format
                   ;; use given format (if valid) or choose using output file suffix
                   (or (cook-format (get opts 'output-format #false))
                      (choose-output-format opts path)))
 
-                ;(_ (print " - output format " format))
-                (entry ;; start threading if requested (note how this affects the other args)
-                  (if (get opts 'want-threads #false)
-                     (with-threading entry)
-                     entry)) ; <- continue adding this next
+                (entry ;; all non-plain outputs include thread manager
+                  (if (eq? mode 'plain)
+                     entry 
+                     (with-threading entry)))
 
                 (entry ;; pass symbols to entry if requested (repls need this)
                   (if (get opts 'want-symbols #false)
@@ -380,14 +381,14 @@
                      entry))
 
                 (entry ;; possibly add code to utf-8 decode command line arguments
-                  (if (get opts 'no-utf8-decode #false)
-                     entry
-                     (with-decoded-args entry))) ;; must be pulled
+                  (if (eq? mode 'program) 
+                     (with-decoded-args entry)
+                     entry)) ;; must be pulled
 
                 (entry ;; pull command line args to owl from **argv
-                   (if (get opts 'bare #f)
-                      entry
-                      (with-args entry)))
+                   (if (eq? mode 'program)
+                      (with-args entry)
+                      entry))
 
                 (native-cook ;; make a function to possibly rewrite bytecode during save (usually to native code wrappers)
                    (make-native-cook native-ops extras))

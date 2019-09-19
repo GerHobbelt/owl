@@ -67,11 +67,13 @@ This library defines various system calls and wrappers for calling them.
       set-terminal-rawness
       mem-string      ;; pointer to null terminated string → raw string
       mem-strings     ;; **string → (raw-string ...)
-      ;peek-word       ;; these are mainly for internal (owl sys) use
-      ;peek-byte       ;;
+      peek-word       ;; these are mainly for internal (owl sys) use
+      peek-byte       ;;
       get-environment
       get-heap-bytes-written
       get-heap-max-live
+      
+      resolve-host
 
       execvp
       system)
@@ -615,4 +617,15 @@ This library defines various system calls and wrappers for calling them.
                   ;; normally with a zero status
                   (equal? (wait pid) '(1 . 0))))))
 
+      ;; prefer ipv4 
+      (define (resolve-host hostname)
+         (let loop ((offset 0) (last #false))
+            (let ((res (sys 44 hostname offset)))
+               (cond
+                  ((or (not res) (null? res)) ;; no result or last one
+                     last)
+                  ((= (vector-length res) 4) ;; ipv4 result
+                     res)
+                  (else
+                     (loop (+ offset 1) res))))))
 ))

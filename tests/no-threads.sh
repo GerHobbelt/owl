@@ -14,12 +14,12 @@ $@ --run $LISP   # interpret and run
 RINT=$?
 echo "interpret: $RINT"
 
-$@ --bare -o $FASL $LISP
+$@ --mode plain -o $FASL $LISP
 $@ --load $FASL
 RFASL=$?
 echo "fasl: $RFASL"
 
-$@ --bare -o $C $LISP
+$@ --mode plain -o $C $LISP
 $CC -o $OBJ $C 2>/dev/null
 $OBJ
 RBIN=$?
