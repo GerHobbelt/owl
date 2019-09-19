@@ -231,8 +231,8 @@ static word *compact() {
             new++;
          }
       } else {
-         if (teardown_needed(val))
-            printf("gc: would teardown\n");
+         /* if (teardown_needed(val))
+            printf("gc: would teardown\n"); */
          old += objsize(val);
       }
    }
