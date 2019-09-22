@@ -95,7 +95,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
       (define (cify-sysprim bs regs fail)
          (lets ((op a1 a2 a3 ret bs (get5 (cdr bs))))
             (values
-               (list "R["ret"]=prim_sys(R["op"],R["a1"],R["a2"],R["a3"]);")
+               (list "R["ret"]=prim_sys(R["op"],R["a1"],R["a2"],R["a3"]);\n")
                bs (del regs ret))))
 
       ;; lraw lst-reg type-reg flipp-reg to
@@ -114,7 +114,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
       ;; ref ob pos to
       (define (cify-ref bs regs fail)
          (lets ((ob pos to bs (get3 (cdr bs))))
-            (values (list "R["to"]=prim_ref(R["ob"],R["pos"]);") bs
+            (values (list "R["to"]=prim_ref(R["ob"],R["pos"]);\n") bs
                (del regs to))))
 
       ; fx+ a b r o
@@ -122,75 +122,83 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
          (lets ((a b r o bs (get4 (cdr bs))))
             (values
                ;; res is shifted down, so there is room for an overflow bit
-               (list "{hval r=immval(R["a"])+immval(R["b"]);R["o"]=F(r>>FBITS);R["r"]=F(r);}")
+               (list "{hval r=immval(R["a"])+immval(R["b"]);R["o"]=F(r>>FBITS);R["r"]=F(r);}\n")
                bs (put (put regs r 'fixnum) o 'bool))))
 
       ; fxand a b r
       (define (cify-fxand bs regs fail)
          (lets ((a b r bs (get3 (cdr bs))))
-            (values (list "R["r"]=R["a"]&R["b"];") bs
+            (values (list "R["r"]=R["a"]&R["b"];\n") bs
                (put regs r 'fixnum))))
 
       ; fxior a b r
       (define (cify-fxior bs regs fail)
          (lets ((a b r bs (get3 (cdr bs))))
-            (values (list "R["r"]=R["a"]|R["b"];") bs
+            (values (list "R["r"]=R["a"]|R["b"];\n") bs
                (put regs r 'fixnum))))
 
       ; fxxor a b r
       (define (cify-fxxor bs regs fail)
          (lets ((a b r bs (get3 (cdr bs))))
-            (values (list "R["r"]=R["a"]^(FMAX<<IPOS&R["b"]);") bs
+            (values (list "R["r"]=R["a"]^(FMAX<<IPOS&R["b"]);\n") bs
                (put regs r 'fixnum))))
 
       ; fx* a b l h
       (define (cify-fxmul bs regs fail)
          (lets ((a b l h bs (get4 (cdr bs))))
             (values
-               (list "{uint64_t p=(uint64_t)immval(R["a"])*immval(R["b"]);R["l"]=F(p);R["h"]=F(p>>FBITS);}")
+               (list "{uint64_t p=(uint64_t)immval(R["a"])*immval(R["b"]);R["l"]=F(p);R["h"]=F(p>>FBITS);}\n")
                bs (put (put regs h 'fixnum) l 'fixnum))))
 
       ; fx- a b r u
       (define (cify-fxsub bs regs fail)
          (lets ((a b r u bs (get4 (cdr bs))))
             (values
-               (list "{hval r=immval(R["a"])-immval(R["b"]);R["u"]=F(r>>FBITS&1);R["r"]=F(r);}")
+               (list "{hval r=immval(R["a"])-immval(R["b"]);R["u"]=F(r>>FBITS&1);R["r"]=F(r);}\n")
                bs (put (put regs r 'fixnum) u 'bool))))
 
       ; fx>> x n hi lo
       (define (cify-fxright bs regs fail)
          (lets ((x n hi lo bs (get4 (cdr bs))))
             (values
-               (list "{hval x=immval(R["x"]);uint n=immval(R["n"]);R["hi"]=F(x>>n);R["lo"]=F(x<<(FBITS-n));}")
+               (list "{hval x=immval(R["x"]);uint n=immval(R["n"]);R["hi"]=F(x>>n);R["lo"]=F(x<<(FBITS-n));}\n")
                bs (put (put regs lo 'fixnum) hi 'fixnum))))
 
       ; fxqr ah al b qh ql rem, for (ah<<16 | al) = (qh<<16 | ql)*b + rem
       (define (cify-fxqr bs regs fail)
          (lets ((ah al b qh ql rem bs (get6 (cdr bs))))
             (values
-               (list "{uint64_t a=(uint64_t)immval(R["ah"])<<FBITS|immval(R["al"]);hval b=immval(R["b"]);uint64_t q=a/b;R["qh"]=F(q>>FBITS);R["ql"]=F(q);R["rem"]=F(a-q*b);}")
+               (list "{uint64_t a=(uint64_t)immval(R["ah"])<<FBITS|immval(R["al"]);hval b=immval(R["b"]);uint64_t q=a/b;R["qh"]=F(q>>FBITS);R["ql"]=F(q);R["rem"]=F(a-q*b);}\n")
                bs (-> regs (put qh 'fixnum) (put ql 'fixnum) (put rem 'fixnum)))))
 
       ; mkblack, mkred
       (define (cifyer-mkff color)
          (λ (bs regs fail)
             (lets ((l k v r to bs (get5 (cdr bs))))
-               (values (list "R["to"]=prim_mkff(TFF"color",R["l"],R["k"],R["v"],R["r"]);") bs
+               (values (list "R["to"]=prim_mkff(TFF"color",R["l"],R["k"],R["v"],R["r"]);\n") bs
                   (put regs to 'alloc)))))
 
+      (define (indent i)
+         (list->string
+            (fold
+               (λ (out x) (cons #\space out))
+               #null
+               (iota 0 1 (* i 2)))))
+      
       ; bind tuple n r0 .. rn
       (define (cify-bind bs regs fail)
          (lets
             ((ob n bs (get2 (cdr bs)))
              (targets bs (split-at bs n)))
             (values
-               (ilist "{word*ob=(word*)R["ob"];hval hdr;"
+               (ilist 
+                  "{word*ob=(word*)R["ob"];hval hdr;"
                   (assert-alloc regs ob "IFALSE"
-                     (ilist "hdr=*ob;assert_not(rawp(hdr)||objsize(hdr)!="(+ 1 n)",ob,IFALSE);"
+                     (ilist "hdr=*ob;assert_not(rawp(hdr)||objsize(hdr)!="(+ 1 n)",ob,IFALSE);\n"
                         (foldr
                            (λ (n tl) ;; n = (reg . pos)
                               (ilist "R[" (car n) "]=ob[" (cdr n) "];" tl))
-                           (list "}")
+                           (list "}\n")
                            (zip cons targets (iota 1 1 (+ n 1)))))))
                bs
                (fold del regs targets))))
@@ -202,7 +210,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
             (values ;; would probably be a bad idea to use prim_withff(&l, &r, ...), as those have at
                     ;; least earlier caused an immense slowdown in compiled code
                (assert-alloc regs n 1049
-                  (list "{word*ob=(word*)R["n"];hval hdr=*ob;R["k"]=ob[1];R["v"]=ob[2];switch(objsize(hdr)){case 3:R["l"]=R["r"]=IEMPTY;break;case 4:if(1<<TPOS&hdr){R["l"]=IEMPTY;R["r"]=ob[3];}else{R["l"]=ob[3];R["r"]=IEMPTY;};break;default:R["l"]=ob[3];R["r"]=ob[4];}}"))
+                  (list "{word*ob=(word*)R["n"];hval hdr=*ob;R["k"]=ob[1];R["v"]=ob[2];switch(objsize(hdr)){case 3:R["l"]=R["r"]=IEMPTY;break;case 4:if(1<<TPOS&hdr){R["l"]=IEMPTY;R["r"]=ob[3];}else{R["l"]=ob[3];R["r"]=IEMPTY;};break;default:R["l"]=ob[3];R["r"]=ob[4];}}\n"))
                bs
                (fold del regs (list l k v r)))))
 
@@ -217,7 +225,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                   (foldr ; <- fixme: switch to foldr to write in-order
                      (λ (p tl) ; <- (pos . reg)
                         (ilist "fp[" (car p) "]=R[" (cdr p) "];" tl))
-                     (list "R[" to "]=(word)fp;fp+=" (+ nfields 1) ";")
+                     (list "R[" to "]=(word)fp;fp+=" (+ nfields 1) ";\n")
                      (zip cons (iota 1 1 (+ nfields 1)) fields)))
                bs
                (put regs to 'alloc))))
@@ -234,7 +242,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                      (fold
                         (λ (tl p) ; <- (pos . reg)
                            (ilist "fp[" (car p) "]=R[" (cdr p) "];" tl))
-                        (list "R[" to "]=(word)fp;fp+=" size ";")
+                        (list "R[" to "]=(word)fp;fp+=" size ";\n")
                         (zip cons (iota 2 1 (+ size 1)) fields)))
                   bs
                   (put regs to 'alloc)))))
@@ -253,7 +261,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                       (fold
                         (λ (tl p) ; <- (pos . reg)
                            (ilist "fp[" (car p) "]=R[" (cdr p) "];" tl))
-                        (list "R[" to "]=(word)fp;fp+=" size ";")
+                        (list "R[" to "]=(word)fp;fp+=" size ";\n")
                         (zip cons (iota 2 1 (+ size 1)) fields)))
                   bs (put regs to 'alloc)))))
 
@@ -269,7 +277,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
             (lets
                ((hi to bs (get2 (cdr bs)))
                 (val (fxior (<< hi 2) val)))
-               (values (list "R["to"]=128*"val"+258;") bs (put regs to 'fixnum)))))
+               (values (list "R["to"]=128*"val"+258;\n") bs (put regs to 'fixnum)))))
 
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       ;; translator function dispatch ff
@@ -280,7 +288,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                (cons 1 ;; indirect-ref from-reg offset to-reg
                   (λ (bs regs fail)
                      (lets ((from offset to bs (get3 (cdr bs))))
-                        (values (list "R["to"]=G(R["from"],"offset");") bs (del regs to)))))
+                        (values (list "R["to"]=G(R["from"],"offset");\n") bs (del regs to)))))
                (cons 2 ;; fixed jump-arity n hi8 lo8
                   (λ (bs regs fail)
                      (lets
@@ -295,7 +303,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                (cons 3 ;; goto <rator> <nargs>
                   (λ (bs regs fail)
                      (lets ((rator nargs bs (get2 (cdr bs))))
-                        (let ((code (list "ob=(word*)R[" rator "];acc=" nargs ";" )))
+                        (let ((code (list "ob=(word*)R[" rator "];acc=" nargs ";\n" )))
                            (values code #n regs)))))
                (cons 5 ;; move2 from1 to1 from2 to2
                   (λ (bs regs fail)
@@ -304,7 +312,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                          (from2 to2 bs (get2 bs))
                          (regs (put regs to1 (get regs from1 #false)))
                          (regs (put regs to2 (get regs from2 #false))))
-                           (values (list "R["to1"]=R["from1"];R["to2"]=R["from2"];") bs regs))))
+                           (values (list "R["to1"]=R["from1"];R["to2"]=R["from2"];\n") bs regs))))
                (cons 134 (cify-closer "TCLOS"))
                (cons 6 (cify-closer "TPROC"))
                (cons 198 (cify-closer-1 "TCLOS"))
@@ -312,7 +320,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                (cons 7 ;; eq? a b to
                   (λ (bs regs fail)
                      (lets ((a b to bs (get3 (cdr bs))))
-                        (values (list "R["to"]=BOOL(R["a"]==R["b"]);") bs regs))))
+                        (values (list "R["to"]=BOOL(R["a"]==R["b"]);\n") bs regs))))
                (cons 8 ;; jump-if-equal a b lo8 hi8
                   (λ (bs regs fail)
                      (lets
@@ -323,7 +331,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                   (λ (bs regs fail)
                      (lets ((from to bs (get2 (cdr bs))))
                         (cond ;                                                        .--> note, maybe have #false value set
-                           (else (values (list "R[" to "]=R[" from "];") bs (put regs to (get regs from #false))))))))
+                           (else (values (list "R[" to "]=R[" from "];\n") bs (put regs to (get regs from #false))))))))
                ;; 13=ldi, see higher ops
                (cons 10 (cify-load-imm 0)) ;; ldfix <n> <to>
                (cons 74 (cify-load-imm 1))
@@ -334,7 +342,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                   (λ (bs regs fail)
                      (lets ((o r bs (get2 (cdr bs))))
                         (values
-                           (list "{word ob=R["o"];if(allocp(ob))ob=V(ob);R["r"]=F((hval)ob>>TPOS&63);}")
+                           (list "{word ob=R["o"];if(allocp(ob))ob=V(ob);R["r"]=F((hval)ob>>TPOS&63);}\n")
                            bs
                            (put regs r 'fixnum)))))
                (cons 18 cify-fxand)
@@ -345,7 +353,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))
                         (values
-                           (list "ob=(word*)R[3];R[3]=R["res"];acc=1;") ; the goto apply is automatic
+                           (list "ob=(word*)R[3];R[3]=R["res"];acc=1;\n") ; the goto apply is automatic
                            #n regs)))) ;; <- always end compiling (another branch may continue here)
                ;(cons 25 ;; jump-variable-arity n
                ;   (λ (bs regs fail)
@@ -367,11 +375,11 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                (cons 44 ;; less a b r
                   (λ (bs regs fail)
                      (lets ((a b to bs (get3 (cdr bs))))
-                        (values (list "R["to"]=prim_less(R["a"],R["b"]);") bs (put regs to 'bool)))))
+                        (values (list "R["to"]=prim_less(R["a"],R["b"]);\n") bs (put regs to 'bool)))))
                (cons 45 ;; set obj offset value to ;; TODO <- was adding this one
                   (λ (bs regs fail)
                      (lets ((ob pos val to bs (get4 (cdr bs))))
-                        (values (list "R["to"]=prim_set(R["ob"],R["pos"],R["val"]);") bs
+                        (values (list "R["to"]=prim_set(R["ob"],R["pos"],R["val"]);\n") bs
                            (put regs to (get regs ob 'alloc))))))
                (cons 47 cify-ref)
                (cons 48 (cifyer-mkff ""))
@@ -381,7 +389,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                   (λ (bs regs fail)
                      (lets ((a b to bs (get3 (cdr bs))))
                         (values
-                           (list "R["to"]=cons(R["a"],R["b"]);")
+                           (list "R["to"]=cons(R["a"],R["b"]);\n")
                            bs (put regs to 'pair)))))
                (cons 105 ;; car ob to <- use this to test whether the compiler type handling
                   (λ (bs regs fail)
@@ -390,18 +398,16 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                          (known-type (get regs from #false)))
                         (cond
                            ((eq? 'pair known-type)
-                              ;(print " >>> omitting pair check from car <<<")
-                              (values (list "R[" to "]=G(R[" from "],1);") bs (del regs to)))
+                              (values (list "R[" to "]=G(R[" from "],1);\n") bs (del regs to)))
                            ((eq? 'alloc known-type)
-                              ;(print " >>> omitting immediate check from car <<<")
                               (values
-                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],105);R[" to "]=G(R[" from "],1);")
+                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],105);R[" to "]=G(R[" from "],1);\n")
                                  bs (del (put regs from 'pair) to))) ;; upgrade to pair
                            (else
                               ;(if known-type (print " >>> car on unknown type <<<" known-type))
                               ;; check that it is a pointer and an object of correct type
                               (values
-                                 (list "assert(pairp(R[" from "]),R[" from "],105);R[" to "]=G(R[" from "],1);")
+                                 (list "assert(pairp(R[" from "]),R[" from "],105);R[" to "]=G(R[" from "],1);\n")
                                  bs (del (put regs from 'pair) to)))))))
                (cons 169 ;; cdr ob to
                   (λ (bs regs fail)
@@ -410,18 +416,15 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                          (known-type (get regs from #false)))
                         (cond
                            ((eq? 'pair known-type)
-                              ;(print " >>> omitting pair check from cdr <<<")
-                              (values (list "R[" to "]=G(R[" from "],2);") bs (del regs to)))
+                              (values (list "R[" to "]=G(R[" from "],2);\n") bs (del regs to)))
                            ((eq? 'alloc known-type)
-                              ;(print " >>> omitting immediate check from cdr <<<")
                               (values
-                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],169);R[" to "]=G(R[" from "],2);")
+                                 (list "assert(V(R[" from "])==PAIRHDR,R[" from "],169);R[" to "]=G(R[" from "],2);\n")
                                  bs (del (put regs from 'pair) to))) ;; upgrade to pair
                            (else
-                              ;(if known-type (print " >>> cdr on unknown type <<<" known-type))
                               ;; check that it is a pointer and an object of correct type
                               (values
-                                 (list "assert(pairp(R[" from "]),R[" from "],169);R[" to "]=G(R[" from "],2);")
+                                 (list "assert(pairp(R[" from "]),R[" from "],169);R[" to "]=G(R[" from "],2);\n")
                                  bs (del (put regs from 'pair) to)))))))
                (cons 16 (cify-jump-imm "F(0)"))
                (cons 80 (cify-jump-imm "INULL"))
@@ -431,30 +434,31 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                (cons 59 cify-lraw)
                (cons 61 ;; arity-fail
                   (λ (bs regs fail)
-                     (values (list "error(61,ob,F(acc));") #n regs)))
+                     (values (list "error(61,ob,F(acc));\n") #n regs)))
                (cons 63 cify-sysprim)
                ;; below are lower primop + extra info (like 13=ldi<what>)
                (cons 13 ;; ldz r
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))
-                        (values (list "R["res"]=F(0);") (cddr bs) (put regs res 'fixnum)))))
+                        (values (list "R["res"]=F(0);\n") (cddr bs) (put regs res 'fixnum)))))
                (cons 77 ;; ldn r
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))
-                        (values (list "R["res"]=INULL;") (cddr bs) (put regs res 'null)))))
+                        (values (list "R["res"]=INULL;\n") (cddr bs) (put regs res 'null)))))
                (cons 141 ;; ldt r
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))
-                        (values (list "R["res"]=ITRUE;") (cddr bs) (put regs res 'bool)))))
+                        (values (list "R["res"]=ITRUE;\n") (cddr bs) (put regs res 'bool)))))
                (cons 205 ;; ldf r
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))
-                        (values (list "R["res"]=IFALSE;") (cddr bs) (put regs res 'bool)))))
+                        (values (list "R["res"]=IFALSE;\n") (cddr bs) (put regs res 'bool)))))
                )))
 
+   
       ;; regs is a ff of partial knowledge going downwards about things currently in registers
       ;; → (obs ... . tail)
-      (define (emit-c ops regs fail tail)
+      (define (emit-c ops regs fail i tail)
          ;(print "emit-c: " (list 'ops ops 'types regs))
          (if (null? ops)
             tail
@@ -471,15 +475,25 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                   ;         (emit-c ops (put regs reg reg) fail (cons "}" tail)))))
                   ((eq? res 'branch) ; 'branch #(<test> <then-bytecode> <else-bytecode>)
                      (lets ((condition then-bs then-regs else-bs else-regs tl))
-                        (cons "if("
+                        (ilist
+                           (indent i) 
+                           "if("
                            (append condition
-                              (cons "){"
-                                 (emit-c then-bs then-regs fail
-                                    (cons "}else{"
-                                       (emit-c else-bs else-regs fail (cons "}" tail)))))))))
+                              (ilist
+                                 "){\n"
+                                 (emit-c then-bs then-regs fail (+ i 1)
+                                    (ilist
+                                       (indent i)
+                                       "}else{\n"
+                                       (emit-c else-bs else-regs fail (+ i 1) 
+                                          (ilist (indent i) "}\n" tail)))))))))
 
                   (else ;; instruction compiled, handle the rest
-                     (append res (emit-c tl regs fail tail)))))))
+                     (cons
+                        (indent i)
+                        (append
+                           res 
+                           (emit-c tl regs fail i tail))))))))
 
       ;; obj extras → #false | (arity . c-code-string), to become #[arity 0 hi8 lo8] + c-code in vm
       (define (compile-to-c code extras)
@@ -489,8 +503,10 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                   (λ (ret)
                      (list->string
                         (foldr render #n
-                           (emit-c ops empty (λ () (ret #false)) #n))))))
+                           (emit-c ops empty (λ () (ret #false)) 2 #n))))))
             #false))
 ))
+
 ; (import (owl cgen))
-; (print (compile-to-c sys-prim *vm-special-ops*))
+; (print (compile-to-c (λ (x) x) #null))
+

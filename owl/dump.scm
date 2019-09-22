@@ -175,7 +175,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                         ;; render code if there (shared users do not have it)
                         (if c-code
                            ;; all of these end to an implicit goto apply
-                           (ilist "      case " opcode ":" c-code "break;\n" tl)
+                           (ilist "   case " opcode ":\n" c-code "     break;\n" tl)
                            tl)))
                   #n nops))))
 
