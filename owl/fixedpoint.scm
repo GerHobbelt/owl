@@ -16,7 +16,7 @@ This is done by constructing the fixed points manually.
    (export fix-points)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl ast)
       (owl math)
       (owl list)

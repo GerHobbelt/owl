@@ -11,7 +11,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       suspend)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl fasl)
       (owl list)
       (owl tuple)

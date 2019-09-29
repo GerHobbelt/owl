@@ -10,7 +10,7 @@ This library implements hygienic macro expansion.
       define-syntax-transformer)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl function)
       (only (owl syscall) error)

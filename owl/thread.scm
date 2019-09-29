@@ -13,7 +13,7 @@ a very small kernel.
       try-thunk try)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl queue)
       (owl syscall)
       (owl ff)

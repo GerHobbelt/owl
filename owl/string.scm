@@ -47,7 +47,7 @@
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl iff)
       (only (owl syscall) error)
       (owl unicode)

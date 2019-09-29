@@ -3,7 +3,7 @@
    (export cps)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl ast)
       (owl list)
       (owl list-extra)

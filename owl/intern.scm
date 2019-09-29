@@ -21,7 +21,7 @@ Value interning and conversions
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl string)
       (owl syscall)
       (owl list)

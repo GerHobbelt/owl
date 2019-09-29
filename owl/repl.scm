@@ -10,10 +10,10 @@
       print-repl-error
       bind-toplevel
       library-import            ; env exps fail-cont → env' | (fail-cont <reason>)
-      *owl-core*)
+      *owl-kernel*)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl eval)
       (owl primop)
@@ -48,7 +48,7 @@
             (print* msg)))
 
       ;; library (just the value of) containing only special forms, primops and
-      (define *owl-core*
+      (define *owl-kernel*
          (fold
             (λ (env op)
                (env-set env (ref op 1) (ref op 5)))
@@ -220,6 +220,7 @@
    ,expand <expr>    - expand macros in the expression
    ,find [regex|sym] - list all defined words matching regex or m/<sym>/
    ,load string      - (re)load a file
+   ,time exp         - time evaluation
    ,libraries        - show all currently loaded libraries
    ,quit             - exit owl")
 
@@ -647,7 +648,7 @@
                      (lets ((module (build-export (cdr exp) env self))) ; <- to be removed soon, dummy fail cont
                         (ok module env)))
                   ((library-definition? exp)
-                     ;; evaluate libraries in a blank *owl-core* env (only primops, specials and define-syntax)
+                     ;; evaluate libraries in a blank *owl-kernel* env (only primops, specials and define-syntax)
                      ;; include just loaded *libraries* and *include-paths* from the current one to share them
                      (lets/cc ret
                         ((exps (map cadr (cdr exp))) ;; drop the quotes
@@ -661,7 +662,7 @@
                          (lib-env
                            (fold
                               (λ (lib-env key) (env-set lib-env key (env-get env key #n)))
-                              *owl-core* library-exports))
+                              *owl-kernel* library-exports))
                          (lib-env (env-set lib-env current-library-key name)))
                         (tuple-case (repl-library exps lib-env repl fail) ;; anything else must be incuded explicitly
                            ((ok library lib-env)

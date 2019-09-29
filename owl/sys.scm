@@ -79,7 +79,7 @@ This library defines various system calls and wrappers for calling them.
       system)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl eof)
       (owl string)
       (owl math)

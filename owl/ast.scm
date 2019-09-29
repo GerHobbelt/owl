@@ -14,7 +14,7 @@ with checked structure to avoid having to constantly check S-expression structur
       (owl tuple)
       (owl list)
       (owl symbol)
-      (owl defmac)
+      (owl core)
       (owl equal)
       (owl env)
       (scheme cxr))

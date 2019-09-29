@@ -7,7 +7,7 @@
       procedure?)
 
    (import
-      (owl defmac)
+      (owl core)
       (only (owl ff) ff?)
       (only (owl syscall) interact))
 

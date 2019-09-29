@@ -124,7 +124,7 @@ data structures without complex key hashing and collision checks.
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl proof)
       (only (owl primop) object-size)

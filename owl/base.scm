@@ -5,7 +5,7 @@ This library defines the default toplevel.
 (define-library (owl base)
 
    (export
-      (exports (owl defmac))
+      (exports (owl core))
       (exports (owl list))
       (exports (owl rlist))
       (exports (owl list-extra))
@@ -44,7 +44,7 @@ This library defines the default toplevel.
       (exports (scheme write)))
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl rlist)
       (owl list-extra)

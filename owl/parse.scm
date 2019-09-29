@@ -35,7 +35,7 @@ owl cfg parsing combinators and macros
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl function)
       (owl lazy)
       (owl list)

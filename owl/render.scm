@@ -5,7 +5,7 @@ making printable representations
 (define-library (owl render)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl eof)
       (owl string)
       (owl list)

@@ -8,7 +8,7 @@ Compile AST to a code instruction tree suitable for assembly
       compile)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math)
       (owl list)
       (owl bytevector)

@@ -21,7 +21,7 @@
       diff union intersect)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl proof)
       (only (owl syscall) error))
 

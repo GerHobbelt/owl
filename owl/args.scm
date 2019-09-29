@@ -13,7 +13,7 @@ in the usual way.
       cl-rules)            ;; sexp → cl-rules
 
    (import
-      (owl defmac)
+      (owl core)
       (owl symbol)
       (owl list-extra)
       (owl lazy)

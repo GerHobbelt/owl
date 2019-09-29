@@ -13,7 +13,7 @@
       read read-ll)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl eof)
       (only (owl parse) fd->exp-stream parses one-of silent-syntax-fail try-parse)
       (prefix (only (owl parse) byte byte-if parses either epsilon greedy-plus greedy-star imm rune rune-if star word) get-)

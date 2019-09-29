@@ -9,7 +9,7 @@ Convert lambdas to closures where necessary
       uncompiled-closure?)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (only (owl syscall) error)
       (owl ast)

@@ -40,7 +40,7 @@ lists do not cache their results.
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl list-extra)
       (owl math complex)

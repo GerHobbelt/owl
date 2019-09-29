@@ -18,7 +18,7 @@ valid rational number has q != 0, q != 1, and gcd(p, q) = 1.
       negate)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl ff) ;; used in gcd
       (owl list)
       (only (owl syscall) error)

@@ -72,7 +72,7 @@ Simple direct blocking IO (replaces the old thread-based one)
    )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl eof)
       (owl syscall)
       (owl queue)

@@ -44,7 +44,7 @@ up Owl are just fasl-encoded functions.
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl bytevector)
       (owl math)
       (owl primop)

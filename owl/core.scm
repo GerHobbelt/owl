@@ -1,5 +1,5 @@
 
-(define-library (owl defmac)
+(define-library (owl core)
 
    (export
       λ syntax-error begin

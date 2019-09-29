@@ -240,7 +240,7 @@
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl eof)
       (owl equal)
       (owl list)

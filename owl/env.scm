@@ -18,7 +18,7 @@
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl ff)
       (owl function)
       (owl list)

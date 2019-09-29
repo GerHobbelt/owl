@@ -10,7 +10,7 @@ Suffix arrays are a useful data structure for speeding up searches from strings.
    )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math)
       (owl list)
       (owl sort)

@@ -12,7 +12,7 @@ Functions for handling symbols.
       render-symbol)
 
    (import
-      (owl defmac)
+      (owl core)
       (only (owl list) every)
       (owl string)
       (only (owl syscall) error interact))

@@ -11,7 +11,7 @@ Number stores (radix trees with a ff at each node)
    (export iget iput ifold iff->list)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl ff)
       (only (owl math integer) ncar ncdr ncons)
       (owl list))

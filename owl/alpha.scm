@@ -14,7 +14,7 @@ avoid having to track variable shadowing.
    (export alpha-convert)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl gensym)
       (owl ast)
       (owl math)

@@ -22,7 +22,7 @@ environment.
       exported-eval)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl env)
       (owl ast)
       (owl fixedpoint)

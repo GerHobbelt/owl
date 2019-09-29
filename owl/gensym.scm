@@ -22,7 +22,7 @@ original expression.
       gensym)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl symbol)
       (owl string)
       (only (owl syscall) error)

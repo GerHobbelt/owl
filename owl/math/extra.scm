@@ -28,7 +28,7 @@
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math complex)
       (owl iff)
       (owl list)

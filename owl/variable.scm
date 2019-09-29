@@ -12,7 +12,7 @@ This library introduces seemingly variable values
       link-variable)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl io)
       (only (owl syscall) mail interact wait-mail thread thunk->thread link)

@@ -21,7 +21,7 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
       rex-matches)
 
    (import
-      (owl defmac)
+      (owl core)
       (only (owl parse) one-of try-parse)
       (prefix (only (owl parse) byte either epsilon imm parses star plus) get-)
       (only (owl syscall) error)

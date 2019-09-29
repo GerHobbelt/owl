@@ -1,6 +1,6 @@
 (define-library (owl rlist)
    (import
-      (owl defmac)
+      (owl core)
       (owl proof)
 
       ;; alternative implementations

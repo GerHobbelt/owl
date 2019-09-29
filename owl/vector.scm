@@ -71,7 +71,7 @@ Vectors use the same order, but with 256-ary trees.
       *vec-leaf-size*)     ; needed for vector IO
 
    (import
-      (owl defmac)
+      (owl core)
       (owl lazy)
       (owl bytevector)
       (owl list)

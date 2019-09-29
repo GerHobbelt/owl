@@ -23,18 +23,20 @@
  | DEALINGS IN THE SOFTWARE.
  |#
 
+,load "owl/core.scm"
+
 (mail 'intern (tuple 'flush)) ;; ask symbol interner to forget all symbols it knows
 
 (define *libraries* #n) ;; clear loaded libraries
 
-(import (owl defmac)) ;; reload default macros needed for defining libraries etc
+(import (owl core))   ;; reload default macros needed for defining libraries etc
 
 ;; forget everhything except these and core values (later list also them explicitly)
 ,forget-all-but (quote *libraries* _branch _define rlambda)
 
 ;; --------------------------------------------------------------------------------
 
-(import (owl defmac))   ;; get define, define-library, import, ... from the just loaded (owl defmac)
+(import (owl core))   ;; get define, define-library, import, ... from the just loaded (owl core)
 
 (define *interactive* #false) ;; be verbose
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
@@ -63,7 +65,7 @@
 (define initial-environment
    (bind-toplevel
       (env-fold env-put-raw
-         *owl-core*
+         *owl-kernel*
          (cdr (assoc '(owl base) *libraries*)))))
 
 (define (path->string path)

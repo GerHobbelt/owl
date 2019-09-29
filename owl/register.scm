@@ -14,7 +14,7 @@ Register allocation
       n-registers)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl ff)
       (owl math)
       (owl list-extra)

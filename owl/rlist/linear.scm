@@ -1,7 +1,7 @@
 (define-library (owl rlist linear)
    
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl list-extra))
 

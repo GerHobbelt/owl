@@ -6,7 +6,7 @@
       example)
 
    (import
-      (owl defmac)
+      (owl core)
       (only (owl syscall) error)
       (owl equal-prim))
 

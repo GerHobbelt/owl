@@ -18,7 +18,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
    )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl list-extra)
       (owl bytevector)

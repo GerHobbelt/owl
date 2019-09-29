@@ -10,7 +10,7 @@ This library implements bytecode assembly.
       small-value?)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl ff)
       (owl list)
       (owl math)
