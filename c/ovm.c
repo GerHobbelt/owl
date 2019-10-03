@@ -1243,13 +1243,17 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          hval size = immval(A1) + 1;
          word *lst = (word *)A2;
          word *ob;
-         allocate(size, ob);
-         A3 = (word) ob;
-         *ob++ = make_header(size, type);
-         while (--size) {
-            assert(pairp(lst), lst, 35);
-            *ob++ = lst[1];
-            lst = (word *) lst[2];
+         if (size < MAXOBJ) {
+            allocate(size, ob);
+            A3 = (word) ob;
+            *ob++ = make_header(size, type);
+            while (--size) {
+               assert(pairp(lst), lst, 35);
+               *ob++ = lst[1];
+               lst = (word *) lst[2];
+            }
+         } else {
+            A3 = IFALSE;
          }
          NEXT(4); }
       case 39: { /* fx* a b l h */
