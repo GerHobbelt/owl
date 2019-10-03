@@ -289,20 +289,20 @@ up Owl are just fasl-encoded functions.
                            ;; could just rcons obj to got, but some thigns are special when
                            ;; doing just partial heap transfers
                            (cond
-                              ((symbol? obj)
-                                 ;; symbols must be (re)interned. they are only valid up to equalit within the fasl.
-                                 (decoder ll
-                                    (rcons
-                                       (string->symbol (symbol->string obj))
-                                       got)
-                                    fail))
-                              ((ff? obj)
-                                 ;; WARNING: this is expensive! but correct and used for now
-                                 (ff-bind obj
-                                    (λ (l k v r)
-                                       (decoder ll
-                                          (rcons (ff-union l (put r k v)) got)
-                                          fail))))
+                              ;((symbol? obj)
+                              ;   ;; symbols must be (re)interned. they are only valid up to equalit within the fasl.
+                              ;   (decoder ll
+                              ;      (rcons
+                              ;         (string->symbol (symbol->string obj))
+                              ;         got)
+                              ;      fail))
+                              ;((ff? obj)
+                              ;   ;; WARNING: not safe if obj is invalid
+                              ;   (ff-bind obj
+                              ;      (λ (l k v r)
+                              ;         (decoder ll
+                              ;            (rcons (ff-union l (put r k v)) got)
+                              ;            fail))))
                               (else
                                  (decoder ll (rcons obj got) fail)))))
                      ((eq? kind 2) ; raw, type SIZE byte ...
