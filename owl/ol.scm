@@ -90,6 +90,7 @@
        (test     "-t" "--test"     has-arg comment "evaluate given expression exit with 0 unless the result is #false")
        (quiet    "-q" "--quiet"    comment "be quiet (default in non-interactive mode)")
        (run      "-r" "--run"      has-arg comment "run the last value of the given foo.scm with given arguments" terminal)
+       (include  "-i" "--include"  has-arg comment "extra directory to load libraries from" plural)
        (load     "-l" "--load"     has-arg comment "resume execution of a saved program state saved with suspend")
        (output   "-o" "--output"   has-arg comment "where to put compiler output (default auto)")
        (output-format  "-x" "--output-format"   has-arg comment "output format when compiling (default auto)")
@@ -100,7 +101,7 @@
        ;(interactive "-i" "--interactive" comment "use builtin interactive line editor")
        ;(debug    "-d" "--debug" comment "Define *debug* at toplevel verbose compilation")
        ;(linked  #false "--most-linked" has-arg cook ,string->integer comment "compile most linked n% bytecode vectors to C")
-       (mode     "-m" "--mode"    cook ,choose-mode 
+       (mode     "-m" "--mode"    cook ,choose-mode
           default "program"
           comment "output wrapping: program, library, plain")
        )))
@@ -165,24 +166,24 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                   (if (function? val)
                      (begin
                         (compiler val
-                           
+
                            ;; output path
                            (cond
                               ((get opts 'output #false) => self) ; requested with -o
                               ((equal? path "-") path) ; stdin → stdout
                               (else (c-source-name path)))
-                           
+
                            opts
-                           
+
                            ;; to be customizable via command line opts
                            (let ((opt (abs (get opts 'optimize 0))))
                               (cond
                                  ((>= opt 2) val) ;; compile everything to native extended primops for -O2
                                  ((= opt 1) usual-suspects) ;; compile some if -O1
                                  (else #false))) ;; otherwise use bytecode and plain vm
-                           
+
                            (getf opts 'custom-runtime))
-                        
+
                            0)
                      (begin
                         (print "The last value should be a function of one value (the command line arguments), but it is instead " val)
@@ -256,7 +257,10 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                 (env ;; maybe set debug causing (owl eval) to print intermediate steps
                   (if (getf dict 'debug)
                      (env-set env '*debug* #true)
-                     env)))
+                     env))
+                (env ;; add -i include directories, if any
+                   (env-set env '*include-dirs*
+                      (append (get dict 'include #null) (env-get env '*include-dirs* #null)))))
                (cond
                   ((getf dict 'help)
                      (print brief-usage-text)
@@ -307,6 +311,12 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
    (make-compiler #empty))
 
+(define (enlist x)
+   (cond
+      ((pair? x) x)
+      ((null? x) x)
+      (else (cons x #null))))
+
 (define (heap-entry symbol-list)
    (λ (codes) ;; all my codes are belong to codes
       (lets
@@ -352,7 +362,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                                                 (cons '*owl* (directory-of (car vm-args)))
                                                 (cons '*args* vm-args)
                                                 (cons '*features* *features*)
-                                                (cons '*include-dirs* *include-dirs*) ;; todo: add command line flag
+                                                (cons '*include-dirs* *include-dirs*)
                                                 (cons '*libraries* *libraries*)
                                                 (cons 'dump compiler)
                                                 (cons '*owl-version* *owl-version*)
