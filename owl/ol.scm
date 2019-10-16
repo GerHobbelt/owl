@@ -86,6 +86,7 @@
      `((help     "-h" "--help")
        (about    "-a" "--about")
        (version  "-v" "--version")
+       (readline "-R" "--readline" comment "enable line editor")
        (evaluate "-e" "--eval"     has-arg comment "evaluate given expression and print result")
        (test     "-t" "--test"     has-arg comment "evaluate given expression exit with 0 unless the result is #false")
        (quiet    "-q" "--quiet"    comment "be quiet (default in non-interactive mode)")
@@ -95,7 +96,7 @@
        (output   "-o" "--output"   has-arg comment "where to put compiler output (default auto)")
        (output-format  "-x" "--output-format"   has-arg comment "output format when compiling (default auto)")
        (optimize "-O" "--optimize" cook ,string->number comment "optimization level in C-compilation (0-2)")
-       (custom-runtime "-R" "--runtime"
+       (custom-runtime "-C" "--runtime"
           cook ,path->string
           comment "use a custom runtime in C compilation")
        ;(interactive "-i" "--interactive" comment "use builtin interactive line editor")
@@ -124,7 +125,7 @@
             ;; be silent when all is ok
             ;; exit with 126 and have error message go to stderr when the run crashes
             (try (λ () (val args)) 126))
-         ((error reason env)
+         ((error reason env input)
             (print-repl-error
                (list "ol: cannot run" path "because there was an error during loading:" reason))
             2))
@@ -188,7 +189,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                      (begin
                         (print "The last value should be a function of one value (the command line arguments), but it is instead " val)
                         2)))
-               ((error reason env)
+               ((error reason env input)
                   (print-repl-error
                      (list "Cannot compile" path "because " reason))
                   2)
@@ -212,7 +213,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       ((ok val env)
          (exit-owl
             (if (print val) 0 126)))
-      ((error reason partial-env)
+      ((error reason partial-env input)
          (print-repl-error
             (list "An error occurred while evaluating:" str reason))
          (exit-owl 1))
@@ -224,7 +225,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
    (tuple-case (repl-string env str)
       ((ok val env)
          (exit-owl (if val 0 1)))
-      ((error reason partial-env)
+      ((error reason partial-env input)
          (print-repl-error
             (list "An error occurred while evaluating:" str reason))
          (exit-owl 126))
@@ -286,9 +287,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                   ((null? others)
                      (greeting env)
                      (repl-trampoline repl
-                        (-> env
-                           ;(env-set '*line-editor* (getf dict 'interactive))
-                           )))
+                        (env-set env '*readline* (getf dict 'readline))))
                   (else
                      ;; load the given files
                      (define input
@@ -296,7 +295,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                      (tuple-case (repl (env-set env '*interactive* #false) input)
                         ((ok val env)
                            0)
-                        ((error reason partial-env)
+                        ((error reason partial-env input)
                            (print-repl-error reason)
                            1)))))))
       2))

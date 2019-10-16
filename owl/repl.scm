@@ -27,7 +27,8 @@
       (owl render)
       (owl string)
       (owl sexp)
-      (only (owl parse) fd->exp-stream file->exp-stream resuming-syntax-fail silent-syntax-fail try-parse)
+      (only (owl readline) port->readline-byte-stream)
+      (only (owl parse) fd->exp-stream byte-stream->exp-stream file->exp-stream resuming-syntax-fail silent-syntax-fail try-parse)
       (prefix (only (owl parse) plus) get-kleene-)
       (owl function)
       (scheme base)
@@ -167,7 +168,8 @@
 
       (define (syntax-error? x) (and (pair? x) (eq? syntax-error-mark (car x))))
 
-      (define (repl-fail env reason) (tuple 'error reason env))
+      (define (repl-fail env input reason) (tuple 'error reason env input))
+
       (define (repl-ok env value) (tuple 'ok value env))
 
       ;; just be quiet
@@ -196,10 +198,11 @@
                   (tuple-case outcome
                      ((ok val env)
                         (ok val (env-set env '*interactive* current-prompt)))
-                     ((error reason partial-env)
+                     ((error reason partial-env inputp)
                         ; FIXME: check that the fd is closed!
-                        (repl-fail env (list "Could not load" path "because" reason)))))
+                        (repl-fail env #f (list "Could not load" path "because" reason)))))
                (repl-fail env
+                  #f
                   (list "Could not find any of"
                      (list path (string-append (env-get env '*owl* "") path))
                      "for loading.")))))
@@ -239,11 +242,11 @@
                         ((ok exp env)
                            (prompt env (repl-message (string-append ";; Loaded " op)))
                            (repl env in))
-                        ((error reason envp)
+                        ((error reason envp inputp)
                            (prompt env (repl-message (string-append ";; Failed to load " op)))
                            ;; drop out of loading (recursively) files, or hit repl trampoline on toplevel
-                           (repl-fail env reason)))
-                     (repl-fail env (list "expected ,load \"dir/foo.scm\", got " op)))))
+                           (repl-fail env in reason)))
+                     (repl-fail env in (list "expected ,load \"dir/foo.scm\", got " op)))))
             ((forget-all-but)
                (lets ((op in (uncons in #false)))
                   (if (symbols? op)
@@ -255,7 +258,7 @@
                                     name
                                     #false)))
                            in))
-                     (repl-fail env (list "bad word list: " op)))))
+                     (repl-fail env in (list "bad word list: " op)))))
             ((words w)
                (prompt env
                   (repl-message
@@ -432,11 +435,14 @@
                            (cons #\/ tl))))
                   #n iset))))
 
+      (define (envalidate-path path)
+         (s/([/.])\1+/\1/g path))
+
       ;; try to find and parse contents of <path> and wrap to (begin ...) or call fail
       (define (repl-include env path fail)
          (lets
             ((include-dirs (env-get env includes-key #n))
-             (conv (λ (dir) (list->string (append (string->list dir) (cons #\/ (string->list path))))))
+             (conv (λ (dir) (envalidate-path (list->string (append (string->list dir) (cons #\/ (string->list path)))))))
              (paths (map conv include-dirs))
              (contentss (map file->list paths))
              (data (find self contentss)))
@@ -467,7 +473,7 @@
                      ((ok value env)
                         ;; we now have the library if it was defined in the file
                         (values 'ok env))
-                     ((error reason env)
+                     ((error reason env inputp)
                         ;; no way to distinquish errors in the library from missing library atm
                         (values 'error reason)))
                   (values 'not-found (library-name->path iset))))
@@ -547,7 +553,7 @@
                   ((ok value env)
                      ;; continue on to other defines or export
                      (repl-library (cdr exp) env repl fail))
-                  ((error reason env)
+                  ((error reason env in)
                      (fail reason))))
             ((headed? 'export (car exp))
                ;; build the export out of current env
@@ -682,7 +688,7 @@
                                           (remove ;; drop the loading tag for this library
                                              (B (C equal? name) car)
                                              (env-get lib-env library-key #n))))))) ; <- lib-env may also have just loaded dependency libs
-                           ((error reason not-env)
+                           ((error reason not-env in)
                               (fail
                                  (list "Library" name "failed to load because" reason))))))
                   (else
@@ -691,7 +697,7 @@
                (tuple 'fail
                   (list "Macro expansion of" exp "failed: " reason)))))
 
-      ; (repl env in) -> #(ok value env) | #(error reason env)
+      ; (repl env in) -> #(ok value env) | #(error reason env remaining-input|#f)
 
       (define (repl env in)
          (let loop ((env env) (in in) (last 'blank))
@@ -704,7 +710,7 @@
                         ((eof-object? this)
                            (repl-ok env last))
                         ((syntax-error? this)
-                           (repl-fail env (cons "This makes no sense: " (cdr this))))
+                           (repl-fail env in (cons "This makes no sense: " (cdr this))))
                         ((repl-op? this)
                            (repl-op repl (cadr this) in env))
                         (else
@@ -713,7 +719,7 @@
                                  (prompt env result)
                                  (loop env in result))
                               ((fail reason)
-                                 (repl-fail env reason)))))))
+                                 (repl-fail env in reason)))))))
                (else
                   ;; prompt here
                   (loop env (in) last)))))
@@ -723,7 +729,11 @@
 
       (define (stdin-sexp-stream env)
          (λ ()
-            (fd->exp-stream stdin sexp-parser
+            (byte-stream->exp-stream
+               (if (env-get env '*readline* #f)
+                  (port->readline-byte-stream stdin)
+                  (port->byte-stream stdin))
+               sexp-parser
                (resuming-syntax-fail
                   (λ (x)
                      ;; x is not typically a useful error message yet
@@ -731,16 +741,19 @@
                      (if (env-get env '*interactive* #false)
                         (display "> ")))))))  ;; reprint prompt
 
+      ;; todo: return also the input stream here to preserve history and state
+
       (define (repl-trampoline repl env)
-         (tuple-case (repl env (stdin-sexp-stream env))
-            ((ok val env)
-               ;; the end
-               (if (env-get env '*interactive* #false)
-                  (print "bye bye _o/~"))
-               (halt 0))
-            ((error reason env)
-               (prompt env (repl-message (str ";; " reason)))
-               (repl-trampoline repl env))))
+         (let loop ((env env) (input (stdin-sexp-stream env)))
+            (tuple-case (repl env input)
+               ((ok val env)
+                  ;; the end
+                  (if (env-get env '*interactive* #false)
+                     (print "bye bye _o/~"))
+                  (halt 0))
+               ((error reason env input)
+                  (prompt env (repl-message (str ";; " reason)))
+                  (loop env input)))))
 
       (define (repl-port env fd)
          (repl env
