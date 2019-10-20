@@ -30,6 +30,7 @@ environment.
       (owl cps)
       (owl closure)
       (owl compile)
+      (only (owl primop) lets/cc)
       (owl list)
       (owl macro)
       (only (owl primop) call/cc)
@@ -84,14 +85,11 @@ environment.
             (tuple 'fail "an error occurred")))
 
       (define (exported-eval exp env)
-         (tuple-case (macro-expand exp env)
-            ((ok exp env)
-               (tuple-case (evaluate exp env)
-                  ((ok value env)
-                     value)
-                  ((fail reason)
-                     #false)))
-            ((fail reason)
-               #false)))
+         (lets/cc fail
+            ((abort (λ (why) (fail #f)))
+             (env exp (macro-expand exp env abort)))
+            (tuple-case (evaluate exp env)
+               ((ok value env) value)
+               ((fail why) #f))))
 
 ))

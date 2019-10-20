@@ -44,10 +44,6 @@
       (define (ok exp env) (tuple 'ok exp env))
       (define (fail reason) (tuple 'fail reason))
 
-      (define (debug env . msg)
-         (if (env-get env '*debug* #false)
-            (print* msg)))
-
       ;; library (just the value of) containing only special forms, primops and
       (define *owl-kernel*
          (fold
@@ -299,7 +295,7 @@
                (repl env in))
             ((expand)
                (lets ((exp in (uncons in #false)))
-                  (tuple-case (macro-expand exp env)
+                  (tuple-case (macro-expand exp env) ;; fixme: api changed 
                      ((ok exp env)
                         (print exp))
                      ((fail reason)
@@ -602,100 +598,96 @@
                `(defined in ,(env-get env current-library-key 'repl)))))
 
       (define (eval-repl exp env repl)
-         (debug env "Evaling " exp)
-         (tuple-case (macro-expand exp env)
-            ((ok exp env)
-               (debug env " * expanded to " exp)
-               (cond
-                  ((import? exp) ;; <- new library import, temporary version
-                     (lets
-                        ((envp (toplevel-library-import env (cdr exp) repl)))
-                        (if (pair? envp) ;; the error message
-                           (fail envp)
+         (lets/cc ret
+            ((abort (λ (why) (tuple 'fail (list "Macro expansion of " exp " failed: " why))))
+             (env exp (macro-expand exp env abort)))
+            (cond
+               ((import? exp) ;; <- new library import, temporary version
+                  (lets
+                     ((envp (toplevel-library-import env (cdr exp) repl)))
+                     (if (pair? envp) ;; the error message
+                        (fail envp)
+                        (ok
+                           (repl-message
+                              (list->string
+                                 (foldr render #n
+                                    (cons ";; Imported " (cdr exp)))))
+                           envp))))
+               ((definition? exp)
+                  (tuple-case (evaluate (caddr exp) env)
+                     ((ok value env2)
+                        (lets
+                           ((env (env-set env (cadr exp) value))
+                            (env (maybe-name-function env (cadr exp) value))
+                            ;(env (maybe-save-metadata env (cadr exp) value))
+                            )
                            (ok
                               (repl-message
-                                 (list->string
-                                    (foldr render #n
-                                       (cons ";; Imported " (cdr exp)))))
-                              envp))))
-                  ((definition? exp)
-                     (tuple-case (evaluate (caddr exp) env)
-                        ((ok value env2)
+                                 (bytes->string (render ";; Defined " (render (cadr exp) #n))))
+                              (bind-toplevel env))))
+                     ((fail reason)
+                        (fail
+                           (list "Definition of" (cadr exp) "failed because" reason)))))
+               ((multi-definition? exp)
+                  (tuple-case (evaluate (caddr exp) env)
+                     ((ok value env2)
+                        (let ((names (cadr exp)))
+                           (if (and (list? value)
+                                 (= (length value) (length names)))
+                              (ok (repl-message ";; All defined")
+                                 (fold
+                                    (λ (env pair)
+                                       (env-set env (car pair) (cdr pair)))
+                                    env
+                                    (zip cons names value)))
+                              (fail
+                                 (list "Didn't get expected values for definition of " names)))))
+                     ((fail reason)
+                        (fail
+                           (list "Definition of" (cadr exp) "failed because" reason)))))
+               ((export? exp)
+                  (lets ((module (build-export (cdr exp) env self))) ; <- to be removed soon, dummy fail cont
+                     (ok module env)))
+               ((library-definition? exp)
+                  ;; evaluate libraries in a blank *owl-kernel* env (only primops, specials and define-syntax)
+                  ;; include just loaded *libraries* and *include-paths* from the current one to share them
+                  (lets/cc ret
+                     ((exps (map cadr (cdr exp))) ;; drop the quotes
+                      (name exps (uncons exps #false))
+                      (libs (env-get env library-key #n))
+                      ;; mark the current library as being loaded for circular dependency detection
+                      (env (env-set env library-key (cons (cons name 'loading) libs)))
+                      (fail
+                        (λ (reason)
+                           (ret (fail (list "Library" name "failed:" reason)))))
+                      (lib-env
+                        (fold
+                           (λ (lib-env key) (env-set lib-env key (env-get env key #n)))
+                           *owl-kernel* library-exports))
+                      (lib-env (env-set lib-env current-library-key name)))
+                     (tuple-case (repl-library exps lib-env repl fail) ;; anything else must be incuded explicitly
+                        ((ok library lib-env)
+                           ;; get new function names and metadata from lib-env (later to be handled differently)
                            (lets
-                              ((env (env-set env (cadr exp) value))
-                               (env (maybe-name-function env (cadr exp) value))
-                               ;(env (maybe-save-metadata env (cadr exp) value))
-                               )
+                              ((names (env-get lib-env name-tag empty))
+                               (env (env-set env name-tag (ff-union (env-get env name-tag empty) names (λ (old new) new))))
+                               (meta (env-get lib-env meta-tag empty))
+                               (env (env-set env meta-tag (ff-union (env-get env meta-tag empty) meta (λ (old new) new)))))
                               (ok
                                  (repl-message
-                                    (bytes->string (render ";; Defined " (render (cadr exp) #n))))
-                                 (bind-toplevel env))))
-                        ((fail reason)
+                                    (list->string
+                                       (foldr render #n
+                                          (list ";; Library " name " added" ))))
+                                 (env-set env library-key
+                                    (cons (cons name library)
+                                       (remove ;; drop the loading tag for this library
+                                          (B (C equal? name) car)
+                                          (env-get lib-env library-key #n))))))) ; <- lib-env may also have just loaded dependency libs
+                        ((error reason not-env in)
                            (fail
-                              (list "Definition of" (cadr exp) "failed because" reason)))))
-                  ((multi-definition? exp)
-                     (tuple-case (evaluate (caddr exp) env)
-                        ((ok value env2)
-                           (let ((names (cadr exp)))
-                              (if (and (list? value)
-                                    (= (length value) (length names)))
-                                 (ok (repl-message ";; All defined")
-                                    (fold
-                                       (λ (env pair)
-                                          (env-set env (car pair) (cdr pair)))
-                                       env
-                                       (zip cons names value)))
-                                 (fail
-                                    (list "Didn't get expected values for definition of " names)))))
-                        ((fail reason)
-                           (fail
-                              (list "Definition of" (cadr exp) "failed because" reason)))))
-                  ((export? exp)
-                     (lets ((module (build-export (cdr exp) env self))) ; <- to be removed soon, dummy fail cont
-                        (ok module env)))
-                  ((library-definition? exp)
-                     ;; evaluate libraries in a blank *owl-kernel* env (only primops, specials and define-syntax)
-                     ;; include just loaded *libraries* and *include-paths* from the current one to share them
-                     (lets/cc ret
-                        ((exps (map cadr (cdr exp))) ;; drop the quotes
-                         (name exps (uncons exps #false))
-                         (libs (env-get env library-key #n))
-                         ;; mark the current library as being loaded for circular dependency detection
-                         (env (env-set env library-key (cons (cons name 'loading) libs)))
-                         (fail
-                           (λ (reason)
-                              (ret (fail (list "Library" name "failed:" reason)))))
-                         (lib-env
-                           (fold
-                              (λ (lib-env key) (env-set lib-env key (env-get env key #n)))
-                              *owl-kernel* library-exports))
-                         (lib-env (env-set lib-env current-library-key name)))
-                        (tuple-case (repl-library exps lib-env repl fail) ;; anything else must be incuded explicitly
-                           ((ok library lib-env)
-                              ;; get new function names and metadata from lib-env (later to be handled differently)
-                              (lets
-                                 ((names (env-get lib-env name-tag empty))
-                                  (env (env-set env name-tag (ff-union (env-get env name-tag empty) names (λ (old new) new))))
-                                  (meta (env-get lib-env meta-tag empty))
-                                  (env (env-set env meta-tag (ff-union (env-get env meta-tag empty) meta (λ (old new) new)))))
-                                 (ok
-                                    (repl-message
-                                       (list->string
-                                          (foldr render #n
-                                             (list ";; Library " name " added" ))))
-                                    (env-set env library-key
-                                       (cons (cons name library)
-                                          (remove ;; drop the loading tag for this library
-                                             (B (C equal? name) car)
-                                             (env-get lib-env library-key #n))))))) ; <- lib-env may also have just loaded dependency libs
-                           ((error reason not-env in)
-                              (fail
-                                 (list "Library" name "failed to load because" reason))))))
-                  (else
-                     (evaluate exp env))))
-            ((fail reason)
-               (tuple 'fail
-                  (list "Macro expansion of" exp "failed: " reason)))))
+                              (list "Library" name "failed to load because" reason))))))
+               (else
+                  (evaluate exp env)))))
 
       ; (repl env in) -> #(ok value env) | #(error reason env remaining-input|#f)
 
