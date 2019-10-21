@@ -24,7 +24,7 @@ a very small kernel.
       (owl tuple)
       (owl string)
       (owl render)
-      (owl env)
+      (owl eval env)
       (owl io)
       (owl port))
 
@@ -290,14 +290,14 @@ a very small kernel.
                      (cons (tuple id (λ () (cont target))) todo)
                      done
                      (put state link-tag links))))
-            
+
             ;; 24, exit process saving state
             (λ (id cont return-value c todo done state tc)
                (values
-                  
+
                   ;; return from thread scheduler
                   return-value
-                  
+
                   ;; only to be brought back to life later
                   (λ (new-input)
                      (tc tc

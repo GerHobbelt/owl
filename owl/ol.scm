@@ -45,8 +45,8 @@
 
 (import
    (owl intern)
-   (owl env)
-   (owl ast)
+   (owl eval env)
+   (owl eval ast)
    (owl thread)
    (owl args)
    (only (owl dump) make-compiler load-fasl)

@@ -12,7 +12,7 @@ todo: support variable arity functions
 todo: keep all fixnum variables in registers unboxed with a special type, and add guards to saves and calls to tag them lazily. this would remove a lot of payload shifting from math code.
 |#
 
-(define-library (owl cgen)
+(define-library (owl eval cgen)
    (export
       compile-to-c            ;; obj extras → #false | c-code-string
    )
@@ -184,14 +184,14 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                (λ (out x) (cons #\space out))
                #null
                (iota 0 1 (* i 2)))))
-      
+
       ; bind tuple n r0 .. rn
       (define (cify-bind bs regs fail)
          (lets
             ((ob n bs (get2 (cdr bs)))
              (targets bs (split-at bs n)))
             (values
-               (ilist 
+               (ilist
                   "{word*ob=(word*)R["ob"];hval hdr;"
                   (assert-alloc regs ob "IFALSE"
                      (ilist "hdr=*ob;assert_not(rawp(hdr)||objsize(hdr)!="(+ 1 n)",ob,IFALSE);\n"
@@ -455,7 +455,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                         (values (list "R["res"]=IFALSE;\n") (cddr bs) (put regs res 'bool)))))
                )))
 
-   
+
       ;; regs is a ff of partial knowledge going downwards about things currently in registers
       ;; → (obs ... . tail)
       (define (emit-c ops regs fail i tail)
@@ -476,7 +476,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                   ((eq? res 'branch) ; 'branch #(<test> <then-bytecode> <else-bytecode>)
                      (lets ((condition then-bs then-regs else-bs else-regs tl))
                         (ilist
-                           (indent i) 
+                           (indent i)
                            "if("
                            (append condition
                               (ilist
@@ -485,14 +485,14 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                                     (ilist
                                        (indent i)
                                        "}else{\n"
-                                       (emit-c else-bs else-regs fail (+ i 1) 
+                                       (emit-c else-bs else-regs fail (+ i 1)
                                           (ilist (indent i) "}\n" tail)))))))))
 
                   (else ;; instruction compiled, handle the rest
                      (cons
                         (indent i)
                         (append
-                           res 
+                           res
                            (emit-c tl regs fail i tail))))))))
 
       ;; obj extras → #false | (arity . c-code-string), to become #[arity 0 hi8 lo8] + c-code in vm

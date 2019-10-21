@@ -7,7 +7,7 @@ Register allocation
 ; number available in VM, while also trying to retarget operations
 ; to more sensible registers.
 
-(define-library (owl register)
+(define-library (owl eval register)
 
    (export
       allocate-registers

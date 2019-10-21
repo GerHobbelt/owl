@@ -4,14 +4,14 @@
 
 (define-library (owl http)
 
-   (export 
+   (export
       parse-http)
 
    (import
       (owl base)
       (owl unicode)
       (prefix (owl parse) get-)
-      (owl env))
+      (owl eval env))
 
    (begin
 
@@ -32,7 +32,7 @@
             (get-parses
                ((val get-byte))
                val)))
-      
+
       (define get-nonspace
          (get-byte-if (λ (x) (not (eq? x #\space)))))
 
@@ -41,12 +41,12 @@
             ((skip (get-either (get-imm #\return) (get-epsilon #f)))
              (skip (get-imm #\newline)))
             #t))
-   
+
       (define get-query-path
          (get-parses
             ((chars (get-greedy-plus (get-byte-if (λ (x) (not (memq x '(#\space #\newline #\? #\#))))))))
             (list->string chars)))
-     
+
       (define get-key-value
          (get-parses
             ((key (get-greedy-plus (get-byte-if (λ (x) (not (memq x '(#\space #\newline #\& #\# #\=)))))))
@@ -59,7 +59,7 @@
                    (get-epsilon #f))))
             (cons (list->string key)
                   value)))
-         
+
       (define maybe-get-query-params
          (get-either
             (get-parses
@@ -72,7 +72,7 @@
                             val))))
                (cons first rest))
             (get-epsilon #f)))
-             
+
       (define maybe-get-query-fragment
          (get-either
             (get-parses
@@ -80,15 +80,15 @@
                 (vals (get-greedy-plus get-nonspace))) ;; temp
                (list->string vals))
             (get-epsilon #f)))
-     
+
       (define (maybe-put ff key val)
          (if val
             (put ff key val)
             ff))
-       
+
       (define get-first-line
          (get-parses
-            ((method 
+            ((method
                (get-one-of
                   (get-word "GET" 'get)
                   (get-word "POST" 'post)
@@ -127,7 +127,7 @@
             ((string-ci=? str "Accept-Encoding") 'accept-encoding)
             ((string-ci=? str "Connection") 'connection)
             (else #false)))
-      
+
       (define get-header-line
          (get-parses
             ((key (get-greedy-plus (get-byte-if (λ (x) (not (eq? x #\:))))))
@@ -140,7 +140,7 @@
                 (key (or (known-header->symbol key) key)))
                (cons key (list->string val)))))
 
-      (define get-http 
+      (define get-http
          (get-parses
             ((req get-first-line)
              (headers (get-greedy-plus get-header-line))
@@ -152,7 +152,7 @@
                      (put req 'headers
                         (cons pair (get req 'headers #null)))))
                req headers)))
-               
+
       (define (hex-val a)
          (cond
             ((not a) #false)
@@ -161,7 +161,7 @@
             ((< 64 a 71) (- a 55))
             (else #false)))
 
-      
+
 
 
    (define (parse-http-or lst val)
@@ -169,16 +169,16 @@
          ((string? lst)
             (parse-http-or (string->list lst) val))
          (else
-            (get-first-match get-http lst val)))) 
+            (get-first-match get-http lst val))))
 
-   (define parse-http             
+   (define parse-http
       (case-lambda
          ((lst val)
             (parse-http-or lst val))
          ((lst)
             (parse-http-or lst #f))))
 
-   (lets ((res tail 
+   (lets ((res tail
 (parse-http "GET /foo?bar=foo+bar&baz=42#lol HTTP/1.1
 Host: localhost
 User-Agent: foo/1.0

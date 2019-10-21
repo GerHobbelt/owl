@@ -2,7 +2,7 @@
 Compile AST to a code instruction tree suitable for assembly
 |#
 
-(define-library (owl compile)
+(define-library (owl eval compile)
 
    (export
       compile)
@@ -16,13 +16,13 @@ Compile AST to a code instruction tree suitable for assembly
       (owl function)
       (owl symbol)
       (owl list-extra)
-      (owl ast)
+      (owl eval ast)
       (owl lazy)
       (owl sort)
       (owl primop)
-      (only (owl env) primop-of)
-      (owl assemble)
-      (owl closure))
+      (only (owl eval env) primop-of)
+      (owl eval assemble)
+      (owl eval closure))
 
    (begin
 

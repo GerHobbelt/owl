@@ -19,7 +19,7 @@
       (owl primop)
       (owl ff)
       (owl sort)
-      (owl env)
+      (owl eval env)
       ;(owl terminal)
       (owl io)
       (owl port)
@@ -295,7 +295,7 @@
                (repl env in))
             ((expand)
                (lets ((exp in (uncons in #false)))
-                  (tuple-case (macro-expand exp env) ;; fixme: api changed 
+                  (tuple-case (macro-expand exp env) ;; fixme: api changed
                      ((ok exp env)
                         (print exp))
                      ((fail reason)

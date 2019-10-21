@@ -9,10 +9,6 @@ environment.
   (eval '(/ 1 0) *toplevel*) → #false
 ```
 |#
-;; todo: use a failure continuation or make the failure handling otherwise more systematic
-;; todo: should (?) be factored to eval, repl and library handling
-;; todo: add lib-http and allow including remote resources
-;; todo:  ^ would need a way to sign libraries and/or SSL etc
 
 
 (define-library (owl eval)
@@ -23,19 +19,19 @@ environment.
 
    (import
       (owl core)
-      (owl env)
-      (owl ast)
-      (owl fixedpoint)
-      (owl alpha)
-      (owl cps)
-      (owl closure)
-      (owl compile)
-      (only (owl primop) lets/cc)
       (owl list)
       (owl macro)
+      (owl thread)
+      (only (owl primop) lets/cc)
       (only (owl primop) call/cc)
       (only (owl syscall) error)
-      (owl thread))
+      (owl eval env)
+      (owl eval ast)
+      (owl eval fixedpoint)
+      (owl eval alpha)
+      (owl eval cps)
+      (owl eval closure)
+      (owl eval compile))
 
    (begin
 

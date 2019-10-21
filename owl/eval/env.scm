@@ -1,4 +1,4 @@
-(define-library (owl env)
+(define-library (owl eval env)
 
    (export
       lookup env-bind

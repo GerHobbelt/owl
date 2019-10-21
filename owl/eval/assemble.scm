@@ -2,7 +2,7 @@
 This library implements bytecode assembly.
 |#
 
-(define-library (owl assemble)
+(define-library (owl eval assemble)
 
    (export
       assemble-code
@@ -16,7 +16,7 @@ This library implements bytecode assembly.
       (owl math)
       (owl list-extra)
       (only (owl syscall) error interact)
-      (only (owl register) allocate-registers n-registers)
+      (only (owl eval register) allocate-registers n-registers)
       (owl primop))
 
    (begin

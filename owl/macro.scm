@@ -22,7 +22,7 @@ This library implements hygienic macro expansion.
       (owl sort)
       (owl gensym)
       (owl symbol)
-      (owl env)
+      (owl eval env)
       (scheme cxr))
 
    (begin

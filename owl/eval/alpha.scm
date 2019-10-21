@@ -1,5 +1,5 @@
 #| doc
-This library is used internally to convert all variables to unique ones to 
+This library is used internally to convert all variables to unique ones to
 avoid having to track variable shadowing.
 |#
 
@@ -9,14 +9,14 @@ avoid having to track variable shadowing.
 
 ; convert all variables to fresh symbols. makes compilation easier.
 
-(define-library (owl alpha)
+(define-library (owl eval alpha)
 
    (export alpha-convert)
 
    (import
       (owl core)
       (owl gensym)
-      (owl ast)
+      (owl eval ast)
       (owl math)
       (owl list)
       (owl list-extra)

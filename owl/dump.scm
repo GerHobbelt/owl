@@ -30,16 +30,16 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (owl math)
       (owl render)
       (owl lazy)
-      (owl cgen)
+      (owl eval cgen)
       (only (owl sys) mem-strings)
       (only (owl syscall) error mail exit-owl)
-      (only (owl env) signal-halt signal-tag)
+      (only (owl eval env) signal-halt signal-tag)
       (only (owl unicode) utf8-decode)
       (only (owl thread) start-thread-controller)
       (only (owl queue) qnull))
 
    (begin
-      
+
       ;;;
       ;;; Symbols must be properly interned in a repl.
       ;;;
@@ -358,7 +358,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
 
                 (entry ;; all non-plain outputs include thread manager
                   (if (eq? mode 'plain)
-                     entry 
+                     entry
                      (with-threading entry)))
 
                 (entry ;; pass symbols to entry if requested (repls need this)
@@ -381,7 +381,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                      entry))
 
                 (entry ;; possibly add code to utf-8 decode command line arguments
-                  (if (eq? mode 'program) 
+                  (if (eq? mode 'program)
                      (with-decoded-args entry)
                      entry)) ;; must be pulled
 
