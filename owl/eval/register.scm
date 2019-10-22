@@ -15,7 +15,7 @@ Register allocation
 
    (import
       (owl core)
-      (owl ff)
+      (owl lcd ff)
       (owl math)
       (owl list-extra)
       (owl primop)

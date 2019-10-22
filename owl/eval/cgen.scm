@@ -24,7 +24,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
       (owl bytevector)
       (owl math)
       (owl function)
-      (owl ff)
+      (owl lcd ff)
       (owl string)
       (only (owl primop) call/cc)
       (owl render)

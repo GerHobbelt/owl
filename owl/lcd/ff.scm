@@ -2,15 +2,27 @@
 (define-library (owl lcd ff)
 
    (import
+      (owl list)
+      ;(owl io) ;; debug
       (owl core))
 
    (export
       put
       get
+      del
+      empty
+      fupd
       ff-fold
-      ff-foldr)
+      ff-foldr
+      ff-union
+      list->ff
+      ff->list
+      ff-iter
+      )
 
    (begin
+
+      (define empty #f)
 
       (define black
          (λ (l k v r)
@@ -39,27 +51,35 @@
          (node red red))
 
       (define (black-left left key val right)
+         ;(print " - black-left")
          (left
             (λ (ll lk lv lr)
-               (right
-                  (λ (A B C D)
-                     (red (color-black left) key val (color-black right)))
-                  (λ (A B C D)
-                     (ll
-                        (λ (a xk xv b)
-                           (let ((yk lk) (yv lv) (c lr))
-                              (red (black a xk xv b) yk yv (black c key val right))))
-                        (λ (A B C D)
-                           (lr
-                              (λ (b yk yv c)
-                                 (let ((a ll) (xk lk) (xv lv))
-                                    (red (black a xk xv b) yk yv (black c key val right))))
-                              (λ (A B C D)
-                                 (black left key val right))))))))
+               ;(print "x")
+               (if right
+                  (right
+                     (λ (A B C D)
+                        ;(print "xa")
+                        (red (color-black left) key val (color-black right)))
+                     (λ (A B C D)
+                        ;(print "xb")
+                        (ll
+                           (λ (a xk xv b)
+                              (let ((yk lk) (yv lv) (c lr))
+                                 (red (black a xk xv b) yk yv (black c key val right))))
+                           (λ (A B C D)
+                              (lr
+                                 (λ (b yk yv c)
+                                    (let ((a ll) (xk lk) (xv lv))
+                                       (red (black a xk xv b) yk yv (black c key val right))))
+                                 (λ (A B C D)
+                                    (black left key val right)))))))
+                  (black left key val right)))
             (λ (A B C D)
+               ;(print "xx")
                (black left key val right))))
 
       (define (black-right left key val right)
+         ;(print " - black-right")
          (right
             (λ (rl rk rv rr)
                (if rl
@@ -97,6 +117,7 @@
                (black left key val right))))
 
       (define (putn node key val)
+         ;(print " - putn " key " = " val ", " node)
          (if node
             (node
                (λ (left this this-val right) ;; red
@@ -118,6 +139,7 @@
             (red #f key val #f)))
 
       (define (ff-get ff key def self)
+         ;(print "ff-get " key " from " ff)
          (if ff
             (ff
                (λ (l k v r)
@@ -141,9 +163,12 @@
 
 
       (define (put ff k v)
+         ;(print "putting " k " = " v " to " ff)
          (color-black (putn ff k v)))
 
       ;;; utilities
+
+      (define fupd put) ;; can optimized, because can assume key is there
 
       (define (ff-foldr o s t)
          (if t
@@ -177,18 +202,59 @@
                            (ff-fold o (o s k v) r)
                            (o s k v))))))
                (t step step))
-            s))))
+            s))
 
-(import (owl lcd ff))
+      (define (ff-iter ff)
+         (let loop ((ff ff) (tail null))
+            (if ff
+               (ff
+                  (λ (l k v r)
+                     (loop l
+                        (cons (cons k v)
+                           (λ () (loop r tail)))))
+                  (λ (l k v r)
+                     (loop l
+                        (cons (cons k v)
+                           (λ () (loop r tail))))))
+               tail)))
 
-(define x
-   (fold
+      (define (del ff to-del) ;; TEMPORARY
+         (ff-fold
+            (λ (ff k v)
+               (if (eq? k to-del)
+                  ff
+                  (put ff k v)))
+            empty ff))
+
+      (define (list->ff lst)
+         (fold
+            (λ (ff elem)
+               (put ff (car elem) (cdr elem)))
+            #f lst))
+
+      (define (ff->list ff)
+         (ff-foldr
+            (λ (out k v)
+               (cons (cons k v) out))
+            ff #null))
+
+      (define (ff-union a b)
+         (ff-fold
+            (λ (a bk bv)
+               (put a bk bv))
+            a b))
+      ))
+
+; (import (owl lcd ff))
+
+'(define x
+   (lfold
       (λ (ff x)
          (put ff x (+ x 1000)))
       #f
-      (iota 0 1 10000)))
+      (liota 0 1 1000000)))
 
-(ff-fold (λ (_ k v) (print k " = " v)) 0 x)
+'(print (ff-fold (λ (sum k v) (+ sum v)) 0 x))
 
 
 

@@ -147,7 +147,7 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
                (reject-iff
                   (fold
                      (λ (iff val) (iput iff val #true))
-                     #empty cs)))
+                     empty cs)))
             ((null? (cdr cs))
                (imm (car cs)))
             ((make-ff cs) => accept-ff)
@@ -155,7 +155,7 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
                (accept-iff
                   (fold
                      (λ (iff val) (iput iff val #true))
-                     #empty cs)))))
+                     empty cs)))))
 
       ;; <ra>|<rb>
       (define (rex-or ra rb)

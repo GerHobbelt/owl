@@ -21,7 +21,7 @@ avoid having to track variable shadowing.
       (owl list)
       (owl list-extra)
       (only (owl syscall) error)
-      (owl ff))
+      (owl lcd ff))
 
    (begin
       (define (ok exp env) (tuple 'ok exp env))
@@ -44,7 +44,7 @@ avoid having to track variable shadowing.
       (define (alpha exp env free)
          (tuple-case exp
             ((var sym)
-               (values (mkvar (getf env sym)) free))
+               (values (mkvar (get env sym)) free))
             ((call rator rands)
                (lets
                   ((rator free (alpha rator env free))

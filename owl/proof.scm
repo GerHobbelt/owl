@@ -70,7 +70,7 @@
          (syntax-rules ()
             ((theorem decls . body)
                (λ (rs)
-                  (theorem-decls rs #empty decls . body)))))
+                  (theorem-decls rs empty decls . body)))))
 
       (define theorem-equal? simple-equal?)
 

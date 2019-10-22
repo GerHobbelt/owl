@@ -8,7 +8,6 @@
 
    (import
       (owl core)
-      (only (owl ff) ff?)
       (only (owl syscall) interact))
 
    (begin
@@ -24,7 +23,5 @@
             (eq? (type x) type-clos)))
 
       ;; something executable? being a function or a finite function
-      (define (procedure? obj)
-         (or (function? obj)
-             (ff? obj)))
+      (define procedure? function?)
 ))

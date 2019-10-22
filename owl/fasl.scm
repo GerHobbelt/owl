@@ -48,7 +48,7 @@ up Owl are just fasl-encoded functions.
       (owl bytevector)
       (owl math)
       (owl primop)
-      (owl ff)
+      (owl lcd ff)
       (owl symbol)
       (owl lazy)
       (only (owl syscall) error)
@@ -88,7 +88,7 @@ up Owl are just fasl-encoded functions.
       (define (partial-object-closure seen obj)
          (cond
             ((immediate? obj) seen)
-            ((getf seen obj) =>
+            ((get seen obj) =>
                (λ (n) (fupd seen obj (+ n 1))))
             (else
                (let ((seen (put seen obj 1)))
@@ -114,7 +114,7 @@ up Owl are just fasl-encoded functions.
             (ff-fold
                (λ (fc val _)
                   (lets ((fp clos fc))
-                     (cons (+ fp 1) (ff-update clos val fp))))
+                     (cons (+ fp 1) (fupd clos val fp))))
                (cons 0 clos) clos)))
 
       (define (render-field clos pos)

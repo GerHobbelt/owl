@@ -11,7 +11,7 @@ This library implements bytecode assembly.
 
    (import
       (owl core)
-      (owl ff)
+      (owl lcd ff)
       (owl list)
       (owl math)
       (owl list-extra)
@@ -32,7 +32,7 @@ This library implements bytecode assembly.
             empty primops))
 
       (define (opcode-arity-ok? op in out)
-         (let ((node (getf primop-arities op)))
+         (let ((node (get primop-arities op)))
             (if node
                (and
                   (or (eq? in  (car node)) (not (car node)))

@@ -70,7 +70,6 @@
       (owl syscall)
       (owl render)
       (owl lazy)
-      (owl ff)
       (owl list-extra)
       (owl port)
       (scheme base)
@@ -81,8 +80,6 @@
 
 
    (begin
-
-      (define null '())
 
       (define esc 27)
 

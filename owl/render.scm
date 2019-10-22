@@ -97,9 +97,6 @@ making printable representations
                            (cons #\} tl)
                            (iota (tuple-length obj) -1 1)))))
 
-               ((ff? obj)
-                  (ilist #\# #\# (render (ff-foldr (λ (st k v) (ilist k v st)) #n obj) tl)))
-
                ((tuple? obj)
                   (ilist #\# #\[ (render (tuple->list obj) (cons #\] tl))))
 
@@ -214,9 +211,6 @@ making printable representations
                ;            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
                ;            (cons 41 tl)
                ;            (iota (tuple-length obj) -1 1)))))
-
-               ((ff? obj)
-                  (ilist #\# #\# (ser sh (ff-foldr (λ (st k v) (ilist k v st)) #n obj) k)))
 
                ((tuple? obj)
                   (ilist #\# #\[

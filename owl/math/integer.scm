@@ -51,7 +51,6 @@ negative type only at the root node.
       (owl core)
       (owl list)
       (owl syscall)
-      (owl ff)
       (only (owl primop) create-type))
 
    (begin

@@ -16,7 +16,7 @@ a very small kernel.
       (owl core)
       (owl queue)
       (owl syscall)
-      (owl ff)
+      (owl lcd ff)
       (owl function)
       (owl primop)
       (owl list)
