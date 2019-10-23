@@ -41,7 +41,6 @@
       (prefix (owl math rational) r)
       (only (owl math rational) < > gcd rational)
       (only (owl math integer) << >> band bior ncar ncdr ediv fx-width big-bad-args truncate/ zero?)
-      (owl ff)
       (only (owl syscall) error))
 
    (begin
@@ -449,10 +448,7 @@
       ; n < 3,474,749,660,383, a = 2, 3, 5, 7, 11, and 13.
       ; n < 341,550,071,728,321, a = 2, 3, 5, 7, 11, 13, and 17.
 
-      (define first-primes
-         (list->ff
-            (map (λ (x) (cons x x))
-               '(2 3 5 7 11 13 17))))
+      (define first-primes '(2 3 5 7 11 13 17))
 
       ; divide by 2 (shift 1) while even and count shifts
       (define (miller-qk q k)
@@ -522,7 +518,7 @@
             ((eq? n 1) #false)
             ((eq? n 2) #true)
             ((eq? 0 (band n 1)) #false)
-            ((get first-primes n #false) #true)
+            ((memq n first-primes) #true)
             ((< n 1373653) (miller-rabin-cases-ok? n '(2 3)))
             ((< n 9080191) (miller-rabin-cases-ok? n '(31 73)))
             ((< n 4759123141) (miller-rabin-cases-ok? n '(2 7 61)))

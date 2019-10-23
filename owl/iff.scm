@@ -8,7 +8,7 @@ Number stores (radix trees with a ff at each node)
 
 (define-library (owl iff)
 
-   (export iget iput ifold iff->list)
+   (export iget iput ifold iff->list empty)
 
    (import
       (owl core)

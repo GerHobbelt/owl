@@ -1,5 +1,5 @@
 #| doc
-This library defines the default toplevel. 
+This library defines the default toplevel.
 |#
 
 (define-library (owl base)

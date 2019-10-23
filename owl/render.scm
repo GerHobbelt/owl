@@ -11,7 +11,8 @@ making printable representations
       (owl list)
       (owl list-extra)
       (owl boolean)
-      (owl ff)
+      (prefix (owl ff) old-)
+      (owl lcd ff)
       (owl tuple)
       (owl function)
       (owl syscall)
@@ -25,7 +26,7 @@ making printable representations
       (only (owl string) render-string string?))
 
    (export
-      make-serializer    ;; names → ((obj tl) → (byte ... . tl))
+      make-serializer    ;; names → (obj tl → (byte ... . tl))
       ;serialize         ;; obj tl        → (byte ... . tl), eager, always shared
       ;serialize-lazy    ;; obj tl share? → (byte ... . tl), lazy, optional sharing
       render             ;; obj tl        → (byte ... . tl) -- deprecated
@@ -34,7 +35,7 @@ making printable representations
 
    (begin
 
-      ;; this could be removed?
+      ;; used e.g. in print
       (define (make-renderer meta)
          (define (render obj tl)
             (cond
@@ -108,7 +109,7 @@ making printable representations
          render)
 
       (define render
-         (make-renderer #empty))
+         (make-renderer empty))
 
       ;;; serialize suitably for parsing, not yet sharing preserving
 
@@ -118,21 +119,22 @@ making printable representations
       ;  - use explicit CPS to 'return'
       ;  - emit definition on first encounter
 
+      ;; used e.g. in write
       (define (make-ser names)
          (define (ser sh obj k)
             (cond
 
-               ((getf sh obj) =>
-                  (λ (id)
-                     (if (< id 0) ;; already written, just refer
-                        (ilist #\# (render (abs id) (pair #\# (k sh))))
-                        (ilist #\#
-                           (render id
-                              (ilist #\# #\=
-                                 (ser (del sh obj) obj
-                                    (λ (sh)
-                                       (delay
-                                          (k (put sh obj (- 0 id))))))))))))
+               ;((get sh obj #f) =>
+               ;   (λ (id)
+               ;      (if (< id 0) ;; already written, just refer
+               ;         (ilist #\# (render (abs id) (pair #\# (k sh))))
+               ;         (ilist #\#
+               ;            (render id
+               ;               (ilist #\# #\=
+               ;                  (ser (del sh obj) obj
+               ;                     (λ (sh)
+               ;                        (delay
+               ;                           (k (put sh obj (- 0 id))))))))))))
 
                ((null? obj)
                   (ilist #\( #\) (k sh)))
@@ -152,7 +154,7 @@ making printable representations
                            ((null? obj)
                               ;; run of the mill list end
                               (pair 41 (k sh)))
-                           ((getf sh obj) =>
+                           ((get sh obj #f) =>
                               (λ (id)
                                  (ilist #\. #\space #\#
                                     (render (abs id)
@@ -195,22 +197,12 @@ making printable representations
                         (ser sh (vector->list obj) k)))) ;; <- should convert incrementally!
 
                ((function? obj)
-                  (let ((name (getf names obj)))
+                  (let ((name (get names obj #f)))
                      ;; render name is one is known, just function otherwise
                      ;; note - could print `(foo ,map ,+ -) instead of '(foo #<map> <+> -) in the future
                      (if name
                         (foldr render (delay (k sh)) (list "#<" name ">"))
                         (render "#<function>" (delay (k sh))))))
-
-
-               ;; not sure yet what the syntax for these should be
-               ;((tuple? obj)
-               ;   (ilist 40 84 117 112 108 101 32
-               ;      (render (ref obj 1)
-               ;         (fold
-               ;            (λ (tl pos) (cons 32 (render (ref obj pos) tl)))
-               ;            (cons 41 tl)
-               ;            (iota (tuple-length obj) -1 1)))))
 
                ((tuple? obj)
                   (ilist #\# #\[
@@ -240,7 +232,7 @@ making printable representations
       (define (partial-object-closure seen obj)
          (cond
             ((immediate? obj) seen)
-            ((getf seen obj) =>
+            ((get seen obj #f) =>
                (λ (n) (fupd seen obj (+ n 1))))
             (else
                (let ((seen (put seen obj 1)))
@@ -275,14 +267,12 @@ making printable representations
          (let ((ser (make-ser names)))
             (λ (val tl share?)
                (maybe-quote val
-                  (ser
-                     (if share? ;; O(n), allow skipping
-                        (label-shared-objects val)
-                        empty)
-                     val (λ (sh) tl))))))
+                  (ser empty val (λ (sh) tl))))))
 
       (define (make-serializer names)
-         (let ((serialize-lazy (make-lazy-serializer names)))
+         (lets
+            ((names (if (old-ff? names) (list->ff (old-ff->list names)) names))
+             (serialize-lazy (make-lazy-serializer names)))
             (λ (val tl)
                (force-ll
                   (serialize-lazy val tl #true)))))
