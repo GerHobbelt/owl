@@ -34,7 +34,7 @@
                      (if (eq? msg 'halt)
                         (drop-mails)
                         (loop (del wanted msg) rst)))))
-            ((eq? wanted #empty) ;; received all already
+            ((empty? wanted) ;; received all already
                (mail 'fini "i has all")
                (drop-mails))
             (else

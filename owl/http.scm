@@ -106,7 +106,7 @@
              (skip (get-word " HTTP/1." 'foo))
              (ver-char (get-either (get-imm #\0) (get-imm #\1)))
              (skip get-crlf))
-            (-> #empty
+            (-> empty
                (put 'method method)
                (put 'path path)
                (maybe-put 'query-params query-params)

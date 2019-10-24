@@ -349,7 +349,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
          (λ (entry path opts native . custom-runtime) ; <- this is the usual compile-owl
             (lets
                ((path (get opts 'output "-")) ; <- path argument deprecated
-                (mode (opts 'mode 'program)) ;; 'program | 'library | 'plain
+                (mode (get opts 'mode 'program)) ;; 'program | 'library | 'plain
                 (mode (if (getf opts 'bare) 'plain mode))
                 (format
                   ;; use given format (if valid) or choose using output file suffix

@@ -136,7 +136,6 @@
             ((if test exp) (if test exp #false))
             ((if (not test) then else) (if test else then))
             ((if (null? test) then else) (if (eq? test '()) then else))
-            ((if (empty? test) then else) (if (eq? test #empty) then else))
             ((if (eq? a b) then else) (_branch 0 a b then else))
             ((if (a . b) then else) (let ((x (a . b))) (if x then else)))
             ((if #false then else) else)

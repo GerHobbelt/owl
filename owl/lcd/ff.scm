@@ -2,15 +2,20 @@
 (define-library (owl lcd ff)
 
    (import
+      (owl core)
       (owl list)
+      (owl function)
       ;(owl io) ;; debug
-      (owl core))
+      (prefix (owl ff) old-)
+      )
 
    (export
       put
       get
+      getf ;; COMPAT REMOVE
       del
       empty
+      empty?
       fupd
       ff-fold
       ff-foldr
@@ -18,12 +23,17 @@
       list->ff
       ff->list
       ff-iter
+
+      upgrade     ;; old ff -> new COMPAT REMOVE
+      downgrade   ;; new ff -> old COMPAT REMOVE
       )
 
    (begin
 
       (define empty #f)
 
+      (define empty? (C eq? empty))
+      
       (define black
          (λ (l k v r)
             (if l
@@ -161,6 +171,22 @@
             ((ff key def)
                (ff-get ff key def ff-get))))
 
+      (define getf get) ;; COMPAT REMOVE
+
+      (define (ff-has? ff key)
+         (if ff
+            (ff
+               (λ (l k v r)
+                  (cond
+                     ((eq? key k) #t)
+                     ((lesser? key k) (ff-has? l key))
+                     (else (ff-has? r key))))
+               (λ (l k v r)
+                  (cond
+                     ((eq? key k) #t)
+                     ((lesser? key k) (ff-has? l key))
+                     (else (ff-has? r key)))))
+            #f))
 
       (define (put ff k v)
          ;(print "putting " k " = " v " to " ff)
@@ -238,11 +264,31 @@
                (cons (cons k v) out))
             ff #null))
 
-      (define (ff-union a b)
+      (define not-there '(x))
+
+      (define (ff-union a b collide)
          (ff-fold
             (λ (a bk bv)
-               (put a bk bv))
+               (let ((x (get a bk not-there)))
+                  (if (eq? x not-there)
+                     (put a bk bv)
+                     (fupd a bk
+                        (collide x bv)))))
             a b))
+
+      (define (upgrade x)
+         (if (old-ff? x)
+            (list->ff (old-ff->list x))
+            x))
+
+      (define (downgrade x)
+         (cond
+            ((eq? x empty) old-empty)
+            ((function? x) (old-list->ff (ff->list x)))
+            ((old-ff? x) x)
+            (else
+               (car 'downgrade-not-ff))))
+
       ))
 
 ; (import (owl lcd ff))

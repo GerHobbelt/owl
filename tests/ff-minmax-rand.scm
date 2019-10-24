@@ -5,7 +5,7 @@
 (define (try rs)
   (lets
     ((rs a (rand rs 20))
-     (ff (put #empty a a)))
+     (ff (put empty a a)))
     (let loop ((rs rs) (n steps) (ff ff) (lo a) (hi a))
       (cond
         ((eq? n 0)

@@ -40,8 +40,8 @@
 
 (define *interactive* #false) ;; be verbose
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
-(define *owl-names* #empty)
-(define *owl-version* "0.2a")
+;(define *owl-names* #empty) ;; default is empty, so safe to remove jh
+(define *owl-version* "0.2b")
 
 (import
    (owl intern)
@@ -308,7 +308,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
             #n))))
 
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
-   (make-compiler #empty))
+   (make-compiler empty))
 
 (define (enlist x)
    (cond
@@ -332,7 +332,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                         (tuple 'init
                            (λ ()
                               (thread 'repl
-                                 (let ((state (make-variable '*state* #empty)))
+                                 (let ((state (make-variable '*state* empty)))
                                     ;; get basic io running
                                     (start-base-threads)
 

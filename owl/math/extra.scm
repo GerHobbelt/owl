@@ -535,7 +535,7 @@
       ; later apply the knowledge about limits
       (define (atkin-candidates lo max)
          (let ((lim (isqrt max)))
-            (let loox ((store empty) (x 1))
+            (let loox ((store iempty) (x 1))
                (if (> x lim)
                   store
                   (let looy ((store store) (y 1))
@@ -735,7 +735,7 @@
       ;; find ? such that (expt-mod a ? n) = y
 
       (define (dlp-naive y a n)
-         (let loop ((x 0) (seen empty))
+         (let loop ((x 0) (seen iempty))
             (let ((this (expt-mod a x n)))
                (cond
                   ((= y this) x)
@@ -744,7 +744,7 @@
 
       ;; like naive, but avoids useless multiplications and remainders
       (define (dlp-simple y a n)
-         (let loop ((x 0) (v 1) (seen empty))
+         (let loop ((x 0) (v 1) (seen iempty))
             (cond
                ((>= v n) (loop x (remainder v n) seen)) ; overflow
                ((= v y) x)                             ; solved

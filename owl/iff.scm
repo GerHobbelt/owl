@@ -8,7 +8,7 @@ Number stores (radix trees with a ff at each node)
 
 (define-library (owl iff)
 
-   (export iget iput ifold iff->list empty)
+   (export iget iput ifold iff->list iempty)
 
    (import
       (owl core)
@@ -19,6 +19,8 @@ Number stores (radix trees with a ff at each node)
    (begin
 
       (define tag #false) ;; non-digit special ff key
+
+      (define iempty empty)
 
       (define (iputl ff num val)
          (if (null? num)

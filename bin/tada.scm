@@ -149,7 +149,7 @@ output: pdf_document
                (sselect-all sexps '(define-library begin example)))))
       (if (or initial-doc lib-name)
          (cons
-            (-> #empty
+            (-> empty
                (put 'path path)
                (put 'length (length content))
                (maybe-put 'name lib-name)
