@@ -262,7 +262,7 @@
          (ff-foldr
             (λ (out k v)
                (cons (cons k v) out))
-            ff #null))
+            #null ff))
 
       (define not-there '(x))
 

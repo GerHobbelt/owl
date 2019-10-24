@@ -1,5 +1,5 @@
 #| doc
-This library makes it easy to write tools which use command line arguments 
+This library makes it easy to write tools which use command line arguments
 in the usual way.
 |#
 
@@ -26,7 +26,7 @@ in the usual way.
       (owl list)
       (owl string)
       (owl equal)
-      (owl ff)
+      (owl lcd ff)
       (scheme cxr)
       (scheme write))
 
@@ -153,7 +153,9 @@ in the usual way.
          (let ((res (walk rules args empty #n)))
             (if res
                (lets ((dict others res))
-                  (cont dict others))
+                  (cont
+                     (downgrade dict)
+                     others))
                (begin
                   (print-to stderr error-msg)
                   #false))))

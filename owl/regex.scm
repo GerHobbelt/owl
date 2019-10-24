@@ -1,7 +1,6 @@
 #| doc
 POSIX regular expressions
 
-
 this library implements a mostly complete POSIX-compatible
 regular expressions. at the moment lib-regex tries to just
 get all the features right. *lots* of non-constant-factor
@@ -26,7 +25,7 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
       (prefix (only (owl parse) byte either epsilon imm parses star plus) get-)
       (only (owl syscall) error)
       (owl io)
-      (owl ff)
+      (owl lcd ff)
       (owl list)
       (owl lazy)
       (owl math)
