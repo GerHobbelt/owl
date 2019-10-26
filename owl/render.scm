@@ -11,7 +11,6 @@ making printable representations
       (owl list)
       (owl list-extra)
       (owl boolean)
-      (prefix (owl ff) old-)
       (owl lcd ff)
       (owl tuple)
       (owl function)
@@ -271,8 +270,7 @@ making printable representations
 
       (define (make-serializer names)
          (lets
-            ((names (if (old-ff? names) (list->ff (old-ff->list names)) names))
-             (serialize-lazy (make-lazy-serializer names)))
+            ((serialize-lazy (make-lazy-serializer names)))
             (λ (val tl)
                (force-ll
                   (serialize-lazy val tl #true)))))

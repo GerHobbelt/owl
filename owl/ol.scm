@@ -164,7 +164,6 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
 
 ;; handles $ ol -c stuff
 (define (repl-compile compiler env path opts)
-   (let ((opts (upgrade opts)))
    (try
       (λ ()
          ;; evaluate in a thread to catch error messages here
@@ -203,7 +202,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                (else
                   (print-repl-error "Weird eval outcome.")
                   3))))
-      #false)))
+      #false))
 
 (define (try-load-state path args)
    (let ((val (load-fasl path #false)))
@@ -257,8 +256,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       (process-arguments (cdr vm-args) command-line-rules error-usage-text
          (λ (dict others)
             (lets
-               ((dict (upgrade dict))
-                (env ;; be quiet automatically if any of these are set
+               ((env ;; be quiet automatically if any of these are set
                   (if (fold (λ (is this) (or is (get dict this #false))) #false '(quiet test evaluate run output output-format))
                      (env-set env '*interactive* #false)
                      (env-set env '*interactive* #true)))
@@ -402,9 +400,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
 (λ (args)
    (process-arguments (cdr args) command-line-rules "you lose"
       (λ (opts extra)
-         (let ((opts (upgrade opts)))
-            (print "opts are " opts)
-            (print "as list " (ff->list opts))
+         (let ((opts opts))
             (cond
                ((null? extra)
                   (compiler heap-entry "unused historical thingy"

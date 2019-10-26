@@ -10,6 +10,7 @@
       append concatenate
       reverse
       filter remove
+      keep
       every any
       unfold
       find find-tail
@@ -214,9 +215,11 @@
                   (values (cons (car lst) l) r)))
             (values '() lst)))
 
-      ;; pred lst -> 'list, SRFI-1
-      (define (filter pred lst)
+      (define (keep pred lst)
          (foldr (λ (x tl) (if (pred x) (cons x tl) tl)) #n lst))
+
+      ;; pred lst -> 'list, SRFI-1
+      (define filter keep)
 
       ;; pred lst -> 'list, SRFI-1
       (define (remove pred lst)

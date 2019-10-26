@@ -18,7 +18,6 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (owl sort)
       (owl syscall)
       (owl lcd ff)
-      (prefix (owl ff) old-)
       (owl symbol)
       (owl bytevector)
       (owl vector)
@@ -31,6 +30,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (owl math)
       (owl render)
       (owl lazy)
+      (only (owl fasl) objects-below)
       (owl eval cgen)
       (only (owl sys) mem-strings)
       (only (owl syscall) error mail exit-owl)
@@ -262,46 +262,11 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                      (clone-code bytecode extras))))
             empty native-ops))
 
-
-      ;;;
-      ;;; Choosing frequently referenced code vectors
-      ;;;
-
-      (define (code-refs seen obj)
-         (cond
-            ((immediate? obj) (values seen empty))
-            ((bytecode? obj)
-               (values seen (put empty obj 1)))
-            ((get seen obj #false) =>
-               (λ (here) (values seen here)))
-            (else
-               (let loop ((seen seen) (lst (tuple->list obj)) (here empty))
-                  (if (null? lst)
-                     (values (put seen obj here) here)
-                     (lets ((seen this (code-refs seen (car lst))))
-                        (loop seen (cdr lst)
-                           (ff-union this here +))))))))
-
-      ; ob → ((nrefs . ob) ..)
-      (define (all-code-refs ob)
-         (lets ((refs this (code-refs empty ob)))
-            (ff-fold (λ (out x n) (cons (cons n x) out)) #n this)))
-
       ;; _ → ((bytecode . bytecode) ...)
-      (define (codes-of ob)
-         (lets ((refs this (code-refs empty ob)))
-            (ff-fold (λ (out x n) (cons (cons x x) out)) #n this)))
-
-      ;; ob percent → (codevec ...)
-      (define (most-linked-code ob perc)
-         (print "Picking most shared code vectors:")
-         (lets
-            ((all (all-code-refs ob))
-             (sorted (sort (λ (a b) (> (car a) (car b))) all))
-             (_ (print " - total code vectors " (length sorted)))
-             (topick (floor (* (/ perc 100) (length sorted)))))
-            (print " - taking " topick)
-            (map cdr (take sorted topick))))
+      (define (codes-of obj)
+         (map (lambda (x) (cons x x))
+            (keep bytecode?
+               (objects-below obj))))
 
       ;; todo: move with-threading to lib-threads and import from there
       (define (with-threading ob)
@@ -346,18 +311,10 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       ; obj → (ff of #[bytecode] → #(native-opcode native-using-bytecode c-fragment))
       ; dump entry object to path, or stdout if path is "-"
 
-      (define (maybe-upgrade val)
-         (if (old-ff? val)
-            (upgrade val)
-            val))
-      ;(define (maybe-upgrade val) val)
-
       (define (make-compiler extras)
          (λ (entry path opts native . custom-runtime) ; <- this is the usual compile-owl
             (lets
-               ((extras (maybe-upgrade extras))
-                (opts   (maybe-upgrade opts))
-                (path (get opts 'output "-")) ; <- path argument deprecated
+               ((path (get opts 'output "-")) ; <- path argument deprecated
                 (mode (get opts 'mode 'program)) ;; 'program | 'library | 'plain
                 (mode (if (getf opts 'bare) 'plain mode))
 
@@ -378,7 +335,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
 
                 (entry ;; pass code vectors to entry if requested (repls need this)
                   (if (get opts 'want-codes #false)
-                     (entry (codes-of entry))
+                     (entry (codes-of entry)) ;; <- gets ((code . code) ...), removable?
                      entry))
 
                 (native-ops ;; choose which bytecode vectors to add as extended vm instructions

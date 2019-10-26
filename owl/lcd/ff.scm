@@ -4,10 +4,7 @@
    (import
       (owl core)
       (owl list)
-      (owl function)
-      ;(owl io) ;; debug
-      (prefix (owl ff) old-)
-      )
+      (owl function))
 
    (export
       put
@@ -25,11 +22,7 @@
       ff-iter
       ff-min
       ff-max
-      keys
-
-      upgrade     ;; old ff -> new COMPAT REMOVE
-      downgrade   ;; new ff -> old COMPAT REMOVE
-      )
+      keys)
 
    (begin
 
@@ -206,7 +199,6 @@
             #f))
 
       (define (put ff k v)
-         ;(print "putting " k " = " v " to " ff)
          (color-black (putn ff k v)))
 
       ;;; utilities
@@ -289,6 +281,7 @@
 
       (define not-there '(x))
 
+      ;; preferably small b
       (define (ff-union a b collide)
          (ff-fold
             (λ (a bk bv)
@@ -298,21 +291,7 @@
                      (fupd a bk
                         (collide x bv)))))
             a b))
-
-      (define (upgrade x)
-         (if (old-ff? x)
-            (list->ff (old-ff->list x))
-            x))
-
-      (define (downgrade x)
-         (cond
-            ((eq? x empty) old-empty)
-            ((function? x) (old-list->ff (ff->list x)))
-            ((old-ff? x) x)
-            (else
-               (car 'downgrade-not-ff))))
-
-      ))
+))
 
 ; (import (owl lcd ff))
 
