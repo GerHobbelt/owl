@@ -189,7 +189,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                                  ((= opt 1) usual-suspects) ;; compile some if -O1
                                  (else #false))) ;; otherwise use bytecode and plain vm
 
-                           (getf opts 'custom-runtime))
+                           (get opts 'custom-runtime))
 
                            0)
                      (begin
@@ -261,38 +261,38 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                      (env-set env '*interactive* #false)
                      (env-set env '*interactive* #true)))
                 (env ;; maybe set debug causing (owl eval) to print intermediate steps
-                  (if (getf dict 'debug)
+                  (if (get dict 'debug)
                      (env-set env '*debug* #true)
                      env))
                 (env ;; add -i include directories, if any
                    (env-set env '*include-dirs*
                       (append (get dict 'include #null) (env-get env '*include-dirs* #null)))))
                (cond
-                  ((getf dict 'help)
+                  ((get dict 'help)
                      (print brief-usage-text)
                      (print-rules command-line-rules)
                      0)
-                  ((getf dict 'version)
+                  ((get dict 'version)
                      (print "Owl Lisp " *owl-version*)
                      0)
-                  ((getf dict 'about) (print about-owl) 0)
-                  ((getf dict 'load) => (C try-load-state others))
-                  ((or (getf dict 'output) (getf dict 'output-format))
+                  ((get dict 'about) (print about-owl) 0)
+                  ((get dict 'load) => (C try-load-state others))
+                  ((or (get dict 'output) (get dict 'output-format))
                      (if (< (length others) 2) ;; can take just one file or stdin
                         (repl-compile compiler env
                            (if (null? others) "-" (car others)) dict)
                         (begin
                            (print "compile just one file for now please: " others)
                            1)))
-                  ((getf dict 'run) =>
+                  ((get dict 'run) =>
                      (λ (path)
                         (owl-run (try (λ () (repl-file env path)) #false) (cons "ol" others) path)))
-                  ((getf dict 'evaluate) => (H try-repl-string env)) ;; FIXME: no error reporting
-                  ((getf dict 'test) => (H try-test-string env))
+                  ((get dict 'evaluate) => (H try-repl-string env)) ;; FIXME: no error reporting
+                  ((get dict 'test) => (H try-test-string env))
                   ((null? others)
                      (greeting env)
                      (repl-trampoline repl
-                        (env-set env '*readline* (getf dict 'readline))))
+                        (env-set env '*readline* (get dict 'readline))))
                   (else
                      ;; load the given files
                      (define input

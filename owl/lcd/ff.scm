@@ -9,7 +9,6 @@
    (export
       put
       get
-      getf ;; COMPAT REMOVE
       del
       empty
       empty?
@@ -26,9 +25,9 @@
 
    (begin
 
-      (define empty #f)
-
-      (define empty? (C eq? empty))
+      ;;;
+      ;;; Construction
+      ;;;
 
       (define black
          (λ (l k v r)
@@ -50,24 +49,39 @@
                   (λ (R B) (R #f k v r))
                   (λ (R B) (R  #f k v #f))))))
 
+      ;;;
+      ;;; Utils
+      ;;;
+
+      (define empty #f)
+
+      (define empty? (C eq? empty))
+
       (define (color-black node)
          (node black black))
 
       (define (color-red node)
          (node red red))
 
+      (define (red? node)
+         (if node
+            (node
+               (λ (l k v r) #t)
+               (λ (l k v r) #f))
+            #f))
+
+      ;;;
+      ;;; Insertion
+      ;;;
+
       (define (black-left left key val right)
-         ;(print " - black-left")
          (left
             (λ (ll lk lv lr)
-               ;(print "x")
                (if right
                   (right
                      (λ (A B C D)
-                        ;(print "xa")
                         (red (color-black left) key val (color-black right)))
                      (λ (A B C D)
-                        ;(print "xb")
                         (ll
                            (λ (a xk xv b)
                               (let ((yk lk) (yv lv) (c lr))
@@ -81,11 +95,9 @@
                                     (black left key val right)))))))
                   (black left key val right)))
             (λ (A B C D)
-               ;(print "xx")
                (black left key val right))))
 
       (define (black-right left key val right)
-         ;(print " - black-right")
          (right
             (λ (rl rk rv rr)
                (if rl
@@ -123,7 +135,6 @@
                (black left key val right))))
 
       (define (putn node key val)
-         ;(print " - putn " key " = " val ", " node)
          (if node
             (node
                (λ (left this this-val right) ;; red
@@ -144,6 +155,33 @@
                         (black-right left this this-val (putn right key val))))))
             (red #f key val #f)))
 
+      ;; key known to occur
+      (define (ff-update node key val)
+         (node
+            (λ (left this this-val right) ;; red
+               (cond
+                  ((lesser? key this)
+                     (red (ff-update left key val) this this-val right))
+                  ((eq? key this)
+                     (red left key val right))
+                  (else
+                     (red left this this-val (ff-update right key val)))))
+            (λ (left this this-val right) ;; black
+               (cond
+                  ((lesser? key this)
+                     (black (ff-update left key val) this this-val right))
+                  ((eq? key this)
+                     (black left key val right))
+                  (else
+                     (black left this this-val (ff-update right key val)))))))
+
+      (define fupd ff-update)
+
+
+      ;;;
+      ;;; Derived Operations
+      ;;;
+
       (define (ff-min ff def)
          (if ff
             (ff
@@ -159,7 +197,6 @@
             def))
 
       (define (ff-get ff key def self)
-         ;(print "ff-get " key " from " ff)
          (if ff
             (ff
                (λ (l k v r)
@@ -181,8 +218,6 @@
             ((ff key def)
                (ff-get ff key def ff-get))))
 
-      (define getf get) ;; COMPAT REMOVE
-
       (define (ff-has? ff key)
          (if ff
             (ff
@@ -202,8 +237,6 @@
          (color-black (putn ff k v)))
 
       ;;; utilities
-
-      (define fupd put) ;; can optimized, because can assume key is there
 
       (define (ff-foldr o s t)
          (if t
@@ -259,7 +292,7 @@
                            (λ () (loop r tail))))))
                tail)))
 
-      (define (del ff to-del) ;; TEMPORARY
+      (define (del-nlogn ff to-del) ;; TEMPORARY
          (ff-fold
             (λ (ff k v)
                (if (eq? k to-del)
@@ -291,9 +324,169 @@
                      (fupd a bk
                         (collide x bv)))))
             a b))
+      
+      ;;;
+      ;;; Deletion
+      ;;;
+
+      (define (ball-left left key val right)
+         (cond
+            ((red? left)
+               (red (color-black left) key val right))
+            ((red? right)
+               (right
+                  (λ (r zk zv c)
+                     (r
+                        (λ (a yk yv b)
+                           (red
+                              (black left key val a)
+                              yk yv
+                              (black-right b zk zv (color-red c))))
+                        (λ (a yk yv b)
+                           (red
+                              (black left key val a)
+                              yk yv
+                              (black-right b zk zv (color-red c))))))
+                  #f))
+            (else
+               (black-right left key val (color-red right)))))
+
+      (define (ball-right left key val right)
+         (cond
+            ((red? right)
+               (red left key val (color-black right)))
+            ((red? left)
+               (left
+                  (λ (a xk xv b)
+                     (b
+                        (λ (b yk yv c)
+                           (red
+                              (black-left (color-red a) xk xv b)
+                              yk yv
+                              (black c key val right)))
+                        (λ (b yk yv c)
+                           (red
+                              (black-left (color-red a) xk xv b)
+                              yk yv
+                              (black c key val right)))))
+                  #f))
+            (else
+               (black-left (color-red left) key val right))))
+
+      (define (ffcar node)
+         (node
+            (λ (l k v r) l)
+            (λ (l k v r) l)))
+
+      (define (ffcdr node)
+         (node
+            (λ (l k v r) r)
+            (λ (l k v r) r)))
+
+      (define (either node cont) (node cont cont))
+
+      ;; todo: optimize, since many colors are known
+      (define (app left right)
+         (cond
+
+            ;;; if other branch is empty
+            ((eq? left  empty) right)
+            ((eq? right empty) left)
+
+            ;;; otherwise full nodes
+            ((red? left)
+               (if (red? right)
+                  (let ((middle (app (ffcdr left) (ffcar right))))
+                     (if (red? middle)
+                        (either middle
+                           (λ (ml mk mv mr)
+                              (either left
+                                 (λ (ll lk lv lr)
+                                    (either right
+                                       (λ (rl rk rv rr)
+                                          (red
+                                             (red ll lk lv ml)
+                                             mk mv
+                                             (red mr rk rv rr))))))))
+                        (either left
+                           (λ (a xk xv b)
+                              (either right
+                                 (λ (c yk yv d)
+                                    (red a xk xv
+                                       (red middle yk yv d))))))))
+                  (left 
+                     (λ (a xk xv b)
+                        (red a xk xv (app b right)))
+                     #f)))
+
+            ((red? right)
+               (right
+                  (λ (rl rk rv rr)
+                     (red (app left rl) rk rv rr))
+                  #f))
+            (else
+               ;;; both are black
+               (let ((middle (app (ffcdr left) (ffcar right))))
+                  (if (red? middle)
+                     (middle
+                        (λ (ml mk mv mr)
+                           (either left
+                              (λ (ll lk lv lr)
+                                 (either right
+                                    (λ (rl rk rv rr)
+                                       (red
+                                          (black ll lk lv ml)
+                                          mk mv
+                                          (black mr rk rv rr)))))))
+                        #f)
+                     (either left
+                        (λ (ll lk lv lr)
+                           (either right
+                              (λ (rl rk rv rr)
+                                 (ball-left
+                                    ll lk lv
+                                    (black middle rk rv rr)))))))))))
+
+      (define (deln ff key)
+         (if (eq? ff empty)
+            ff
+            (either ff
+               (λ (left this-key val right)
+                  (cond
+                     ((lesser? key this-key)
+                        (let ((sub (deln left key)))
+                           (cond
+                              ((eq? sub left)  ;; ← check usefulness, intended to avoid rebalancing if not there
+                                 ff)
+                              ((red? left)
+                                 (red sub this-key val right))
+                              (else
+                                 (ball-left sub this-key val right)))))
+                     ((eq? key this-key)
+                        (app left right))
+                     (else
+                        (let ((sub (deln right key)))
+                           (cond
+                              ((eq? sub right) ;; ← check usefulness
+                                 ff)
+                              ((red? right)
+                                 (red left this-key val sub))
+                              (else
+                                 (ball-right left this-key val sub))))))))))
+
+      (define (del ff key)
+         (let ((ff (deln ff key)))
+            (if (red? ff)
+               (color-black ff)
+               ff)))
+
 ))
 
-; (import (owl lcd ff))
+'(import (owl lcd ff))
+'(define x (fold (λ (ff x) (put ff x (+ x 1000))) empty (iota 0 1 10)))
+'(print (ff->list x))
+
+'(print (-> x (del 5) (del 8) (del 0) ff->list))
 
 '(define x
    (lfold

@@ -40,8 +40,8 @@ in the usual way.
          (if (null? rules)
             #false
             (let ((this (car rules)))
-               (if (or (equal? string (getf this 'short))
-                       (equal? string (getf this 'long)))
+               (if (or (equal? string (get this 'short))
+                       (equal? string (get this 'long)))
                   this
                   (select-rule string (cdr rules))))))
 
@@ -69,8 +69,8 @@ in the usual way.
       (define (mandatory-args-given? dict rules)
          (fold
             (λ (ok? rule)
-               (if (getf rule 'mandatory) ;; this is mandatory
-                  (if (defined? dict (getf rule 'id))
+               (if (get rule 'mandatory) ;; this is mandatory
+                  (if (defined? dict (get rule 'id))
                      ok?
                      (begin
                         (write-bytes stderr
@@ -84,11 +84,11 @@ in the usual way.
       (define (fill-defaults dict rules)
          (fold
             (λ (dict rule)
-               (let ((id (getf rule 'id)))
+               (let ((id (get rule 'id)))
                   (if (and (undefined? dict id) (defined? rule 'default))
                      (put dict id
-                        (let ((cookd ((getf rule 'cook) (getf rule 'default))))
-                           (if (getf rule 'plural) (list cookd) cookd))) ; <- a single plural default value needs to be listed
+                        (let ((cookd ((get rule 'cook) (get rule 'default))))
+                           (if (get rule 'plural) (list cookd) cookd))) ; <- a single plural default value needs to be listed
                      dict)))
             dict rules))
 
@@ -112,8 +112,8 @@ in the usual way.
                   ((select-rule (car args) rules) =>
                      (λ (rule)
                         (lets
-                           ((cook (getf rule 'cook))
-                            (id (getf rule 'id)))
+                           ((cook (get rule 'cook))
+                            (id (get rule 'id)))
                            (if cook ;; <- set if this expects an argument
                               (if (null? (cdr args))
                                  (fail (list "'" (car args) "' requires an argument."))
@@ -123,9 +123,9 @@ in the usual way.
                                     (if ok?
                                        (walk rules
                                           ;; instert an implicit -- after terminal rules to stop
-                                          (if (getf rule 'terminal) (cons "--" (cddr args)) (cddr args))
+                                          (if (get rule 'terminal) (cons "--" (cddr args)) (cddr args))
                                           (put dict id
-                                             (if (getf rule 'plural)
+                                             (if (get rule 'plural)
                                                 ;; put values to a list if this is a multi argument
                                                 (append (get dict id #n) (list value))
                                                 value))
@@ -214,21 +214,21 @@ in the usual way.
                      render
                      tl
                      (list "  "
-                        (let ((short (getf rule 'short)))
+                        (let ((short (get rule 'short)))
                            (if short
                               (string-append short " | ")
                               "     "))
-                        (getf rule 'long)
-                        (if (getf rule 'cook) " <arg>" "")
-                        (if (getf rule 'comment)
-                           (string-append ", " (getf rule 'comment))
+                        (get rule 'long)
+                        (if (get rule 'cook) " <arg>" "")
+                        (if (get rule 'comment)
+                           (string-append ", " (get rule 'comment))
                            "")
-                        (if (getf rule 'default)
-                           (string-append " [" (getf rule 'default) "]")
+                        (if (get rule 'default)
+                           (string-append " [" (get rule 'default) "]")
                            "")
-                        (if (getf rule 'mandatory) " (mandatory)" "")
-                        (if (getf rule 'plural) " (can be several)" "")
-                        (if (getf rule 'terminal) " (terminal)" "")
+                        (if (get rule 'mandatory) " (mandatory)" "")
+                        (if (get rule 'plural) " (can be several)" "")
+                        (if (get rule 'terminal) " (terminal)" "")
                         nl)))
                #n rules)))
 

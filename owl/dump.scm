@@ -316,7 +316,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
             (lets
                ((path (get opts 'output "-")) ; <- path argument deprecated
                 (mode (get opts 'mode 'program)) ;; 'program | 'library | 'plain
-                (mode (if (getf opts 'bare) 'plain mode))
+                (mode (if (get opts 'bare) 'plain mode))
 
                 (format
                   ;; use given format (if valid) or choose using output file suffix

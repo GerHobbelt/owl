@@ -171,13 +171,6 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                (list "{uint64_t a=(uint64_t)immval(R["ah"])<<FBITS|immval(R["al"]);hval b=immval(R["b"]);uint64_t q=a/b;R["qh"]=F(q>>FBITS);R["ql"]=F(q);R["rem"]=F(a-q*b);}\n")
                bs (-> regs (put qh 'fixnum) (put ql 'fixnum) (put rem 'fixnum)))))
 
-      ; mkblack, mkred
-      (define (cifyer-mkff color)
-         (λ (bs regs fail)
-            (lets ((l k v r to bs (get5 (cdr bs))))
-               (values (list "R["to"]=prim_mkff(TFF"color",R["l"],R["k"],R["v"],R["r"]);\n") bs
-                  (put regs to 'alloc)))))
-
       (define (indent i)
          (list->string
             (fold
@@ -202,17 +195,6 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                            (zip cons targets (iota 1 1 (+ n 1)))))))
                bs
                (fold del regs targets))))
-
-      ; bind node left key val right, filling in #false when implicit
-      (define (cify-bindff bs regs fail)
-         ;; note, may overwrite n while binding
-         (lets ((n l k v r bs (get5 (cdr bs))))
-            (values ;; would probably be a bad idea to use prim_withff(&l, &r, ...), as those have at
-                    ;; least earlier caused an immense slowdown in compiled code
-               (assert-alloc regs n 1049
-                  (list "{word*ob=(word*)R["n"];hval hdr=*ob;R["k"]=ob[1];R["v"]=ob[2];switch(objsize(hdr)){case 3:R["l"]=R["r"]=IEMPTY;break;case 4:if(1<<TPOS&hdr){R["l"]=IEMPTY;R["r"]=ob[3];}else{R["l"]=ob[3];R["r"]=IEMPTY;};break;default:R["l"]=ob[3];R["r"]=ob[4];}}\n"))
-               bs
-               (fold del regs (list l k v r)))))
 
       (define (cify-mkt bs regs fail)
          (lets
@@ -382,9 +364,6 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                         (values (list "R["to"]=prim_set(R["ob"],R["pos"],R["val"]);\n") bs
                            (put regs to (get regs ob 'alloc))))))
                (cons 47 cify-ref)
-               (cons 48 (cifyer-mkff ""))
-               (cons 176 (cifyer-mkff "|FFRED"))
-               (cons 49 cify-bindff)
                (cons 51 ;; cons car cdr to
                   (λ (bs regs fail)
                      (lets ((a b to bs (get3 (cdr bs))))

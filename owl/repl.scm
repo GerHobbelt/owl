@@ -110,7 +110,7 @@
       (define (maybe-show-metadata env val)
          (lets
             ((meta (env-get env meta-tag empty))
-             (info (getf meta val)))
+             (info (get meta val)))
             (when info
                (display ";; ")
                (if (list? info)
@@ -579,7 +579,7 @@
          (if (and #false (function? value)) ;; TODO DROP #FALSE
             (lets
                ((names (env-get env name-tag empty))
-                (old (getf env value))
+                (old (get env value))
                 (env
                   (if old
                      env

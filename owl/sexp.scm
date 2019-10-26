@@ -346,7 +346,6 @@
                   (get-letter-word #\f "alse" #false)
                   (get-letter-word #\n "ull" #null)
                   (get-letter-word #\t "rue" #true)
-                  (get-word "empty" #empty) ;; DEPRECATED REMOVE
                   (get-parses ;; character
                      ((skip (get-imm #\\))
                       (codepoint (get-either get-named-char get-rune)))

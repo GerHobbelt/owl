@@ -22,10 +22,6 @@
 (define elem-ip 20) ;; inverse probability of stopping element addition for linear random data structures
 (define max-bits 128)
 
-;; REMOVE 
-,load "owl/iff.scm"
-(import (owl iff))
-
 ;; theorem :: rs → rs' bindings ok?
 
 ; f :: ? → _, keys
@@ -574,14 +570,14 @@
             ((not (null? unknown))
                (print "Pray tell what are " unknown)
                1)
-            ((getf dict 'help)
+            ((get dict 'help)
                (print "Usage:")
                (print (format-rules cl-handler))
                0)
             (else
                (lets
-                  ((seed (or (getf dict 'seed)  (random-seed)))
-                   (end (getf dict 'rounds))) ; #false if not given
+                  ((seed (or (get dict 'seed)  (random-seed)))
+                   (end (get dict 'rounds))) ; #false if not given
                   (print "Starting random continuous test, seed " seed)
                   (if end
                      (print "Will run up to " end)
