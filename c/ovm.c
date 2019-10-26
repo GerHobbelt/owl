@@ -98,7 +98,7 @@ typedef intptr_t wdiff;
 #define BOOL(cval)                  ((cval) ? ITRUE : IFALSE)
 #define immval(desc)                ((hval)(desc) >> IPOS)
 #define fixnump(desc)               (((desc) & 255) == 2)
-#define NR                          91 /* FIXME: should be ~32, see owl/register.scm:/define.n-registers/ */
+#define NR                          98 /* FIXME: should be ~32, see owl/register.scm:/define.n-registers/ */
 #define header(x)                   V(x)
 #define is_type(x, t)               (((x) & (63 << TPOS | 2)) == ((t) << TPOS | 2))
 #define objsize(x)                  ((hval)(x) >> SPOS)

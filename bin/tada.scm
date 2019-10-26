@@ -48,7 +48,7 @@ output: pdf_document
 (define safe-chars
    (fold
       (lambda (ff x) (put ff x x))
-      #empty
+      empty
       (list #\space #\- #\_ #\: #\( #\) #\?)))
 
 (define (html-safe s)

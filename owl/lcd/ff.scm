@@ -23,6 +23,9 @@
       list->ff
       ff->list
       ff-iter
+      ff-min
+      ff-max
+      keys
 
       upgrade     ;; old ff -> new COMPAT REMOVE
       downgrade   ;; new ff -> old COMPAT REMOVE
@@ -33,7 +36,7 @@
       (define empty #f)
 
       (define empty? (C eq? empty))
-      
+
       (define black
          (λ (l k v r)
             (if l
@@ -148,6 +151,20 @@
                         (black-right left this this-val (putn right key val))))))
             (red #f key val #f)))
 
+      (define (ff-min ff def)
+         (if ff
+            (ff
+               (λ (l k v r) (ff-min l v))
+               (λ (l k v r) (ff-min l v)))
+            def))
+
+      (define (ff-max ff def)
+         (if ff
+            (ff
+               (λ (l k v r) (ff-max r v))
+               (λ (l k v r) (ff-max r v)))
+            def))
+
       (define (ff-get ff key def self)
          ;(print "ff-get " key " from " ff)
          (if ff
@@ -229,6 +246,12 @@
                            (o s k v))))))
                (t step step))
             s))
+
+      (define (keys ff)
+         (ff-fold
+            (λ (out k v) (cons k out))
+            '()
+            ff))
 
       (define (ff-iter ff)
          (let loop ((ff ff) (tail null))

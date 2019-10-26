@@ -17,7 +17,7 @@
       (owl list)
       (owl eval)
       (owl primop)
-      (owl ff)
+      (owl lcd ff)
       (owl sort)
       (owl eval env)
       ;(owl terminal)
@@ -129,7 +129,7 @@
                      (if (not (display "> "))
                         (halt 125)))
                   (begin
-                     (maybe-show-metadata env val)
+                     ;(maybe-show-metadata env val)
                      ((writer-to (env-get env name-tag empty))
                         stdout val)
                      (if (not (display "\n> "))
@@ -576,7 +576,7 @@
 
       ;; update *owl-names* (used by renderer of repl prompt) if the defined value is a function
       (define (maybe-name-function env name value)
-         (if (function? value)
+         (if (and #false (function? value)) ;; TODO DROP #FALSE
             (lets
                ((names (env-get env name-tag empty))
                 (old (getf env value))

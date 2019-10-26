@@ -35,7 +35,7 @@
       ((list? x)   (iota 0 1 (length x)))
       ((string? x) (iota 0 1 (string-length x)))
       ((vector? x) (iota 0 1 (vector-length x)))
-      ((ff? x)     (keys x))
+      ;((ff? x)     (keys x))
       (else (error "domain: what is " x))))
 
 ; f :: _ → ?, values
@@ -45,7 +45,7 @@
       ((list? x)   x)
       ((string? x) (string->list x))
       ((vector? x) (vector->list x))
-      ((ff? x)     (ff-fold (λ (out k v) (cons v out)) #n x))
+      ;((ff? x)     (ff-fold (λ (out k v) (cons v out)) #n x))
       (else (error "range: what is " x))))
 
 ;; rs (thing_1 ...) def → rs' thing_i | rs def
@@ -374,10 +374,10 @@
          ∀ f ∊ (Ff-of Byte) ∀ a b ∊ Byte
             b = (get (put f a b) a #false)
 
-      theorem ff-keys-sorted
-         ∀ f ∊ (Ff-of Short)
-            ks ← (keys f) ;; inorder
-               ks = (sort < ks)
+      ;theorem ff-keys-sorted
+      ;   ∀ f ∊ (Ff-of Short)
+      ;      ks ← (keys f) ;; inorder
+      ;         ks = (sort < ks)
 
       theorem ff-fold-foldr
          ∀ f ∊ (Ff-of Short)

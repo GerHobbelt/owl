@@ -17,7 +17,8 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (owl tuple)
       (owl sort)
       (owl syscall)
-      (owl ff)
+      (owl lcd ff)
+      (prefix (owl ff) old-)
       (owl symbol)
       (owl bytevector)
       (owl vector)
@@ -345,12 +346,21 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       ; obj → (ff of #[bytecode] → #(native-opcode native-using-bytecode c-fragment))
       ; dump entry object to path, or stdout if path is "-"
 
+      (define (maybe-upgrade val)
+         (if (old-ff? val)
+            (upgrade val)
+            val))
+      ;(define (maybe-upgrade val) val)
+
       (define (make-compiler extras)
          (λ (entry path opts native . custom-runtime) ; <- this is the usual compile-owl
             (lets
-               ((path (get opts 'output "-")) ; <- path argument deprecated
+               ((extras (maybe-upgrade extras))
+                (opts   (maybe-upgrade opts))
+                (path (get opts 'output "-")) ; <- path argument deprecated
                 (mode (get opts 'mode 'program)) ;; 'program | 'library | 'plain
                 (mode (if (getf opts 'bare) 'plain mode))
+
                 (format
                   ;; use given format (if valid) or choose using output file suffix
                   (or (cook-format (get opts 'output-format #false))

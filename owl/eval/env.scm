@@ -19,7 +19,7 @@
 
    (import
       (owl core)
-      (owl ff)
+      (owl lcd ff)
       (owl function)
       (owl list)
       (owl tuple)
@@ -38,7 +38,9 @@
 
       (define empty-env empty) ;; will change with ff impl
 
-      (define env-del del)
+      (define (env-del e k)
+         (del (upgrade e) k))
+
       (define poll-tag "mcp/polls")
       (define buffer-tag "mcp/buffs")
       (define link-tag "mcp/links")
@@ -56,7 +58,7 @@
       (define lookup ;; <- to be replaced with env-get
          (let ((undefined (tuple 'undefined)))
             (λ (env key)
-               (get env key undefined))))
+               (get (upgrade env) key undefined))))
 
       ;; get a value from env, or return def if not there or not a value
       (define (env-get env key def)
@@ -67,16 +69,19 @@
                   (else def)))
             (else def)))
 
-      (define env-get-raw get) ;; will use different ff
-      (define env-put-raw put) ;; will use different ff
+      (define (env-get-raw e k d)
+         (get (upgrade e) k d))
+
+      (define (env-put-raw e k v)
+         (put (upgrade e) k v))
 
       (define (env-set env key val)
-         (put env key
+         (put (upgrade env) key
             (tuple 'defined
                (tuple 'value val))))
 
       (define (env-set-macro env key transformer)
-         (put env key
+         (put (upgrade env) key
             (tuple 'macro transformer)))
 
       (define-syntax invoke
@@ -93,7 +98,7 @@
       (define env-bind
          (let ((bound (tuple 'bound)))
             (λ (env keys)
-               (let loop ((env env) (keys keys))
+               (let loop ((env (upgrade env)) (keys keys))
                   (cond
                      ((null? keys) env)
                      ((pair? keys)
@@ -195,12 +200,17 @@
          (call/cc
             (λ (ret)
                (ok env
-                  ((walker env (B ret fail)) exp)))))
+                  ((walker (upgrade env) (B ret fail)) exp)))))
 
-      (define env-fold ff-fold)
+      (define (env-fold o s ff)
+         (ff-fold o s (upgrade ff)))
 
       (define (env-serializer env thing)
-         ((make-serializer (env-get env name-tag empty)) thing #n))
+         ((make-serializer
+            empty
+           ; (env-get env name-tag empty)
+           )
+            thing #n))
 
       (define (verbose-vm-error env opcode a b)
          (case opcode
@@ -279,10 +289,10 @@
             (λ (out name value)
                (let ((name (namer name)))
                   (if name (put out name value) out)))
-            empty env))
+            empty (upgrade env)))
 
       (define (env-keys env)
-         (ff-fold (λ (words key value) (cons key words)) #n env))
+         (ff-fold (λ (words key value) (cons key words)) #n (upgrade env)))
 
       (define primitive? primop-of)
 ))

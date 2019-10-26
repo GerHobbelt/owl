@@ -56,6 +56,9 @@
    (owl base)
    (owl variable))
 
+
+(import (owl lcd ff))
+
 ;; implementation features, used by cond-expand
 (define *features*
    (cons
@@ -80,6 +83,7 @@
       ((equal? s "library") 'library) ;; threads and IO, nothing else
       ((equal? s "plain")   'plain)   ;; just the program
       (else #false)))
+
 
 (define command-line-rules
    (cl-rules
@@ -137,6 +141,7 @@ Copyright (c) Aki Helin
 Check out https://gitlab.com/owl-lisp/owl for more information.")
 
 
+
 (define usual-suspects
    (list
          put get del ff-fold fupd
@@ -156,8 +161,10 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
          uncons lfold lmap
          rand seed->rands))
 
+
 ;; handles $ ol -c stuff
 (define (repl-compile compiler env path opts)
+   (let ((opts (upgrade opts)))
    (try
       (λ ()
          ;; evaluate in a thread to catch error messages here
@@ -196,8 +203,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                (else
                   (print-repl-error "Weird eval outcome.")
                   3))))
-      #false))
-
+      #false)))
 
 (define (try-load-state path args)
    (let ((val (load-fasl path #false)))
@@ -251,7 +257,8 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       (process-arguments (cdr vm-args) command-line-rules error-usage-text
          (λ (dict others)
             (lets
-               ((env ;; be quiet automatically if any of these are set
+               ((dict (upgrade dict))
+                (env ;; be quiet automatically if any of these are set
                   (if (fold (λ (is this) (or is (get dict this #false))) #false '(quiet test evaluate run output output-format))
                      (env-set env '*interactive* #false)
                      (env-set env '*interactive* #true)))
@@ -300,6 +307,8 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                            1)))))))
       2))
 
+(import (owl lcd ff))
+
 (define (directory-of path)
    (runes->string
       (reverse
@@ -315,6 +324,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       ((pair? x) x)
       ((null? x) x)
       (else (cons x #null))))
+
 
 (define (heap-entry symbol-list)
    (λ (codes) ;; all my codes are belong to codes
@@ -392,18 +402,21 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
 (λ (args)
    (process-arguments (cdr args) command-line-rules "you lose"
       (λ (opts extra)
-         (cond
-            ((null? extra)
-               (compiler heap-entry "unused historical thingy"
-                  (list->ff
-                     `((output . ,(get opts 'output 'bug))
-                       (want-symbols . #true)
-                       (want-codes . #true)
-                       (want-native-ops . #true)))
-                  (choose-natives
-                     (get opts 'specialize "none")
-                     heap-entry))
-               0)
-            (else
-               (print "Unknown arguments: " extra)
-               1)))))
+         (let ((opts (upgrade opts)))
+            (print "opts are " opts)
+            (print "as list " (ff->list opts))
+            (cond
+               ((null? extra)
+                  (compiler heap-entry "unused historical thingy"
+                     (list->ff
+                        `((output . ,(get opts 'output 'bug))
+                          (want-symbols . #true)
+                          (want-codes . #true)
+                          (want-native-ops . #true)))
+                     (choose-natives
+                        (get opts 'specialize "none")
+                        heap-entry))
+                  0)
+               (else
+                  (print "Unknown arguments: " extra)
+                  1))))))
