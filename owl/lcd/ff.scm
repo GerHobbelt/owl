@@ -4,6 +4,7 @@
    (import
       (owl core)
       (owl list)
+      (owl proof)
       (owl function))
 
    (export
@@ -266,7 +267,7 @@
             s))
 
       (define (keys ff)
-         (ff-fold
+         (ff-foldr
             (λ (out k v) (cons k out))
             '()
             ff))
@@ -475,22 +476,21 @@
                   ff))
             ff))
 
+      (let ((ff (list->ff '((a . 1) (b . 2) (c . 3)))))
+         (example
+            (ff->list empty) = ()
+            (ff->list (put empty 'a 42)) = '((a . 42))
+            (ff->list (put ff 'a 42)) = '((a . 42) (b . 2) (c . 3))
+            (ff->list (put ff 'd 42)) = '((a . 1) (b . 2) (c . 3) (d . 42))
+            (ff->list (del ff 'a)) = '((b . 2) (c . 3))
+            (ff->list (del ff 'x)) = '((a . 1) (b . 2) (c . 3))
+            (ff-fold (λ (out k v) (cons v out)) #n ff) = '(3 2 1)
+            (ff-foldr (λ (out k v) (cons v out)) #n ff) = '(1 2 3)
+            (keys ff) = '(a b c)
+            (get ff 'a 0) = 1
+            (get ff 'x 0) = 0))
+
 ))
-
-'(import (owl lcd ff))
-'(define x (fold (λ (ff x) (put ff x (+ x 1000))) empty (iota 0 1 10)))
-'(print (ff->list x))
-
-'(print (-> x (del 5) (del 8) (del 0) ff->list))
-
-'(define x
-   (lfold
-      (λ (ff x)
-         (put ff x (+ x 1000)))
-      #f
-      (liota 0 1 1000000)))
-
-'(print (ff-fold (λ (sum k v) (+ sum v)) 0 x))
 
 
 

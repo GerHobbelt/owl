@@ -370,10 +370,10 @@
          ∀ f ∊ (Ff-of Byte) ∀ a b ∊ Byte
             b = (get (put f a b) a #false)
 
-      ;theorem ff-keys-sorted
-      ;   ∀ f ∊ (Ff-of Short)
-      ;      ks ← (keys f) ;; inorder
-      ;         ks = (sort < ks)
+      theorem ff-keys-sorted
+         ∀ f ∊ (Ff-of Short)
+            ks ← (keys f) ;; inorder
+               ks = (sort < ks)
 
       theorem ff-fold-foldr
          ∀ f ∊ (Ff-of Short)
