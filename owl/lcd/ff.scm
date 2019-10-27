@@ -379,7 +379,6 @@
 
       (define (either node cont) (node cont cont))
 
-      ;; todo: optimize, since many colors are known
       (define (app left right)
          (cond
 
@@ -392,22 +391,27 @@
                (if (red? right)
                   (let ((middle (app (ffcdr left) (ffcar right))))
                      (if (red? middle)
-                        (either middle
+                        (middle
                            (λ (ml mk mv mr)
-                              (either left
+                              (left
                                  (λ (ll lk lv lr)
-                                    (either right
+                                    (right
                                        (λ (rl rk rv rr)
                                           (red
                                              (red ll lk lv ml)
                                              mk mv
-                                             (red mr rk rv rr))))))))
-                        (either left
+                                             (red mr rk rv rr)))
+                                       #f))
+                                 #f))
+                           #f)
+                        (left
                            (λ (a xk xv b)
-                              (either right
+                              (right
                                  (λ (c yk yv d)
                                     (red a xk xv
-                                       (red middle yk yv d))))))))
+                                       (red middle yk yv d)))
+                                 #f))
+                           #f)))
                   (left
                      (λ (a xk xv b)
                         (red a xk xv (app b right)))
@@ -424,18 +428,18 @@
                   (if (red? middle)
                      (middle
                         (λ (ml mk mv mr)
-                           (either left
+                           (left #f
                               (λ (ll lk lv lr)
-                                 (either right
+                                 (right #f
                                     (λ (rl rk rv rr)
                                        (red
                                           (black ll lk lv ml)
                                           mk mv
                                           (black mr rk rv rr)))))))
                         #f)
-                     (either left
+                     (left #f
                         (λ (ll lk lv lr)
-                           (either right
+                           (right #f
                               (λ (rl rk rv rr)
                                  (ball-left
                                     ll lk lv
@@ -469,12 +473,10 @@
                                  (ball-right left this-key val sub))))))))))
 
       (define (del ff key)
-         (if (ff-has? ff key)
-            (let ((ff (deln ff key)))
-               (if (red? ff)
-                  (color-black ff)
-                  ff))
-            ff))
+         (let ((ff (deln ff key)))
+            (if (red? ff)
+               (color-black ff)
+               ff)))
 
       (let ((ff (list->ff '((a . 1) (b . 2) (c . 3)))))
          (example
