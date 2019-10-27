@@ -16,6 +16,7 @@
       ff-fold
       ff-foldr
       ff-union
+      ff-has?
       list->ff
       ff->list
       ff-iter
@@ -24,6 +25,8 @@
       keys)
 
    (begin
+
+      ;; note: it is possible to define ff? by checking the bytecode
 
       ;;;
       ;;; Construction
@@ -77,50 +80,40 @@
       (define (black-left left key val right)
          (left
             (λ (ll lk lv lr)
-               (if right
-                  (right
-                     (λ (A B C D)
-                        (red (color-black left) key val (color-black right)))
-                     (λ (A B C D)
+               (if (red? right)
+                  (red (color-black left) key val (color-black right))
+                  (cond
+                     ((red? ll)
                         (ll
                            (λ (a xk xv b)
                               (let ((yk lk) (yv lv) (c lr))
                                  (red (black a xk xv b) yk yv (black c key val right))))
-                           (λ (A B C D)
-                              (lr
-                                 (λ (b yk yv c)
-                                    (let ((a ll) (xk lk) (xv lv))
-                                       (red (black a xk xv b) yk yv (black c key val right))))
-                                 (λ (A B C D)
-                                    (black left key val right)))))))
-                  (black left key val right)))
+                           #f))
+                     ((red? lr)
+                        (lr
+                           (λ (b yk yv c)
+                              (let ((a ll) (xk lk) (xv lv))
+                                 (red (black a xk xv b) yk yv (black c key val right))))
+                           #f))
+                     (else
+                        (black left key val right)))))
             (λ (A B C D)
                (black left key val right))))
 
       (define (black-right left key val right)
          (right
             (λ (rl rk rv rr)
-               (if rl
-                  (rl
-                     (λ (b yk yv c)
-                        (lets ((zk rk) (zv rv) (d rr))
-                           (red
-                              (black left key val b)
-                              yk yv
-                              (black c zk zv d))))
-                     (λ (A B C D)
-                        (if rr
-                           (rr
-                              (λ (c zk zv d)
-                                 (let ((b rl) (yk rk) (yv rv))
-                                    (red
-                                       (black left key val b)
-                                       yk yv
-                                       (black c zk zv d))))
-                              (λ (A B C D)
-                                 (black left key val right)))
-                           (black left key val right))))
-                  (if rr
+               (cond
+                  ((red? rl)
+                     (rl
+                        (λ (b yk yv c)
+                           (lets ((zk rk) (zv rv) (d rr))
+                              (red
+                                 (black left key val b)
+                                 yk yv
+                                 (black c zk zv d))))
+                        #f))
+                  ((red? rr)
                      (rr
                         (λ (c zk zv d)
                            (let ((b rl) (yk rk) (yv rv))
@@ -128,8 +121,8 @@
                                  (black left key val b)
                                  yk yv
                                  (black c zk zv d))))
-                        (λ (A B C D)
-                           (black left key val right)))
+                        #f))
+                  (else
                      (black left key val right))))
             (λ (A B C D)
                (black left key val right))))
@@ -324,7 +317,7 @@
                      (fupd a bk
                         (collide x bv)))))
             a b))
-      
+
       ;;;
       ;;; Deletion
       ;;;
@@ -414,7 +407,7 @@
                                  (λ (c yk yv d)
                                     (red a xk xv
                                        (red middle yk yv d))))))))
-                  (left 
+                  (left
                      (λ (a xk xv b)
                         (red a xk xv (app b right)))
                      #f)))
@@ -475,10 +468,12 @@
                                  (ball-right left this-key val sub))))))))))
 
       (define (del ff key)
-         (let ((ff (deln ff key)))
-            (if (red? ff)
-               (color-black ff)
-               ff)))
+         (if (ff-has? ff key)
+            (let ((ff (deln ff key)))
+               (if (red? ff)
+                  (color-black ff)
+                  ff))
+            ff))
 
 ))
 

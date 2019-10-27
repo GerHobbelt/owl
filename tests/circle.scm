@@ -1,6 +1,6 @@
-;; Start 1000 threads and pass a message through them
+;; Start 10000 threads and pass a message through them
 
-(define n 1000)
+(define n 10000)
 
 (define (forwarder to)
 		(let loop ()
