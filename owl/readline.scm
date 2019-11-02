@@ -1,6 +1,11 @@
+;; probably better to split this later to (owl terminal) and (owl readline)
+
 (define-library (owl readline)
 
    (export
+
+      readline-default-options                   ;; settings to be passed for readline
+
       set-terminal-rawness
 
       font-normal          ;; lst → lst'
@@ -72,6 +77,7 @@
       (owl lazy)
       (owl list-extra)
       (owl port)
+      (owl lcd ff)
       (scheme base)
       (scheme write)
       (owl io)
@@ -408,7 +414,12 @@
       ;; todo: ctrl-G = end incremental search, restore current line
       ;; todo: tab = autocomplete
 
-      (define (readline ll history x y w)
+      (define readline-default-options
+         (list->ff
+            '((backspace-out . #false)      ;; return 'backspace if empty input is erased
+            )))
+
+      (define (readline ll history x y w opts)
          (lets ((history (cons null history))  ; (newer . older)
                 (offset-delta (+ 1 (quotient (- w x) 2)))
                 (width (- w x)))
@@ -423,7 +434,9 @@
                      ((backspace)
                         (if (= cx x)
                            (if (= off 0)
-                              (loop ll hi left right cx off) ; or continue
+                              (if (get opts 'backspace-out)
+                                 (values ll 'backspace)
+                                 (loop ll hi left right cx off))
                               (lets ((off (- off offset-delta)) (visible-left (list->string (drop (reverse left) off))) (cx (+ x (string-length visible-left)))) (cursor-pos x y) (write-bytes stdout (clear-line-right null)) (display visible-left) (update-line-right right w cx) (loop (cons op ll) hi left right cx off)))
                            (let ((cx (- cx 1)))
                               (write-bytes stdout (cursor-left null 1))
@@ -545,13 +558,16 @@
          (case-lambda
             (()
                (lets ((x y w ll (get-dimensions (terminal-input))))
-                  (readline ll null x y w)))
+                  (readline ll null x y w readline-default-options)))
             ((ll)
                (lets ((x y w ll (get-dimensions ll)))
-                  (readline ll null x y w)))
+                  (readline ll null x y w readline-default-options)))
             ((ll history)
                (lets ((x y w ll (get-dimensions ll)))
-                  (readline ll history x y w)))))
+                  (readline ll history x y w readline-default-options)))
+            ((ll history opts)
+               (lets ((x y w ll (get-dimensions ll)))
+                  (readline ll history x y w opts)))))
 
       ;; note, not actually using the port atm
       (define (readline-result-stream history prompt merger finish)
