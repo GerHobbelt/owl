@@ -59,7 +59,7 @@ output: pdf_document
                ((<= #\a char #\z) (cons char tl))
                ((<= #\0 char #\9) (cons char tl))
                ((<= #\A char #\Z) (cons char tl))
-               ((getf safe-chars char) (cons char tl))
+               ((get safe-chars char) (cons char tl))
                (else (render (str "&#" char ";") tl))))
          #n
          (string->list s))))
@@ -197,12 +197,12 @@ output: pdf_document
                (fold gather-documentation #null
                   (sort string>?
                      (dirs->list-recursive
-                        (getf opts 'source-dir)))))
+                        (get opts 'source-dir)))))
               (prelude
                  (bytes->string
-                    (file->list (getf opts 'prelude))))
+                    (file->list (get opts 'prelude))))
                (output-path
-                  (getf opts 'output))
+                  (get opts 'output))
                (output-port
                   (open-output-file output-path)))
             (for-each print docs)
