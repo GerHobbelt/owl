@@ -1,15 +1,15 @@
 #| doc
-This library defines the default toplevel. 
+This library defines the default toplevel.
 |#
 
 (define-library (owl base)
 
    (export
-      (exports (owl defmac))
+      (exports (owl core))
       (exports (owl list))
       (exports (owl rlist))
       (exports (owl list-extra))
-      (exports (owl ff))
+      (exports (owl lcd ff))
       (exports (owl io))
       (exports (owl lazy))
       (exports (owl string))
@@ -44,12 +44,12 @@ This library defines the default toplevel.
       (exports (scheme write)))
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl rlist)
       (owl list-extra)
       (owl tuple)
-      (owl ff)
+      (owl lcd ff)
       (owl io)
       (owl port)
       (owl time)

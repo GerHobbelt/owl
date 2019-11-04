@@ -23,7 +23,7 @@ the time according to various more and less sensible rules.
 (define-library (owl date)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math)
       (owl proof)
       (owl render)

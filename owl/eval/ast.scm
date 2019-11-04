@@ -1,9 +1,9 @@
 #| doc
-After macro expansion the S-expressions are translated to a tree of tuples 
+After macro expansion the S-expressions are translated to a tree of tuples
 with checked structure to avoid having to constantly check S-expression structure.
 |#
 
-(define-library (owl ast)
+(define-library (owl eval ast)
 
    (export call? var? value-of sexp->ast mkcall mklambda mkvarlambda mkvar mkval)
 
@@ -14,9 +14,9 @@ with checked structure to avoid having to constantly check S-expression structur
       (owl tuple)
       (owl list)
       (owl symbol)
-      (owl defmac)
+      (owl core)
       (owl equal)
-      (owl env)
+      (owl eval env)
       (scheme cxr))
 
    (begin

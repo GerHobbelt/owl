@@ -19,7 +19,7 @@ Typical use cases for them is packing data for an operating system call,
       list->bytevector)
 
    (import
-      (owl defmac))
+      (owl core))
 
    (begin
 

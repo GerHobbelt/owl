@@ -58,7 +58,7 @@ value.
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math)
       (only (owl math integer) ncar ncdr ncons)
       (owl lazy)

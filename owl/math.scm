@@ -24,7 +24,7 @@ You can also use specific (owl math X) libraries if necessary.
       (exports (owl math extra)))
 
    (import
-      (owl defmac)
+      (owl core)
 
       ;; integral, exported as such
       (only (owl math integer)

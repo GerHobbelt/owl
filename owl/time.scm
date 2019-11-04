@@ -8,7 +8,7 @@
       time-ns)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl io)
       (owl syscall)
       (owl math)

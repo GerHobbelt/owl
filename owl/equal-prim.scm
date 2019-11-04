@@ -5,7 +5,7 @@
       simple-equal?)
 
    (import
-      (owl defmac)
+      (owl core)
       (only (owl primop) object-size))
 
    (begin

@@ -1,6 +1,6 @@
 (define-library (tests circular)
    (import
-      (owl defmac)
+      (owl core)
       (tests circular))
    (export bad-kitty)
    (begin

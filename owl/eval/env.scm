@@ -1,4 +1,4 @@
-(define-library (owl env)
+(define-library (owl eval env)
 
    (export
       lookup env-bind
@@ -18,8 +18,8 @@
       )
 
    (import
-      (owl defmac)
-      (owl ff)
+      (owl core)
+      (owl lcd ff)
       (owl function)
       (owl list)
       (owl tuple)
@@ -39,6 +39,7 @@
       (define empty-env empty) ;; will change with ff impl
 
       (define env-del del)
+
       (define poll-tag "mcp/polls")
       (define buffer-tag "mcp/buffs")
       (define link-tag "mcp/links")
@@ -67,8 +68,9 @@
                   (else def)))
             (else def)))
 
-      (define env-get-raw get) ;; will use different ff
-      (define env-put-raw put) ;; will use different ff
+      (define env-get-raw get)
+
+      (define env-put-raw put)
 
       (define (env-set env key val)
          (put env key
@@ -197,10 +199,15 @@
                (ok env
                   ((walker env (B ret fail)) exp)))))
 
-      (define env-fold ff-fold)
+      (define (env-fold o s ff)
+         (ff-fold o s ff))
 
       (define (env-serializer env thing)
-         ((make-serializer (env-get env name-tag empty)) thing #n))
+         ((make-serializer
+            empty
+           ; (env-get env name-tag empty)
+           )
+            thing #n))
 
       (define (verbose-vm-error env opcode a b)
          (case opcode

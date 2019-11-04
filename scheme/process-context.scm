@@ -3,7 +3,7 @@
    (import
       (scheme base)
       (only (owl primop) halt)
-      (only (owl ff) get)
+      (only (owl lcd ff) get)
       (only (owl syscall) error)
       (only (owl sys) getenv get-environment)
       (only (owl variable) link-variable))
@@ -22,7 +22,7 @@
          (link-variable '*state*))
 
       (define (command-line)
-         (get (owl-state) 'command-line-arguments #false))
+         (get (owl-state) 'command-line-arguments))
 
       (define (exit . x)
          (halt

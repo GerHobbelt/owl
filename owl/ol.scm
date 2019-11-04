@@ -23,28 +23,30 @@
  | DEALINGS IN THE SOFTWARE.
  |#
 
+,load "owl/core.scm"
+
 (mail 'intern (tuple 'flush)) ;; ask symbol interner to forget all symbols it knows
 
 (define *libraries* #n) ;; clear loaded libraries
 
-(import (owl defmac)) ;; reload default macros needed for defining libraries etc
+(import (owl core))   ;; reload default macros needed for defining libraries etc
 
 ;; forget everhything except these and core values (later list also them explicitly)
 ,forget-all-but (quote *libraries* _branch _define rlambda)
 
 ;; --------------------------------------------------------------------------------
 
-(import (owl defmac))   ;; get define, define-library, import, ... from the just loaded (owl defmac)
+(import (owl core))   ;; get define, define-library, import, ... from the just loaded (owl core)
 
 (define *interactive* #false) ;; be verbose
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
-(define *owl-names* #empty)
-(define *owl-version* "0.1.20")
+;(define *owl-names* #empty) ;; default is empty, so safe to remove jh
+(define *owl-version* "0.1.21")
 
 (import
    (owl intern)
-   (owl env)
-   (owl ast)
+   (owl eval env)
+   (owl eval ast)
    (owl thread)
    (owl args)
    (only (owl dump) make-compiler load-fasl)
@@ -53,6 +55,9 @@
    (owl repl)
    (owl base)
    (owl variable))
+
+
+(import (owl lcd ff))
 
 ;; implementation features, used by cond-expand
 (define *features*
@@ -63,7 +68,7 @@
 (define initial-environment
    (bind-toplevel
       (env-fold env-put-raw
-         *owl-core*
+         *owl-kernel*
          (cdr (assoc '(owl base) *libraries*)))))
 
 (define (path->string path)
@@ -79,26 +84,29 @@
       ((equal? s "plain")   'plain)   ;; just the program
       (else #false)))
 
+
 (define command-line-rules
    (cl-rules
      `((help     "-h" "--help")
        (about    "-a" "--about")
        (version  "-v" "--version")
+       (readline "-R" "--readline" comment "enable line editor")
        (evaluate "-e" "--eval"     has-arg comment "evaluate given expression and print result")
        (test     "-t" "--test"     has-arg comment "evaluate given expression exit with 0 unless the result is #false")
        (quiet    "-q" "--quiet"    comment "be quiet (default in non-interactive mode)")
        (run      "-r" "--run"      has-arg comment "run the last value of the given foo.scm with given arguments" terminal)
+       (include  "-i" "--include"  has-arg comment "extra directory to load libraries from" plural)
        (load     "-l" "--load"     has-arg comment "resume execution of a saved program state saved with suspend")
        (output   "-o" "--output"   has-arg comment "where to put compiler output (default auto)")
        (output-format  "-x" "--output-format"   has-arg comment "output format when compiling (default auto)")
        (optimize "-O" "--optimize" cook ,string->number comment "optimization level in C-compilation (0-2)")
-       (custom-runtime "-R" "--runtime"
+       (custom-runtime "-C" "--runtime"
           cook ,path->string
           comment "use a custom runtime in C compilation")
        ;(interactive "-i" "--interactive" comment "use builtin interactive line editor")
        ;(debug    "-d" "--debug" comment "Define *debug* at toplevel verbose compilation")
        ;(linked  #false "--most-linked" has-arg cook ,string->integer comment "compile most linked n% bytecode vectors to C")
-       (mode     "-m" "--mode"    cook ,choose-mode 
+       (mode     "-m" "--mode"    cook ,choose-mode
           default "program"
           comment "output wrapping: program, library, plain")
        )))
@@ -121,7 +129,7 @@
             ;; be silent when all is ok
             ;; exit with 126 and have error message go to stderr when the run crashes
             (try (λ () (val args)) 126))
-         ((error reason env)
+         ((error reason env input)
             (print-repl-error
                (list "ol: cannot run" path "because there was an error during loading:" reason))
             2))
@@ -131,6 +139,7 @@
 "Owl Lisp -- a functional scheme
 Copyright (c) Aki Helin
 Check out https://gitlab.com/owl-lisp/owl for more information.")
+
 
 
 (define usual-suspects
@@ -152,6 +161,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
          uncons lfold lmap
          rand seed->rands))
 
+
 ;; handles $ ol -c stuff
 (define (repl-compile compiler env path opts)
    (try
@@ -163,29 +173,29 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                   (if (function? val)
                      (begin
                         (compiler val
-                           
+
                            ;; output path
                            (cond
                               ((get opts 'output #false) => self) ; requested with -o
                               ((equal? path "-") path) ; stdin → stdout
                               (else (c-source-name path)))
-                           
+
                            opts
-                           
+
                            ;; to be customizable via command line opts
                            (let ((opt (abs (get opts 'optimize 0))))
                               (cond
                                  ((>= opt 2) val) ;; compile everything to native extended primops for -O2
                                  ((= opt 1) usual-suspects) ;; compile some if -O1
                                  (else #false))) ;; otherwise use bytecode and plain vm
-                           
-                           (getf opts 'custom-runtime))
-                        
+
+                           (get opts 'custom-runtime))
+
                            0)
                      (begin
                         (print "The last value should be a function of one value (the command line arguments), but it is instead " val)
                         2)))
-               ((error reason env)
+               ((error reason env input)
                   (print-repl-error
                      (list "Cannot compile" path "because " reason))
                   2)
@@ -193,7 +203,6 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                   (print-repl-error "Weird eval outcome.")
                   3))))
       #false))
-
 
 (define (try-load-state path args)
    (let ((val (load-fasl path #false)))
@@ -209,7 +218,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       ((ok val env)
          (exit-owl
             (if (print val) 0 126)))
-      ((error reason partial-env)
+      ((error reason partial-env input)
          (print-repl-error
             (list "An error occurred while evaluating:" str reason))
          (exit-owl 1))
@@ -221,7 +230,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
    (tuple-case (repl-string env str)
       ((ok val env)
          (exit-owl (if val 0 1)))
-      ((error reason partial-env)
+      ((error reason partial-env input)
          (print-repl-error
             (list "An error occurred while evaluating:" str reason))
          (exit-owl 126))
@@ -252,37 +261,38 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                      (env-set env '*interactive* #false)
                      (env-set env '*interactive* #true)))
                 (env ;; maybe set debug causing (owl eval) to print intermediate steps
-                  (if (getf dict 'debug)
+                  (if (get dict 'debug)
                      (env-set env '*debug* #true)
-                     env)))
+                     env))
+                (env ;; add -i include directories, if any
+                   (env-set env '*include-dirs*
+                      (append (get dict 'include #null) (env-get env '*include-dirs* #null)))))
                (cond
-                  ((getf dict 'help)
+                  ((get dict 'help)
                      (print brief-usage-text)
                      (print-rules command-line-rules)
                      0)
-                  ((getf dict 'version)
+                  ((get dict 'version)
                      (print "Owl Lisp " *owl-version*)
                      0)
-                  ((getf dict 'about) (print about-owl) 0)
-                  ((getf dict 'load) => (C try-load-state others))
-                  ((or (getf dict 'output) (getf dict 'output-format))
+                  ((get dict 'about) (print about-owl) 0)
+                  ((get dict 'load) => (C try-load-state others))
+                  ((or (get dict 'output) (get dict 'output-format))
                      (if (< (length others) 2) ;; can take just one file or stdin
                         (repl-compile compiler env
                            (if (null? others) "-" (car others)) dict)
                         (begin
                            (print "compile just one file for now please: " others)
                            1)))
-                  ((getf dict 'run) =>
+                  ((get dict 'run) =>
                      (λ (path)
                         (owl-run (try (λ () (repl-file env path)) #false) (cons "ol" others) path)))
-                  ((getf dict 'evaluate) => (H try-repl-string env)) ;; FIXME: no error reporting
-                  ((getf dict 'test) => (H try-test-string env))
+                  ((get dict 'evaluate) => (H try-repl-string env)) ;; FIXME: no error reporting
+                  ((get dict 'test) => (H try-test-string env))
                   ((null? others)
                      (greeting env)
                      (repl-trampoline repl
-                        (-> env
-                           ;(env-set '*line-editor* (getf dict 'interactive))
-                           )))
+                        (env-set env '*readline* (get dict 'readline))))
                   (else
                      ;; load the given files
                      (define input
@@ -290,10 +300,12 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                      (tuple-case (repl (env-set env '*interactive* #false) input)
                         ((ok val env)
                            0)
-                        ((error reason partial-env)
+                        ((error reason partial-env input)
                            (print-repl-error reason)
                            1)))))))
       2))
+
+(import (owl lcd ff))
 
 (define (directory-of path)
    (runes->string
@@ -303,7 +315,14 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
             #n))))
 
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
-   (make-compiler #empty))
+   (make-compiler empty))
+
+(define (enlist x)
+   (cond
+      ((pair? x) x)
+      ((null? x) x)
+      (else (cons x #null))))
+
 
 (define (heap-entry symbol-list)
    (λ (codes) ;; all my codes are belong to codes
@@ -321,7 +340,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                         (tuple 'init
                            (λ ()
                               (thread 'repl
-                                 (let ((state (make-variable '*state* #empty)))
+                                 (let ((state (make-variable '*state* empty)))
                                     ;; get basic io running
                                     (start-base-threads)
 
@@ -350,7 +369,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                                                 (cons '*owl* (directory-of (car vm-args)))
                                                 (cons '*args* vm-args)
                                                 (cons '*features* *features*)
-                                                (cons '*include-dirs* *include-dirs*) ;; todo: add command line flag
+                                                (cons '*include-dirs* *include-dirs*)
                                                 (cons '*libraries* *libraries*)
                                                 (cons 'dump compiler)
                                                 (cons '*owl-version* *owl-version*)
@@ -381,18 +400,19 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
 (λ (args)
    (process-arguments (cdr args) command-line-rules "you lose"
       (λ (opts extra)
-         (cond
-            ((null? extra)
-               (compiler heap-entry "unused historical thingy"
-                  (list->ff
-                     `((output . ,(get opts 'output 'bug))
-                       (want-symbols . #true)
-                       (want-codes . #true)
-                       (want-native-ops . #true)))
-                  (choose-natives
-                     (get opts 'specialize "none")
-                     heap-entry))
-               0)
-            (else
-               (print "Unknown arguments: " extra)
-               1)))))
+         (let ((opts opts))
+            (cond
+               ((null? extra)
+                  (compiler heap-entry "unused historical thingy"
+                     (list->ff
+                        `((output . ,(get opts 'output 'bug))
+                          (want-symbols . #true)
+                          (want-codes . #true)
+                          (want-native-ops . #true)))
+                     (choose-natives
+                        (get opts 'specialize "none")
+                        heap-entry))
+                  0)
+               (else
+                  (print "Unknown arguments: " extra)
+                  1))))))

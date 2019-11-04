@@ -12,7 +12,7 @@ Bisect makes a binary search on sorted data.
    )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math))
 
    (begin

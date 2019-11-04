@@ -5,7 +5,7 @@
       eof-object?)
 
    (import
-      (owl defmac))
+      (owl core))
 
    (begin
 

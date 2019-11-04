@@ -24,7 +24,7 @@
    ((test a foo) 11)) ;; 1122
 
 (define-library (macro test)
-   (import (owl defmac))
+   (import (owl core))
    (export foo bar)
    (begin
       (define bar 42)
@@ -45,7 +45,7 @@
 
 
 (define-library (macro test)
-   (import (owl defmac))
+   (import (owl core))
    (export foo bar)
    (begin
       (define x-bar "wrong")

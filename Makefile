@@ -15,7 +15,7 @@ export LDFLAGS
 
 all: owl documentation
 owl: bin/ol
-documentation: owl doc/ol.1.gz doc/ovm.1.gz manual.md
+documentation: owl doc/ol.1.gz doc/ovm.1.gz # manual.md
 
 
 ### Lisp boostrap

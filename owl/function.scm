@@ -7,8 +7,7 @@
       procedure?)
 
    (import
-      (owl defmac)
-      (only (owl ff) ff?)
+      (owl core)
       (only (owl syscall) interact))
 
    (begin
@@ -24,7 +23,5 @@
             (eq? (type x) type-clos)))
 
       ;; something executable? being a function or a finite function
-      (define (procedure? obj)
-         (or (function? obj)
-             (ff? obj)))
+      (define procedure? function?)
 ))

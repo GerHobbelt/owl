@@ -11,13 +11,13 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       suspend)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl fasl)
       (owl list)
       (owl tuple)
       (owl sort)
       (owl syscall)
-      (owl ff)
+      (owl lcd ff)
       (owl symbol)
       (owl bytevector)
       (owl vector)
@@ -30,16 +30,17 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (owl math)
       (owl render)
       (owl lazy)
-      (owl cgen)
+      (only (owl fasl) objects-below)
+      (owl eval cgen)
       (only (owl sys) mem-strings)
       (only (owl syscall) error mail exit-owl)
-      (only (owl env) signal-halt signal-tag)
+      (only (owl eval env) signal-halt signal-tag)
       (only (owl unicode) utf8-decode)
       (only (owl thread) start-thread-controller)
       (only (owl queue) qnull))
 
    (begin
-      
+
       ;;;
       ;;; Symbols must be properly interned in a repl.
       ;;;
@@ -175,7 +176,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                         ;; render code if there (shared users do not have it)
                         (if c-code
                            ;; all of these end to an implicit goto apply
-                           (ilist "      case " opcode ":" c-code "break;\n" tl)
+                           (ilist "   case " opcode ":\n" c-code "     break;\n" tl)
                            tl)))
                   #n nops))))
 
@@ -261,46 +262,11 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                      (clone-code bytecode extras))))
             empty native-ops))
 
-
-      ;;;
-      ;;; Choosing frequently referenced code vectors
-      ;;;
-
-      (define (code-refs seen obj)
-         (cond
-            ((immediate? obj) (values seen empty))
-            ((bytecode? obj)
-               (values seen (put empty obj 1)))
-            ((get seen obj #false) =>
-               (λ (here) (values seen here)))
-            (else
-               (let loop ((seen seen) (lst (tuple->list obj)) (here empty))
-                  (if (null? lst)
-                     (values (put seen obj here) here)
-                     (lets ((seen this (code-refs seen (car lst))))
-                        (loop seen (cdr lst)
-                           (ff-union this here +))))))))
-
-      ; ob → ((nrefs . ob) ..)
-      (define (all-code-refs ob)
-         (lets ((refs this (code-refs empty ob)))
-            (ff-fold (λ (out x n) (cons (cons n x) out)) #n this)))
-
       ;; _ → ((bytecode . bytecode) ...)
-      (define (codes-of ob)
-         (lets ((refs this (code-refs empty ob)))
-            (ff-fold (λ (out x n) (cons (cons x x) out)) #n this)))
-
-      ;; ob percent → (codevec ...)
-      (define (most-linked-code ob perc)
-         (print "Picking most shared code vectors:")
-         (lets
-            ((all (all-code-refs ob))
-             (sorted (sort (λ (a b) (> (car a) (car b))) all))
-             (_ (print " - total code vectors " (length sorted)))
-             (topick (floor (* (/ perc 100) (length sorted)))))
-            (print " - taking " topick)
-            (map cdr (take sorted topick))))
+      (define (codes-of obj)
+         (map (lambda (x) (cons x x))
+            (keep bytecode?
+               (objects-below obj))))
 
       ;; todo: move with-threading to lib-threads and import from there
       (define (with-threading ob)
@@ -349,8 +315,9 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
          (λ (entry path opts native . custom-runtime) ; <- this is the usual compile-owl
             (lets
                ((path (get opts 'output "-")) ; <- path argument deprecated
-                (mode (opts 'mode 'program)) ;; 'program | 'library | 'plain
-                (mode (if (getf opts 'bare) 'plain mode))
+                (mode (get opts 'mode 'program)) ;; 'program | 'library | 'plain
+                (mode (if (get opts 'bare) 'plain mode))
+
                 (format
                   ;; use given format (if valid) or choose using output file suffix
                   (or (cook-format (get opts 'output-format #false))
@@ -358,7 +325,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
 
                 (entry ;; all non-plain outputs include thread manager
                   (if (eq? mode 'plain)
-                     entry 
+                     entry
                      (with-threading entry)))
 
                 (entry ;; pass symbols to entry if requested (repls need this)
@@ -368,7 +335,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
 
                 (entry ;; pass code vectors to entry if requested (repls need this)
                   (if (get opts 'want-codes #false)
-                     (entry (codes-of entry))
+                     (entry (codes-of entry)) ;; <- gets ((code . code) ...), removable?
                      entry))
 
                 (native-ops ;; choose which bytecode vectors to add as extended vm instructions
@@ -381,7 +348,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                      entry))
 
                 (entry ;; possibly add code to utf-8 decode command line arguments
-                  (if (eq? mode 'program) 
+                  (if (eq? mode 'program)
                      (with-decoded-args entry)
                      entry)) ;; must be pulled
 

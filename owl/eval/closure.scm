@@ -2,22 +2,22 @@
 Convert lambdas to closures where necessary
 |#
 
-(define-library (owl closure)
+(define-library (owl eval closure)
 
    (export
       build-closures
       uncompiled-closure?)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (only (owl syscall) error)
-      (owl ast)
+      (owl eval ast)
       (owl math)
       (owl tuple)
       (owl list-extra)
-      (owl env)
-      (owl assemble))
+      (owl eval env)
+      (owl eval assemble))
 
    (begin
       (define (ok exp env) (tuple 'ok exp env))

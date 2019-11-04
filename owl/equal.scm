@@ -5,7 +5,7 @@
       eqv?)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl equal-prim)
       (owl string)
       (owl list)

@@ -1,7 +1,7 @@
 (define-library (owl list)
 
    (export
-      pair? null?
+      pair? null null?
       caar cadr cdar cddr
       list?
       zip fold foldr map for-each
@@ -10,6 +10,7 @@
       append concatenate
       reverse
       filter remove
+      keep
       every any
       unfold
       find find-tail
@@ -21,11 +22,13 @@
       diff union intersect)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl proof)
       (only (owl syscall) error))
 
    (begin
+
+      (define null '())
 
       ;; any -> bool
       (define (pair? x) (eq? type-pair (type x)))
@@ -212,9 +215,11 @@
                   (values (cons (car lst) l) r)))
             (values '() lst)))
 
-      ;; pred lst -> 'list, SRFI-1
-      (define (filter pred lst)
+      (define (keep pred lst)
          (foldr (λ (x tl) (if (pred x) (cons x tl) tl)) #n lst))
+
+      ;; pred lst -> 'list, SRFI-1
+      (define filter keep)
 
       ;; pred lst -> 'list, SRFI-1
       (define (remove pred lst)

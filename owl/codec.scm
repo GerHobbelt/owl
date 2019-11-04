@@ -13,7 +13,7 @@ The codec library contains some simple content encoding transformations.
 (define-library (owl codec)
 
   (import
-     (owl defmac)
+     (owl core)
      (owl list)
      (owl math)
      (owl proof)

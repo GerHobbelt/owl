@@ -1,7 +1,7 @@
 (define-library (scheme case-lambda)
 
    (import
-      (owl defmac))
+      (owl core))
 
    (export
       case-lambda)

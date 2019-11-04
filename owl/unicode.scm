@@ -18,7 +18,7 @@ UTF-8 encoding and decoding.
       valid-code-point?)
 
    (import
-      (owl defmac)
+      (owl core)
       (except (owl list) render)
       (owl list-extra)
       (owl lazy)

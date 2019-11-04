@@ -5,12 +5,12 @@ This library implements hygienic macro expansion.
 (define-library (owl macro)
 
    (export
-      macro-expand
+      macro-expand   ;    (exp env fk) → env' exp' | (fk failure-reason)
       match
       define-syntax-transformer)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl function)
       (only (owl syscall) error)
@@ -22,15 +22,12 @@ This library implements hygienic macro expansion.
       (owl sort)
       (owl gensym)
       (owl symbol)
-      (owl env)
+      (owl eval env)
       (scheme cxr))
 
    (begin
 
       ;;; Misc
-
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define symbols-of
 
@@ -457,12 +454,12 @@ This library implements hygienic macro expansion.
                    (transformer
                      (make-transformer literals rules env)))
                   (let ((env (env-set-macro env keyword transformer)))
-                     (ok (list 'quote keyword) env))))
+                     (values env (list 'quote keyword)))))
             (else
-               (ok exp env))))
+               (values env exp))))
 
-      (define (macro-expand exp env)
-         (lets/cc exit
+      (define (macro-expand exp env fail)
+         (lets/cc exit ;; in case fail is not a continuation
             ((abort (B exit fail))
              (free (gensym exp))
              (exp free (expand exp env free abort)))
