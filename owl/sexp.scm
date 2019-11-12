@@ -15,8 +15,7 @@
    (import
       (owl core)
       (owl eof)
-      (only (owl parse) fd->exp-stream parses one-of silent-syntax-fail try-parse)
-      (prefix (only (owl parse) byte byte-if parses either epsilon greedy-plus greedy-star imm rune rune-if star word) get-)
+      (prefix (owl parse) get-)
       (owl math)
       (owl string)
       (owl list)
@@ -71,7 +70,7 @@
             0 digits))
 
       (define get-sign
-         (one-of (get-imm 43) (get-imm 45) (get-epsilon 43)))
+         (get-one-of (get-imm 43) (get-imm 45) (get-epsilon 43)))
 
       (define bases
          (list->ff '((#\b . 2) (#\o . 8) (#\d . 10) (#\x . 16))))
@@ -191,7 +190,7 @@
 
       ;; skip everything up to |#
       (define (get-block-comment parser)
-         (one-of
+         (get-one-of
             (get-parses
                ((skip get-pipe)
                 (skip get-hash)
@@ -208,7 +207,7 @@
                comment)))
 
       (define get-a-whitespace
-         (one-of
+         (get-one-of!
             (get-byte-if is-space?)
             (get-parses
                ((skip (get-imm #\;))
@@ -220,8 +219,9 @@
                 (comment (get-block-comment (get-epsilon #\space))))
                comment)))
 
-      (define maybe-whitespace (get-star get-a-whitespace))
+      (define maybe-whitespace (get-star! get-a-whitespace))
 
+      ; (
       (define (get-list-of parser)
          (get-parses
             ((lp (get-imm #\())
@@ -287,7 +287,7 @@
             (runes->string chars)))
 
       (define get-identifier
-         (one-of
+         (get-one-of
             (get-parses
                ((head (get-rune-if is-initial?))
                 (tail (get-star (get-rune-if is-subsequent?))))
@@ -318,7 +318,7 @@
             (list (get quotations type) value)))
 
       (define get-named-char
-         (one-of
+         (get-one-of
             (get-word "null" #\null)
             (get-word "alarm" #\alarm)
             (get-word "backspace" #\backspace)
@@ -342,7 +342,7 @@
          (get-parses
             ((skip get-hash)
              (val
-               (one-of
+               (get-one-of
                   (get-letter-word #\f "alse" #false)
                   (get-letter-word #\n "ull" #null)
                   (get-letter-word #\t "rue" #true)
@@ -379,7 +379,7 @@
          (get-parses
             ((skip maybe-whitespace)
              (val
-               (one-of
+               (get-one-of
                   (get-list-of (get-sexp))
                   get-number         ;; more than a simple integer
                   get-sexp-regex ;; must be before identifiers, which also may start with /
@@ -429,10 +429,10 @@
                0)))
 
       (define (list->number lst base)
-         (try-parse (get-number-in-base base) lst #false #false #false))
+         (get-try-parse (get-number-in-base base) lst #false #false #false))
 
       (define (string->sexp str fail)
-         (try-parse sexp-parser (str-iter str) #false #false fail))
+         (get-try-parse sexp-parser (str-iter str) #false #false fail))
 
       ;; parse all contents of vector to a list of sexps, or fail with
       ;; fail-val and print error message with further info if errmsg
@@ -441,14 +441,14 @@
       (define (vector->sexps vec fail errmsg)
          ; try-parse parser data maybe-path maybe-error-msg fail-val
          (let ((lst (vector->list vec)))
-            (try-parse get-padded-sexps lst #false errmsg #false)))
+            (get-try-parse get-padded-sexps lst #false errmsg #false)))
 
       (define (list->sexps lst fail errmsg)
          ; try-parse parser data maybe-path maybe-error-msg fail-val
-         (try-parse get-padded-sexps lst #false errmsg #false))
+         (get-try-parse get-padded-sexps lst #false errmsg #false))
 
       (define (read-port port)
-         (fd->exp-stream port sexp-parser (silent-syntax-fail (list #false))))
+         (get-fd->exp-stream port sexp-parser (get-silent-syntax-fail (list #false))))
 
       (define read-ll
          (case-lambda
@@ -458,7 +458,7 @@
                   ((port? thing)
                      (read-port thing))
                   ((string? thing)
-                     (try-parse get-padded-sexps (str-iter thing) #false #false #false))
+                     (get-try-parse get-padded-sexps (str-iter thing) #false #false #false))
                   (else
                      (error "read needs a port or a string, but got " thing))))))
 
