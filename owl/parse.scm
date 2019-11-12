@@ -13,12 +13,12 @@ owl cfg parsing combinators and macros
       byte-if
       rune
       rune-if
-      either
-      one-of
+      either either!
+      one-of one-of!
       star
       plus
-      greedy-star
-      greedy-plus
+      greedy-star star!
+      greedy-plus plus!
       byte-between
       parse-head
       backtrack
@@ -48,88 +48,116 @@ owl cfg parsing combinators and macros
 
    (begin
 
-      ;; (parser l r ok)
-      ;;   → (ok l' r' val) | (backtrack l r why)
-      ;   ... → l|#f r result|error
+      ;; Why = #(pos message <rest>)
+      ;;
+      ;; (parser l r p ok)
+      ;;   → (ok l' r' p' val) | (backtrack l r p why)
+      ;   ... → l|#f r p' result|error
 
-      (define (backtrack l r reason)
+      ;; bactrtrack function : l r fp why
+
+      (define (backtrack l r p why)
          (if (null? l)
-            (values #f r reason)
+            (values #f r p why) ;; final outcome if error
             (let ((hd (car l)))
                (if (eq? (type hd) type-fix+)
-                  (backtrack (cdr l) (cons hd r) reason)
-                  (hd (cdr l) r reason)))))
+                  (backtrack (cdr l) (cons hd r) p why)
+                  (hd (cdr l) r p why)))))
 
       (define eof-error "end of input")
 
-      (define (byte l r ok)
+      (define wrong-char "syntax error")
+
+      (define (fail-expected byte)
+         (list 'expected byte))
+
+      (define (byte l r p ok)
+         ;(print (list 'byte l r p))
          (cond
-            ((null? r) (backtrack l r eof-error))
-            ((pair? r) (ok (cons (car r) l) (cdr r) (car r)))
-            (else      (byte l (r) ok))))
+            ((null? r) (backtrack l r p eof-error))
+            ((pair? r) (ok (cons (car r) l) (cdr r) (+ p 1) (car r)))
+            (else      (byte l (r) p ok))))
 
       (define (byte-if pred)
-         (λ (l r ok)
+         (λ (l r p ok)
             (cond
                ((null? r)
-                  (backtrack l r eof-error))
+                  (backtrack l r p eof-error))
                ((pair? r)
                   (lets ((x xt r))
                      (if (pred x)
-                        (ok (cons x l) xt x)
-                        (backtrack l r 'bad-byte))))
+                        (ok (cons x l) xt (+ p 1) x)
+                        (backtrack l r p wrong-char))))
                (else
-                  ((byte-if pred) l (r) ok)))))
+                  ((byte-if pred) l (r) p ok)))))
 
       (define (imm x)
-         (λ (l r ok)
+         (λ (l r p ok)
+            ;(print (list 'imm l r p 'want x))
             (cond
                ((null? r)
-                  (backtrack l r eof-error))
+                  (backtrack l r p eof-error))
                ((pair? r)
                   (if (eq? (car r) x)
-                     (ok (cons x l) (cdr r) x)
-                     (backtrack l r 'bad-byte)))
+                     (ok (cons x l) (cdr r) (+ p 1) x)
+                     (backtrack l r p (fail-expected x))))
                (else
-                  ((imm x) l (r) ok)))))
+                  ((imm x) l (r) p ok)))))
 
       (define (ε val)
-         (λ (l r ok)
-            (ok l r val)))
+         (λ (l r p ok)
+            (ok l r p val)))
 
       (define epsilon ε)
 
       (define (either a b)
-         (λ (l r ok)
-            (a (cons (λ (l r why) (b l r ok)) l) r ok)))
+         (λ (l r p ok)
+            (a (cons (λ (l r fp why) (b l r p ok)) l) r p ok)))
+
+      (define (either! a b)
+         (λ (l r p ok)
+            (a
+               (cons
+                  (λ (l r fp why)
+                     (if (= fp p) ;; nothing matched
+                        (b l r p ok)
+                        (backtrack l r fp why)))
+                  l)
+               r p ok)))
 
       (define (maybe x val)
          (either x
             (epsilon val)))
 
       (define (seq a b)
-         (λ (l r ok)
-            (a l r
-               (λ (l r av)
-                  (b l r
-                     (λ (l r bv)
-                        (ok l r (cons av bv))))))))
+         (λ (l r p ok)
+            (a l r p
+               (λ (l r p av)
+                  (b l r p
+                     (λ (l r p bv)
+                        (ok l r p (cons av bv))))))))
 
       (define (star-vals a vals)
-         (λ (l r ok)
+         ; (print (list 'star-vals a vals))
+         (λ (l r p ok)
+            ; (print (list 'star l r p))
             (a
-               (cons (λ (l r why) (ok l r (reverse vals))) l)
+               (cons
+                  (λ (l r fp why)
+                     ; (print (list 'star-backtrack l r fp why))
+                      (ok l r p (reverse vals)))
+                  l)
                r
-               (λ (l r val)
-                  ((star-vals a (cons val vals)) l r ok)))))
+               p
+               (λ (l r p val)
+                  ; (print (list 'star-ok l r p val))
+                  ((star-vals a (cons val vals)) l r p ok)))))
 
       (define star
          (C star-vals #n))
 
       (define (drop l x)
          (cond
-            ;((eq? l #null)
-            ;   l)
             ((eq? (car l) x)
                (cdr l))
             ((eq? (type (car l)) type-fix+)
@@ -138,33 +166,34 @@ owl cfg parsing combinators and macros
                (drop (cdr l) x))))
 
       (define (greedy-star-vals a vals)
-         (λ (l r ok)
-            (let ((bt (λ (l r why) (ok  l r (reverse vals)))))
+         (λ (l r p ok)
+            (let ((bt (λ (l r fp why) (ok l r p (reverse vals)))))
                (a
                   (cons bt l)
                   r
-                  (λ (l r val)
+                  p
+                  (λ (l r p val)
                      ((greedy-star-vals a (cons val vals))
-                        (drop l bt) r ok))))))
+                        (drop l bt) r p ok))))))
 
       (define-syntax parses
          (syntax-rules (verify eval)
-            ((parses 42 l r ok ((val (eval term)) . rest) body)
+            ((parses 42 l r p ok ((val (eval term)) . rest) body)
                (let ((val term))
-                  (parses 42 l r ok rest body)))
-            ((parses 42 l r ok ((val parser) . rest) body)
-               (parser l r
-                  (λ (l r val)
-                     (parses 42 l r ok rest body))))
-            ((parses 42 l r ok () body)
-               (ok l r body))
-            ((parses 42 l r ok ((verify term msg) . rest) body)
+                  (parses 42 l r p ok rest body)))
+            ((parses 42 l r p ok ((val parser) . rest) body)
+               (parser l r p
+                  (λ (l r p val)
+                     (parses 42 l r p ok rest body))))
+            ((parses 42 l r p ok () body)
+               (ok l r p body))
+            ((parses 42 l r p ok ((verify term msg) . rest) body)
                (if term
-                  (parses 42 l r ok rest body)
-                  (backtrack l r msg)))
+                  (parses 42 l r p ok rest body)
+                  (backtrack l r p msg)))
             ((parses ((a . b) ...) body)
-               (λ (l r ok)
-                  (parses 42 l r ok ((a . b) ...) body)))))
+               (λ (l r p ok)
+                  (parses 42 l r p ok ((a . b) ...) body)))))
 
       (define greedy-star
          (C greedy-star-vals #n))
@@ -175,28 +204,37 @@ owl cfg parsing combinators and macros
              (rest (greedy-star a)))
             (cons first rest)))
 
+
+      (define star! greedy-star)
+      (define plus! greedy-plus)
+
       (define (word s val)
          (let ((bytes (string->bytes s)))
-            (λ (l r ok)
-               (let loop ((l l) (r r) (left bytes))
+            (λ (l r p ok)
+               (let loop ((l l) (r r) (p p) (left bytes))
                   (cond
                      ((null? left)
-                        (ok l r val))
+                        (ok l r p val))
                      ((null? r)
-                        (backtrack l r eof-error))
+                        (backtrack l r p eof-error))
                      ((pair? r)
                         (if (eq? (car r) (car left))
-                           (loop (cons (car r) l) (cdr r) (cdr left))
-                           (backtrack l r "bad byte")))
+                           (loop (cons (car r) l) (cdr r) (+ p 1) (cdr left))
+                           (backtrack l r p (fail-expected (car left)))))
                      (else
-                        (loop l (r) left)))))))
-
+                        (loop l (r) p left)))))))
 
       (define-syntax one-of
          (syntax-rules ()
             ((one-of a) a)
             ((one-of a b) (either a b))
             ((one-of a b . c) (either a (one-of b . c)))))
+
+      (define-syntax one-of!
+         (syntax-rules ()
+            ((one-of! a) a)
+            ((one-of! a b) (either! a b))
+            ((one-of! a b . c) (either! a (one-of! b . c)))))
 
       (define (plus parser)
          (parses
@@ -241,11 +279,11 @@ owl cfg parsing combinators and macros
              (verify (pred val) "bad rune"))
             val))
 
-      (define (parser-succ l r v)
-         (values l r v))
+      (define (parser-succ l r p v)
+         (values l r p v))
 
       (define (parse-head parser ll def)
-         (lets ((l r val (parser #n ll parser-succ)))
+         (lets ((l r p val (parser #n ll 0 parser-succ)))
             (if l (cons val r) def)))
 
       ;; computes rest of parser stream
@@ -277,11 +315,9 @@ owl cfg parsing combinators and macros
                      (error-reporter msg)
                      (cont rest))))))
 
-      ; (parser l r ok) → (ok l' r' val) | (backtrack l r why)
-      ;   ... → l|#f r result|error
       (define (byte-stream->exp-stream ll parser fail)
          (λ ()
-            (lets ((lp r val (parser #n ll parser-succ)))
+            (lets ((lp r p val (parser #n ll 0 parser-succ)))
                (cond
                   (lp ;; something parsed successfully
                      (pair val (byte-stream->exp-stream r parser fail)))
@@ -306,9 +342,11 @@ owl cfg parsing combinators and macros
                (fd->exp-stream fd parser fail)
                #false)))
 
+      ;; this api is kind of ugly, simplify
+      ;; this is badly named when prefixed as usual. parse? 
       (define (try-parse parser data maybe-path maybe-error-msg fail-fn)
-         (let loop ((try (λ () (parser #n data parser-succ))))
-            (lets ((l r val (try)))
+         (let loop ((try (λ () (parser #n data 0 parser-succ))))
+            (lets ((l r p val (try)))
                 (cond
                   ((not l)
                      (if fail-fn
@@ -316,26 +354,34 @@ owl cfg parsing combinators and macros
                         #false))
                   ((lpair? r) =>
                      (λ (r)
-                        (loop (λ () (backtrack l r "trailing garbage")))))
+                        (loop (λ () (backtrack l r p "trailing garbage")))))
                   (else
                      ;; full match
                      val)))))
 
       (define (first-match parser data fail-val)
-         (let loop ((try (λ () (parser #n data parser-succ))))
-            (lets ((l r val (try)))
+         (let loop ((try (λ () (parser #n data 0 parser-succ))))
+            (lets ((l r p val (try)))
                 (cond
                   ((not l)
-                     (values fail-val r))
+                     (values fail-val r p))
                   (else
-                     (values val r))))))
+                     (values val r p))))))
 
       (example
-         (first-match byte '(1 2) 'x) = (values 1 '(2))
-         (first-match (imm 42) '(1 2) 'x) = (values 'x '(1 2))
-         (first-match (seq (imm 1) (imm 2)) '(1 1 2) 'x) = (values 'x '(1 1 2))
-         (first-match (seq (imm 1) (imm 1)) '(1 1 2) 'x) = (values '(1 . 1) '(2))
-         (first-match (plus (byte-if even?)) '(2 4 8 9) 'x) = (values '(2 4 8) '(9))
-         (first-match (plus (one-of (imm 1) (imm 2))) '(1 2 3 4) 'x) = (values '(1 2) '(3 4))
+         (first-match byte '(1 2) 'x) = (values 1 '(2) 1)
+         (first-match (imm 42) '(1 2) 'x) = (values 'x '(1 2) 0)
+         (first-match (seq (imm 1) (imm 2)) '(1 1 2) 'x) = (values 'x '(1 1 2) 1)
+         (first-match (seq (imm 1) (imm 1)) '(1 1 2) 'x) = (values '(1 . 1) '(2) 2)
+         (first-match (star (imm 1)) '(1 1 1 2) 'x) = (values '(1 1 1) '(2) 3)
+         (first-match (plus (byte-if even?)) '(2 4 8 9) 'x) = (values '(2 4 8) '(9) 3)
+         (first-match (plus (one-of (imm 1) (imm 2))) '(1 2 3 4) 'x) = (values '(1 2) '(3 4) 2)
+         (first-match (either (seq (imm 1) (imm 1)) (seq (imm 1) (imm 2))) '(1 2 3) 'x) =
+            (values '(1 . 2) '(3) 2)
+         (first-match (either! (seq (imm 1) (imm 1)) (seq (imm 1) (imm 2))) '(1 2 3) 'x) =
+            (values 'x '(1 2 3) 1)
+         (first-match (either! (seq (imm 2) (imm 1)) (seq (imm 1) (imm 2))) '(1 2 3) 'x) =
+            (values '(1 . 2) '(3) 2)
          )
 ))
+
