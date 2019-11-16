@@ -51,7 +51,7 @@ c/ol.c: fasl/ol.fasl
 bin/ol: c/ol.c
 	# compile the real owl repl binary
 	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/olp $?
-	CC=$(CC) LDFLAGS=$(LDFLAGS) CFLAGS=$(CFLAGS) sh tests/run all bin/olp
+	CC="$(CC)" LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" sh tests/run all bin/olp
 	test '!' -f $@ || mv $@ bin/ol-old
 	mv bin/olp $@
 
