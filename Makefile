@@ -1,13 +1,12 @@
 .POSIX:
 
 DESTDIR =
-PREFIX = /usr
-BINDIR = /bin
-MANDIR = /share/man
+PREFIX  = /usr
+BINDIR  = /bin
+MANDIR  = /share/man
 INSTALL = install
-
-CFLAGS ?= -Wall -O2
-CC ?= gcc
+CFLAGS  = -Wall -O2
+CC      = gcc
 
 
 ## Pseudo targets
