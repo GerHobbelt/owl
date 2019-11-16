@@ -248,7 +248,7 @@
       (define editable-readline
          (case-lambda
             (()
-               (lets ((x y w ll (get-dimensions (terminal-input))))
+               (lets ((x y w ll (get-dimensions (terminal-input empty))))
                   (readline ll null x y w readline-default-options)))
             ((ll)
                (lets ((x y w ll (get-dimensions ll)))
@@ -263,7 +263,7 @@
       ;; note, not actually using the port atm
       (define (readline-result-stream history prompt merger finish)
          (let loop ((history history)
-                    (ll (terminal-input)))
+                    (ll (terminal-input empty)))
             (if prompt (prompt))
             (set-terminal-rawness #true)
             (lets ((ll res (editable-readline ll history)))

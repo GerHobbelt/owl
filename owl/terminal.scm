@@ -76,6 +76,7 @@
       (owl lazy)
       (owl list-extra)
       (owl port)
+      (prefix (owl parse) get-)
       (owl lcd ff)
       (scheme base)
       (scheme write)
@@ -161,102 +162,6 @@
       (define (scroll-up   lst) (ilist esc #\[ #\M lst))
       (define (scroll-down lst) (ilist esc #\[ #\D lst))
 
-      ;;; Terminal input stream
-
-      (define (get-natural ll def)
-         (let loop ((n 0) (first? #true) (ll ll))
-            (lets ((x ll (uncons ll #false)))
-               (cond
-                  ((not x) (values def ll))
-                  ((< 47 x 58) (loop (+ (* n 10) (- x 48)) #false ll))
-                  (first? (values def (cons x ll)))
-                  (else (values n (cons x ll)))))))
-
-      (define (get-imm ll val)
-         (lets ((x ll (uncons ll #false)))
-            (if (eq? x val)
-               (values x ll)
-               (values #false (cons x ll)))))
-
-      ;; convert this to a proper stream parser later
-      (define (terminal-input . opt)
-         (let ((port (if (null? opt) stdin (car opt))))
-            (let loop
-               ((ll
-                  (utf8-decoder
-                     (port->byte-stream port)
-                     (λ (loop line ll) (print-to stderr "Bad UTF-8 in terminal input") (loop line ll)))))
-               (cond
-                  ((pair? ll)
-                     (lets ((hd ll ll))
-                        (cond
-                           ((eq? hd esc) ;; decode escape sequence
-                              (lets ((op ll (uncons ll #false)))
-                                 (cond
-                                    ((eq? op 91) ;; [
-                                       (lets ((op ll (uncons ll #false)))
-                                          (cond
-                                             ((eq? op 65) (cons (tuple 'arrow 'up) (loop ll)))
-                                             ((eq? op 66) (cons (tuple 'arrow 'down) (loop ll)))
-                                             ((eq? op 67) (cons (tuple 'arrow 'right) (loop ll)))
-                                             ((eq? op 68) (cons (tuple 'arrow 'left) (loop ll)))
-                                             (else (lets ((a ll (get-natural (cons op ll) #false))) (if a (lets ((x ll (uncons ll #false))) (cond ((not x) null) ((eq? x #\;) (lets ((b ll (get-natural ll #false))) (if b (lets ((op ll (uncons ll #false))) (if op (cond ((eq? op #\R) (cons (tuple 'cursor-position a b) (loop ll))) (else (cons (tuple 'esc-unknown-binop a ";" b (list->string (list op))) null))) null)) null))) ((and (eq? a 3) (eq? x #\~)) (cons (tuple 'delete) (loop ll))) (else (cons (tuple 'esc-unknown-unary-op a (list->string (list x))) (loop ll))))) null))))))
-                                    ((eq? op 79)
-                                       (lets ((next ll (uncons ll #false)))
-                                          (cond
-                                             ((eq? next 68) (cons (tuple 'ctrl 'arrow-left) (loop ll)))
-                                             ((eq? next 67) (cons (tuple 'ctrl 'arrow-right) (loop ll)))
-                                             ((eq? next 65) (cons (tuple 'ctrl 'arrow-up) (loop ll)))
-                                             ((eq? next 66) (cons (tuple 'ctrl 'arrow-down) (loop ll)))
-                                             (else (cons (tuple 'esc) (loop (ilist 79 next ll)))))))
-                                    (else
-                                       (cons (tuple 'esc)
-                                          (loop (cons op ll)))))))
-                           ((eq? hd 127)
-                              (cons (tuple 'backspace) (loop ll)))
-                           ((eq? hd 13)
-                              (cons (tuple 'enter) (loop ll)))
-                           ((eq? hd 21)
-                              (cons (tuple 'nak) (loop ll))) ;; ^u
-                           ((eq? hd 3)
-                              (cons (tuple 'end-of-text) (loop ll))) ;; ^c
-                           ((eq? hd 4)
-                              (cons (tuple 'end-of-transmission) (loop ll))) ;; ^d
-                           ((eq? hd 1)
-                              (cons (tuple 'ctrl 'a) (loop ll))) ;; ^n
-                           ((eq? hd 5)
-                              (cons (tuple 'ctrl 'e) (loop ll))) ;; ^w
-                           ((eq? hd 6)
-                              (cons (tuple 'ctrl 'f) (loop ll)))
-                           ((eq? hd 9)
-                              (cons (tuple 'tab) (loop ll)))
-                           ((eq? hd 2)
-                              (cons (tuple 'ctrl 'b) (loop ll)))
-                           ((eq? hd  8)
-                              (cons (tuple 'ctrl 'h) (loop ll)))
-                           ((eq? hd 18)
-                              (cons (tuple 'ctrl 'r) (loop ll)))
-                           ((eq? hd 14)
-                              (cons (tuple 'ctrl 'n) (loop ll)))
-                           ((eq? hd 16)
-                              (cons (tuple 'ctrl 'p) (loop ll)))
-                           ((eq? hd 11)
-                              (cons (tuple 'ctrl 'k) (loop ll)))
-                           ((eq? hd 12)
-                              (cons (tuple 'ctrl 'l) (loop ll)))
-                           ((eq? hd 24)
-                              (cons (tuple 'ctrl 'x) (loop ll)))
-                           ((eq? hd 23)
-                              (cons (tuple 'ctrl 'w) (loop ll)))
-                           ((eq? hd 22)
-                              (lets ((val ll (uncons ll 0)))
-                                 (cons (tuple 'key val) ;; force treatment as a key
-                                    (loop ll))))
-                           (else
-                              (cons (tuple 'key hd) (loop ll))))))
-                  ((null? ll) ll)
-                  (else (λ () (loop (ll))))))))
-
       ;;; Cursor movement
 
       (define (cursor-pos x y)
@@ -295,19 +200,110 @@
       (define (cursor-top-left n)
          (write-bytevector #(27 #\[ #\H) stdout))
 
+      ;;; Terminal input stream
+
+      (define get-small-char
+         (get-parses
+            ((byte
+               (get-byte-if
+                  (λ (x)
+                     (and (> x 31)
+                          (< x 127))))))
+           (tuple 'key byte)))
+
+      (define bracket-chars
+         (list->ff
+            (list
+               (cons 65 (tuple 'arrow 'up))
+               (cons 66 (tuple 'arrow 'down))
+               (cons 67 (tuple 'arrow 'right))
+               (cons 68 (tuple 'arrow 'left)))))
+
+      (define special-keys
+         (list->ff
+            (list
+               (cons 127 (tuple 'backspace))
+               (cons  13 (tuple 'enter))
+               (cons   1 (tuple 'ctrl 'a))
+               (cons   2 (tuple 'ctrl 'b))
+               (cons   5 (tuple 'ctrl 'e))
+               (cons   6 (tuple 'ctrl 'f))
+               (cons   9 (tuple 'tab))
+               (cons   8 (tuple 'ctrl 'h))
+               (cons  11 (tuple 'ctrl 'k))
+               (cons  12 (tuple 'ctrl 'l))
+               (cons  14 (tuple 'ctrl 'n))
+               (cons  16 (tuple 'ctrl 'p))
+               (cons  18 (tuple 'ctrl 'r))
+               (cons  23 (tuple 'ctrl 'w))
+               (cons  24 (tuple 'ctrl 'x)))))
+
+      (define (get-by-ff ff)
+         (get-parses
+            ((byte (get-byte-if (λ (x) (get ff x #f)))))
+            (get ff byte #f)))
+
+      (define get-natural
+         (get-parses
+            ((bs (get-plus! (get-byte-if (λ (x) (and (<= #\0 x) (<= x #\9)))))))
+            (fold (λ (n b) (+ (* n 10) (- b #\0))) 0 bs)))
+
+      (define get-escaped
+         (get-parses
+            ((skip (get-imm esc))
+             (skip (get-imm #\[))
+             (val
+                (get-one-of
+                   (get-by-ff bracket-chars)
+                   (get-parses
+                      ((a get-natural)
+                       (skip (get-imm  #\;))
+                       (b get-natural)
+                       (skip (get-imm #\R)))
+                      (tuple 'cursor-position a b)))))
+            val))
+
+      (define get-special-key
+         (get-by-ff special-keys))
+
+      (define get-quoted-key
+         (get-parses
+            ((skip (get-imm 22)) ;; ctrl-v
+             (val get-byte)) ;; force it to be treated as a key
+            (tuple 'key val)))
+
+      (define get-logged
+         (get-byte-if (λ (x) (print "NOT " x) #f)))
+
+      (define get-terminal-input
+         (get-one-of
+            get-special-key
+            get-escaped
+            get-small-char   ;; ← needs utf8 parser
+            get-quoted-key   ;; ∀ x, ctrl-v <x> → #(key <x>)
+            ))
+
+
+      (define (terminal-input opts)
+         (set-terminal-rawness #true)
+         (get-byte-stream->exp-stream
+            (port->byte-stream stdin)
+            get-terminal-input
+            (λ (cont ll error)
+               (cond
+                  ((and (= (car ll) 4) (get opts 'eof-exit? #t))
+                     ;; ^d → quit, unless otherwise requested
+                     null)
+                  (else
+                     (print-to stderr "ERROR: weird terminal input: " ll)
+                     (cont (cdr ll)))))))
+
+
       ;; Interaction with terminal
 
       ;; ^[6n = get cursor position ^[<x>;<y>R
       ;; ^[5n = check terminal status -> ^[0n = ok, ^[3n = not ok
       ;; ^[[c = get terminal type ->
-      ;; input: up    esc 91 65
-      ;;        down  esc 91 66
-      ;;        right esc 91 67
-      ;;        left  esc 91 68
-      ;;        enter 13
-      ;;        bs    127
-      ;;        ^K    11  -- remove line right
-      ;;        ^U    21  -- remove line left
 
       (define (wait-cursor-position ll)
          (let loop ((head null) (ll ll))
