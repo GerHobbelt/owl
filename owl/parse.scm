@@ -193,7 +193,9 @@ owl cfg parsing combinators and macros
                   (backtrack l r p msg)))
             ((parses ((a . b) ...) body)
                (λ (l r p ok)
-                  (parses 42 l r p ok ((a . b) ...) body)))))
+                  (parses 42 l r p ok ((a . b) ...) body)))
+            ((parses ((a . b) ...) first . rest)
+               (parses ((a . b) ...) (begin first . rest)))))
 
       (define greedy-star
          (C greedy-star-vals #n))
@@ -315,6 +317,7 @@ owl cfg parsing combinators and macros
                      (error-reporter msg)
                      (cont rest))))))
 
+      ;; ll parser (ll r val → ?) → ll
       (define (byte-stream->exp-stream ll parser fail)
          (λ ()
             (lets ((lp r p val (parser #n ll 0 parser-succ)))
@@ -343,7 +346,7 @@ owl cfg parsing combinators and macros
                #false)))
 
       ;; this api is kind of ugly, simplify
-      ;; this is badly named when prefixed as usual. parse? 
+      ;; this is badly named when prefixed as usual. parse?
       (define (try-parse parser data maybe-path maybe-error-msg fail-fn)
          (let loop ((try (λ () (parser #n data 0 parser-succ))))
             (lets ((l r p val (try)))
