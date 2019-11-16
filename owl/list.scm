@@ -13,7 +13,7 @@
       keep
       every any
       unfold
-      find find-tail
+      first find find-tail
       take-while                ;; pred, lst -> as, bs
       break
       fold2
@@ -179,13 +179,18 @@
 
       ;; misc
 
-      ;; pred lst -> element | #f, SRFI-1
+      (define (first pred lst def)
+         (cond
+            ((null? lst)
+               def)
+            ((pred (car lst))
+               (car lst))
+            (else
+               (first pred (cdr lst) def))))
+
+      ;; todo: move to srfi-1?
       (define (find pred lst)
-         (and
-            (pair? lst)
-            (if (pred (car lst))
-               (car lst)
-               (find pred (cdr lst)))))
+         (first pred lst #f))
 
       (example
          (find null? '(1 2 3)) = #f
