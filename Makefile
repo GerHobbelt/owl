@@ -6,9 +6,8 @@ BINDIR = /bin
 MANDIR = /share/man
 INSTALL = install
 
-export CFLAGS = -Wall -O2
-export CC = gcc
-export LDFLAGS
+CFLAGS ?= -Wall -O2
+CC ?= gcc
 
 
 ## Pseudo targets
@@ -52,7 +51,7 @@ c/ol.c: fasl/ol.fasl
 bin/ol: c/ol.c
 	# compile the real owl repl binary
 	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/olp $?
-	sh tests/run all bin/olp
+	CC=$(CC) LDFLAGS=$(LDFLAGS) CFLAGS=$(CFLAGS) sh tests/run all bin/olp
 	test '!' -f $@ || mv $@ bin/ol-old
 	mv bin/olp $@
 
@@ -100,7 +99,6 @@ owl/unicode-char-folds.scm:
 	echo "(define char-folds '(" >owl/unicode-char-folds.scm
 	curl http://www.unicode.org/Public/6.0.0/ucd/CaseFolding.txt | grep "[0-9A-F]* [SFC]; " | sed -re 's/ #.*//' -e 's/( [SFC])?;//g' -e 's/^/ /' -e 's/ / #x/g' -e 's/ /(/' -e 's/$$/)/' | tr "[A-F]" "[a-f]" >> owl/unicode-char-folds.scm
 	echo '))' >>owl/unicode-char-folds.scm
-
 
 ## Installation
 
