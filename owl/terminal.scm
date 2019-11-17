@@ -218,20 +218,33 @@
          (list->ff
             (list
                (cons 127 (tuple 'backspace))
-               (cons  13 (tuple 'enter))
                (cons   1 (tuple 'ctrl 'a))
                (cons   2 (tuple 'ctrl 'b))
+               (cons   3 (tuple 'ctrl 'c))
+               ;; ^d not handled, currently causes by default parser to stop
                (cons   5 (tuple 'ctrl 'e))
                (cons   6 (tuple 'ctrl 'f))
-               (cons   9 (tuple 'tab))
+               (cons   7 (tuple 'ctrl 'g))
                (cons   8 (tuple 'ctrl 'h))
+               (cons   9 (tuple 'tab))     ;; aka C-i
+               (cons  10 (tuple 'ctrl 'j))
                (cons  11 (tuple 'ctrl 'k))
                (cons  12 (tuple 'ctrl 'l))
+               (cons  13 (tuple 'enter))   ;; aka C-m
                (cons  14 (tuple 'ctrl 'n))
+               (cons  15 (tuple 'ctrl 'o))
                (cons  16 (tuple 'ctrl 'p))
+               (cons  17 (tuple 'ctrl 'q))
                (cons  18 (tuple 'ctrl 'r))
+               (cons  19 (tuple 'ctrl 's))
+               (cons  20 (tuple 'ctrl 't))
+               (cons  21 (tuple 'ctrl 'u))
+               ;; C-v handled specially to quote chars
                (cons  23 (tuple 'ctrl 'w))
-               (cons  24 (tuple 'ctrl 'x)))))
+               (cons  24 (tuple 'ctrl 'x))
+               (cons  25 (tuple 'ctrl 'y))
+               (cons  26 (tuple 'ctrl 'z))
+               )))
 
       (define (get-by-ff ff)
          (get-parses
@@ -243,7 +256,7 @@
             ((bs (get-plus! (get-byte-if (λ (x) (and (<= #\0 x) (<= x #\9)))))))
             (fold (λ (n b) (+ (* n 10) (- b #\0))) 0 bs)))
 
-      (define get-escaped
+      (define get-escape-sequence
          (get-parses
             ((skip (get-imm esc))
              (skip (get-imm #\[))
@@ -273,17 +286,24 @@
       (define get-terminal-input
          (get-one-of
             get-special-key
-            get-escaped
+            get-escape-sequence ;; esc[ ... stuff
             get-small-char
             get-quoted-key   ;; ∀ x, ctrl-v <x> → #(key <x>)
             ))
 
+      (define get-meta-node
+         (get-either
+            get-terminal-input
+            (get-parses
+               ((skip (get-imm esc))
+                (val get-terminal-input))
+               (tuple 'meta val))))
 
       (define (terminal-input opts)
          (set-terminal-rawness #true)
          (get-byte-stream->exp-stream
             (port->byte-stream stdin)
-            get-terminal-input
+            get-meta-node
             (λ (cont ll error)
                (cond
                   ((and (= (car ll) 4) (get opts 'eof-exit? #t))
