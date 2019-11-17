@@ -66,10 +66,8 @@
 
    (import
       (owl core)
-      (owl math)
       (owl primop)
       (owl list)
-      (owl string)
       (owl tuple)
       (owl syscall)
       (owl render)
@@ -79,10 +77,9 @@
       (prefix (owl parse) get-)
       (owl lcd ff)
       (scheme base)
-      (scheme write)
       (owl io)
       (only (owl unicode) utf8-decoder utf8-encode)
-      (owl sys))
+      )
 
 
    (begin
@@ -204,12 +201,10 @@
 
       (define get-small-char
          (get-parses
-            ((byte
-               (get-byte-if
-                  (λ (x)
-                     (and (> x 31)
-                          (< x 127))))))
-           (tuple 'key byte)))
+            ((cp
+               (get-rune-if
+                  (λ (x) (> x 31))))) ;; 127 is also handled specially
+           (tuple 'key cp)))
 
       (define bracket-chars
          (list->ff
@@ -279,7 +274,7 @@
          (get-one-of
             get-special-key
             get-escaped
-            get-small-char   ;; ← needs utf8 parser
+            get-small-char
             get-quoted-key   ;; ∀ x, ctrl-v <x> → #(key <x>)
             ))
 
