@@ -110,12 +110,14 @@
             '((backspace-out . #false)      ;; return 'backspace if empty input is erased
             )))
 
+      (define eof (tuple 'eof))
+
       (define (readline ll history x y w opts)
          (lets ((history (cons null history))  ; (newer . older)
                 (offset-delta (+ 1 (quotient (- w x) 2)))
                 (width (- w x)))
             (let loop ((ll ll) (hi history) (left null) (right null) (cx x) (off 0))
-               (lets ((op ll (uncons ll #false)))
+               (lets ((op ll (uncons ll eof)))
                   (tuple-case op
                      ((key k)
                         (let ((left (cons k left)) (cx (+ cx 1)))
@@ -198,17 +200,6 @@
                               (loop ll hi left right cx off))))
                      ((enter)
                         (values ll (list->string (append (reverse left) right))))
-                     ((nak)
-                        (cursor-pos x y)
-                        (update-line-right right w x) (loop ll hi null right x off))
-                     ((end-of-text)
-                        (values ll #false))
-                     ((end-of-transmission)
-                        (values ll #false))
-                     ((data-link-escape)
-                        (loop (cons (tuple 'arrow 'up) ll) hi left right cx off))
-                     ((shift-out)
-                        (loop (cons (tuple 'arrow 'down) ll) hi left right cx off))
                      ((ctrl key)
                         (case key
                            ((a) ;; beginning of line
@@ -237,6 +228,8 @@
                               (loop ll hi left right cx off))))
                      ((esc)
                         (values ll #false))
+                     ((eof)
+                        (values ll #false))
                      (else
                         (loop ll hi left right cx off)))))))
 
@@ -260,7 +253,6 @@
                (lets ((x y w ll (get-dimensions ll)))
                   (readline ll history x y w opts)))))
 
-      ;; note, not actually using the port atm
       (define (readline-result-stream history prompt merger finish)
          (let loop ((history history)
                     (ll (terminal-input empty)))
