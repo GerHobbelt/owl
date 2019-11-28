@@ -857,6 +857,8 @@ static word prim_sys(word op, word a, word b, word c) {
             return rv;
          }
          return IFALSE; }
+      case 45: { /* getpid _ _ _*/
+         return(onum(getpid(), 0)); }
       default:
          return IFALSE;
    }

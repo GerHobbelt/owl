@@ -14,6 +14,7 @@ This library defines various system calls and wrappers for calling them.
       pipe
       wait
       waitpid
+      getpid
       kill
       getenv
       setenv
@@ -62,6 +63,7 @@ This library defines various system calls and wrappers for calling them.
       read
       write
       port->non-blocking
+      port->blocking
       CLOCK_REALTIME
       clock_gettime
       set-terminal-rawness
@@ -72,7 +74,7 @@ This library defines various system calls and wrappers for calling them.
       get-environment
       get-heap-bytes-written
       get-heap-max-live
-      
+
       resolve-host
 
       execvp
@@ -298,6 +300,10 @@ This library defines various system calls and wrappers for calling them.
             (toggle-file-status-flag port (O_NONBLOCK) (not (stdio-port? port))))
          port)
 
+      (define (port->blocking port)
+         (toggle-file-status-flag port (O_NONBLOCK) #false)
+         port)
+
       (define (open path flags mode)
          (port->non-blocking (sys 1 path flags mode)))
 
@@ -418,6 +424,9 @@ This library defines various system calls and wrappers for calling them.
                   res))))
 
       (define wait waitpid)
+
+      (define (getpid)
+         (sys 45))
 
       (define sighup   1)      ; hangup from controlling terminal or proces
       (define signint  2)      ; interrupt (keyboard)
@@ -617,7 +626,7 @@ This library defines various system calls and wrappers for calling them.
                   ;; normally with a zero status
                   (equal? (wait pid) '(1 . 0))))))
 
-      ;; prefer ipv4 
+      ;; prefer ipv4
       (define (resolve-host hostname)
          (let loop ((offset 0) (last #false))
             (let ((res (sys 44 hostname offset)))
