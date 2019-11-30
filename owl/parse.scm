@@ -22,6 +22,7 @@ owl cfg parsing combinators and macros
       byte-between
       parse-head
       backtrack
+      parse                ;; parser data fail-val → result | fail-val (if no full match)
       try-parse
       first-match          ;; parser data fail-val → result data'
       word
@@ -317,6 +318,15 @@ owl cfg parsing combinators and macros
                      (error-reporter msg)
                      (cont rest))))))
 
+      (define (stopping-syntax-fail error-reporter)
+         (λ (cont ll msg)
+            (let ((rest (fast-forward ll)))
+               (if (and (null? rest) (whitespace? ll))
+                  (cont #n)
+                  (begin
+                     (error-reporter msg)
+                     (cont rest))))))
+
       ;; ll parser (ll r val → ?) → ll
       (define (byte-stream->exp-stream ll parser fail)
          (λ ()
@@ -358,6 +368,20 @@ owl cfg parsing combinators and macros
                   ((lpair? r) =>
                      (λ (r)
                         (loop (λ () (backtrack l r p "trailing garbage")))))
+                  (else
+                     ;; full match
+                     val)))))
+
+      (define (parse parser data fail-val)
+         (let loop ((try (λ () (parser #n data 0 parser-succ))))
+            (lets ((l r p val (try)))
+                (cond
+                  ((not l)
+                     fail-val)
+                  ((lpair? r) =>
+                     (λ (r)
+                        ;; trailing garbage
+                        fail-val))
                   (else
                      ;; full match
                      val)))))
