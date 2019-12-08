@@ -413,15 +413,18 @@ This library defines various system calls and wrappers for calling them.
             (or (eq? pid 0) pid)))
 
       (define (waitpid pid)
-         (let ((res (sys 19 pid (cons #false #false))))
-            (cond
-               ((not res) res)
-               ((eq? res #true)
-                  (interact 'iomux (tuple 'alarm 100))
-                  (waitpid pid))
-               (else
-                  ;; pair of (<exittype> . <result>)
-                  res))))
+         (let loop ((delay 1))
+            (let ((res (sys 19 pid (cons #false #false))))
+               (cond
+                  ((not res) res)
+                  ((eq? res #true)
+                     ;; we can't block all thread doing a blocking waitpid(), 
+                     ;; use a gradually slowing down  progression of alarm clocks
+                     (interact 'iomux (tuple 'alarm delay))
+                     (loop (min (+ delay 1) 100)))
+                  (else
+                     ;; pair of (<exittype> . <result>)
+                     res)))))
 
       (define wait waitpid)
 
