@@ -107,8 +107,11 @@
 
       (define readline-default-options
          (list->ff
-            '((backspace-out . #false)      ;; return 'backspace if empty input is erased
-            )))
+            (list
+               (cons 'backspace-out #false)     ;; return 'backspace if empty input is erased
+               (cons 'autocomplete
+                  (λ (rl r)
+                     (list #\a #\b #\c))))))
 
       (define eof (tuple 'eof))
 
@@ -124,6 +127,11 @@
                            (display (list->string (list k)))
                            (update-line-right right w cx)
                            (if (= cx w) (lets ((off (+ off offset-delta)) (visible-left (list->string (drop (reverse left) off)))) (cursor-pos x y) (write-bytes stdout (clear-line-right null)) (display visible-left) (update-line-right right w cx) (loop ll hi left right (+ x (string-length visible-left)) off)) (loop ll hi left right cx off))))
+                     ((tab)
+                        (lets ((data ((get opts 'autocomplete) left right)))
+                           (loop 
+                              (append (map (λ (x) (tuple 'key x)) data) ll)
+                              hi left right cx off )))
                      ((backspace)
                         (if (= cx x)
                            (if (= off 0)
