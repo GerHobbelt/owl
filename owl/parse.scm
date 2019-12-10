@@ -11,6 +11,7 @@ owl cfg parsing combinators and macros
       seq
       epsilon ε
       byte-if
+      peek-byte                 ;; like byte-if, but do not consume
       rune
       rune-if
       either either!
@@ -91,6 +92,18 @@ owl cfg parsing combinators and macros
                         (backtrack l r p wrong-char))))
                (else
                   ((byte-if pred) l (r) p ok)))))
+
+      (define (peek-byte pred)
+         (λ (l r p ok)
+            (cond
+               ((null? r)
+                  (backtrack l r p eof-error))
+               ((pair? r)
+                  (if (pred (car r))
+                     (ok l r p (car r))
+                     (backtrack l r p wrong-char)))
+               (else
+                  ((peek-byte pred) l (r) p ok)))))
 
       (define (imm x)
          (λ (l r p ok)
@@ -409,6 +422,10 @@ owl cfg parsing combinators and macros
             (values 'x '(1 2 3) 1)
          (first-match (either! (seq (imm 2) (imm 1)) (seq (imm 1) (imm 2))) '(1 2 3) 'x) =
             (values '(1 . 2) '(3) 2)
+         (first-match (seq (imm 1) (peek-byte (λ (x) (eq? x 2)))) '(1 2 3) 'x)
+            = (values '(1 . 2) '(2 3) 1)
+         (first-match (seq (imm 1) (peek-byte (λ (x) (eq? x 2)))) '(1 3 3) 'x)
+            = (values 'x '(1 3 3) 1)
          )
 ))
 
