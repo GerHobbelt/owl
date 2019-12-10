@@ -253,6 +253,13 @@
                (lets ((x y w ll (get-dimensions ll)))
                   (readline ll history x y w opts)))))
 
+      (define (history-cons val lst)
+         (if (or (equal? val "")
+                (and (pair? lst)
+                   (equal? val (car lst))))
+             lst
+             (cons val lst)))
+
       (define (readline-result-stream history prompt merger finish)
          (let loop ((history history)
                     (ll (terminal-input empty)))
@@ -261,7 +268,7 @@
             (lets ((ll res (editable-readline ll history)))
                (set-terminal-rawness #false)
                (if res
-                  (merger res (λ () (loop (cons res history) ll)))
+                  (merger res (λ () (loop (history-cons res history) ll)))
                   (finish loop ll)))))
 
       (define (port->readline-byte-stream port)
