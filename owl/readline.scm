@@ -230,6 +230,10 @@
                               (loop (cons (tuple 'arrow 'right) ll) hi left right cx off))
                            ((d)
                               (loop (cons (tuple 'delete) ll) hi left right cx off))
+                           ((u)
+                              (loop
+                                 (append (map (λ (x) (tuple 'backspace)) left) ll)
+                                 hi left right cx off))
                            ((k)
                               (write-bytes stdout (clear-line-right null))
                               (loop ll hi left null cx off))
