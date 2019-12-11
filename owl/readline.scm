@@ -273,12 +273,12 @@
              lst
              (cons val lst)))
 
-      (define (readline-result-stream history prompt merger finish)
+      (define (readline-result-stream history prompt merger finish opts)
          (let loop ((history history)
                     (ll (terminal-input empty)))
             (if prompt (prompt))
             (set-terminal-rawness #true)
-            (lets ((ll res (editable-readline ll history)))
+            (lets ((ll res (editable-readline ll history opts)))
                (set-terminal-rawness #false)
                (if res
                   (merger res (λ () (loop (history-cons res history) ll)))
@@ -292,12 +292,12 @@
                (write-bytevector #(10) stdout)
                (append (string->bytes line)
                   (cons #\newline ls)))
-            (λ (loop ll) #null)))
+            (λ (loop ll) #null) readline-default-options))
 
       (define (port->readline-line-stream port prompt x)
          (readline-result-stream
             #null
             (λ () (display prompt))
             cons
-            (λ (loop ll) #null)))))
+            (λ (loop ll) #null) readline-default-options))))
 
