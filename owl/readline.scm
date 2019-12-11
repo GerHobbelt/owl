@@ -5,6 +5,7 @@
    (export
 
       readline-default-options                   ;; settings to be passed for readline
+      readline-result-stream
       readline
       port->readline-line-stream
       port->readline-byte-stream)
@@ -129,7 +130,7 @@
                            (if (= cx w) (lets ((off (+ off offset-delta)) (visible-left (list->string (drop (reverse left) off)))) (cursor-pos x y) (write-bytes stdout (clear-line-right null)) (display visible-left) (update-line-right right w cx) (loop ll hi left right (+ x (string-length visible-left)) off)) (loop ll hi left right cx off))))
                      ((tab)
                         (lets ((data ((get opts 'autocomplete) left right)))
-                           (loop 
+                           (loop
                               (append (map (λ (x) (tuple 'key x)) data) ll)
                               hi left right cx off )))
                      ((backspace)
