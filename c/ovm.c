@@ -331,16 +331,20 @@ static word *gc(int size, word *regs) {
 
 /*** OS Interaction and Helpers ***/
 
+unsigned int caught_signals;
+
 static void signal_handler(int signal) {
-   switch (signal) {
+   caught_signals |= (1 << signal);
+   fprintf(stderr, "[vm: caught signal %d]\n", signal);
+   /*switch (signal) {
       case SIGINT:
          breaked |= 2;
          break;
       case SIGPIPE:
-         break; /* can cause loop when reporting errors */
+         break; 
       default:
          breaked |= 4;
-   }
+   }*/
 }
 
 /* list length, no overflow or valid termination checks */
@@ -353,14 +357,6 @@ static uint llen(word *ptr) {
    return len;
 }
 
-static void set_signal_handler() {
-   struct sigaction sa;
-   sa.sa_handler = signal_handler;
-   sigemptyset(&sa.sa_mask);
-   sa.sa_flags = SA_RESTART;
-   sigaction(SIGINT, &sa, NULL);
-   sigaction(SIGPIPE, &sa, NULL);
-}
 
 static word mkpair(word h, word a, word d) {
    word *pair;
@@ -859,6 +855,18 @@ static word prim_sys(word op, word a, word b, word c) {
          return IFALSE; }
       case 45: { /* getpid _ _ _*/
          return(onum(getpid(), 0)); }
+      case 46: { /* catch-signals (4 8 ...) _ _*/ 
+         struct sigaction sa;
+         word *lst = (word *)a;
+         sa.sa_handler = signal_handler;
+         sigemptyset(&sa.sa_mask);
+         sa.sa_flags = SA_RESTART;
+         while((word)lst != INULL) {
+            sigaction(immval(lst[1]), &sa, NULL);
+            printf("[vm: will catch %d]\n",  immval(lst[1]));
+            lst = (word *)lst[2];
+         }
+         return ITRUE; }
       default:
          return IFALSE;
    }
@@ -1432,7 +1440,6 @@ static word *load_heap(uint nobjs) {
 static void setup(int nwords, int nobjs) {
    tcgetattr(0, &tsettings);
    state = IFALSE;
-   set_signal_handler();
    max_heap_mb = W == 4 ? 4096 : 65535;
    nwords += nobjs + INITCELLS;
    memstart = genstart = fp = realloc(NULL, (nwords + MEMPAD) * W);

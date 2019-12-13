@@ -76,6 +76,7 @@ This library defines various system calls and wrappers for calling them.
       get-heap-max-live
 
       resolve-host
+      catch-signals  ;; (signal ...)
 
       execvp
       system)
@@ -418,7 +419,7 @@ This library defines various system calls and wrappers for calling them.
                (cond
                   ((not res) res)
                   ((eq? res #true)
-                     ;; we can't block all thread doing a blocking waitpid(), 
+                     ;; we can't block all thread doing a blocking waitpid(),
                      ;; use a gradually slowing down  progression of alarm clocks
                      (interact 'iomux (tuple 'alarm delay))
                      (loop (min (+ delay 1) 100)))
@@ -640,4 +641,9 @@ This library defines various system calls and wrappers for calling them.
                      res)
                   (else
                      (loop (+ offset 1) res))))))
+
+      (define (catch-signals lst)
+         (if (and (list? lst) (every fixnum? lst))
+            (sys 46 lst)
+            #f))
 ))
