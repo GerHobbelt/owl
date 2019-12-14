@@ -765,7 +765,7 @@ Simple direct blocking IO (replaces the old thread-based one)
                         (waked
                            (lets ((rs ws alarms (wakeup rs ws alarms waked x)))
                               (muxer rs ws alarms)))
-                        (x 3)
+                        ;(x 3)
                         (else
                            (set-ticker 0)
                            (muxer rs ws alarms))))))
@@ -784,7 +784,7 @@ Simple direct blocking IO (replaces the old thread-based one)
                               (waked
                                  (lets ((rs ws alarms (wakeup rs ws alarms waked x)))
                                     (muxer rs ws alarms)))
-                              (x 2)
+                              ;(x 2)
                               (else
                                  (set-ticker 0)
                                  (muxer rs ws alarms))))))
