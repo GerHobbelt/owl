@@ -11,6 +11,7 @@ a very small kernel.
       thread-controller
       signal-handler/repl
       signal-handler/halt
+      signal-handler/ignore
       try-thunk try)
 
    (import
@@ -433,5 +434,11 @@ a very small kernel.
             ;; there is a thread evaling user input, linkely gone awry somehow
             (drop-thread 'repl-eval threads #n state eval-break-message controller)
             ;; nothing evaling atm, exit owl
-            (signal-handler/halt signals threads state controller)))
+            (begin
+               (system-println "[no eval thread - stopping on signal]")
+               (signal-handler/halt signals threads state controller))))
+      
+      (define (signal-handler/ignore signals threads state controller)
+         (system-println "[ignoring signals]")
+         (controller controller threads null state))
 ))
