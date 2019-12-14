@@ -41,7 +41,7 @@ This library defines various system calls and wrappers for calling them.
       seek-set
       seek-end
       sighup
-      signint
+      sigint
       sigquit
       sigill
       sigabrt
@@ -433,7 +433,7 @@ This library defines various system calls and wrappers for calling them.
          (sys 45))
 
       (define sighup   1)      ; hangup from controlling terminal or proces
-      (define signint  2)      ; interrupt (keyboard)
+      (define sigint   2)      ; interrupt (keyboard)
       (define sigquit  3)      ; quit (keyboard)
       (define sigill   4)      ; illegal instruction
       (define sigabrt  6)      ; abort(3)

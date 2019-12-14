@@ -324,6 +324,8 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       (else (cons x #null))))
 
 
+(import (owl sys))
+
 (define (heap-entry symbol-list)
    (λ (codes) ;; all my codes are belong to codes
       (lets
@@ -355,9 +357,10 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                                     ;; repl needs symbol etc interning, which is handled by this thread
                                     (thunk->thread 'intern interner-thunk)
 
-                                    ;; set a signal handler which stop evaluation instead of owl
+                                    ;; set a signal handler, which stops current evaluation thread instead of owl
                                     ;; if a repl eval thread is running
-                                    (set-signal-action repl-signal-handler)
+                                    (catch-signals (list sigint)) ;; C-c
+                                    (set-signal-action signal-handler/repl)
 
                                     (exit-owl
                                        (repl-start vm-args repl compiler
@@ -393,7 +396,6 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       ((equal? str "all") all)
       (else (print "Bad native selection: " str))))
 
-(import (owl sys))
 (print-to stderr "writes: " (>> (get-heap-bytes-written) 20) "MWords")
 (print-to stderr "max live: " (>> (get-heap-max-live) 10) "KB")
 
