@@ -34,7 +34,6 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (owl eval cgen)
       (only (owl sys) mem-strings)
       (only (owl syscall) error mail exit-owl)
-      (only (owl eval env) signal-halt signal-tag)
       (only (owl unicode) utf8-decode)
       (only (owl thread) start-thread-controller)
       (only (owl queue) qnull))
@@ -278,7 +277,6 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                         (start-base-threads)    ;; get basic io running
                         (exit-owl (ob args))))) ;; exit thread scheduler with exit value of this thread (if it doesn't crash)
                (list
-                  (cons signal-tag signal-halt)
                   (cons 'root qnull)))))   ;; the init thread usually needs a mailbox
 
       (define (cook-format str)
