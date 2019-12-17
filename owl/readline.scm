@@ -1,5 +1,3 @@
-;; probably better to split this later to (owl terminal) and (owl readline)
-
 (define-library (owl readline)
 
    (export
@@ -26,6 +24,7 @@
       (owl terminal)
       (owl io)
       (owl sys)
+      (owl sort)
       (scheme base)
       (scheme write)
       (only (owl unicode) utf8-decoder utf8-encode))
@@ -104,18 +103,23 @@
       ;;       ctrl-
       ;; todo: ctrl-J = end an incremental search
       ;; todo: ctrl-G = end incremental search, restore current line
-      ;; todo: tab = autocomplete
 
       (define readline-default-options
          (list->ff
             (list
                (cons 'backspace-out #false)     ;; return 'backspace if empty input is erased
                (cons 'autocomplete
-                  (λ (rl r)
-                     (list #\a #\b #\c))))))
+                  ;; (byte ..) for autocomplete, ((byte ..) ...) for options
+                  (λ (rl r) null)))))
 
       (define eof (tuple 'eof))
 
+      (define (drop-trailing-space l)
+         (let ((rl (reverse l)))
+            (if (and (pair? rl) (eq? (car rl) #\space))
+               (reverse (cdr rl))
+               l)))
+      
       (define (readline ll history x y w opts)
          (lets ((history (cons null history))  ; (newer . older)
                 (offset-delta (+ 1 (quotient (- w x) 2)))
@@ -130,9 +134,25 @@
                            (if (= cx w) (lets ((off (+ off offset-delta)) (visible-left (list->string (drop (reverse left) off)))) (cursor-pos x y) (write-bytes stdout (clear-line-right null)) (display visible-left) (update-line-right right w cx) (loop ll hi left right (+ x (string-length visible-left)) off)) (loop ll hi left right cx off))))
                      ((tab)
                         (lets ((data ((get opts 'autocomplete) left right)))
-                           (loop
-                              (append (map (λ (x) (tuple 'key x)) data) ll)
-                              hi left right cx off )))
+                           (cond
+                              ((null? data)
+                                 (loop ll hi left right cx off ))
+                              ((pair? (car data)) ;; options
+                                 (lets
+                                    ((data (sort (λ (a b) (< (length a) (length b))) data))
+                                     (opts
+                                       (foldr 
+                                          (λ (x data) (if (null? data) x (append x (cons #\space data)))) 
+                                          null (map drop-trailing-space data)))
+                                     (opts-fitting
+                                        (take opts (min (- w cx) (length opts)))))
+                                    (write-bytes stdout (font-dim opts-fitting))
+                                    (write-bytes stdout (font-normal (cursor-left null (length opts-fitting))))
+                                    (loop ll hi left right cx off)))
+                              (else
+                                 (loop
+                                    (append (map (λ (x) (tuple 'key x)) data) ll)
+                                    hi left right cx off )))))
                      ((backspace)
                         (if (= cx x)
                            (if (= off 0)
