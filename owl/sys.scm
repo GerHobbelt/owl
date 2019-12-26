@@ -74,6 +74,7 @@ This library defines various system calls and wrappers for calling them.
       get-environment
       get-heap-bytes-written
       get-heap-max-live
+      isatty
 
       resolve-host
       catch-signals  ;; (signal ...)
@@ -646,4 +647,7 @@ This library defines various system calls and wrappers for calling them.
          (if (and (list? lst) (every fixnum? lst))
             (sys 46 lst)
             #f))
+
+      (define (isatty fd)
+         (sys 47 fd 0 0))
 ))

@@ -861,6 +861,8 @@ static word prim_sys(word op, word a, word b, word c) {
             lst = (word *)lst[2];
          }
          return ITRUE; }
+      case 47:
+         return isatty(immval(a)) ? ITRUE : IFALSE;
       default:
          return IFALSE;
    }
