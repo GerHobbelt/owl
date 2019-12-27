@@ -33,12 +33,14 @@ c/vm.c: c/_vm.c
 
 ## bytecode image (fixedpoint)
 
-fasl/boot.fasl: bin/vm fasl/init.fasl
+fasl/boot.fasl: fasl/init.fasl
 	# start bootstrapping with the bundled init.fasl image
+	make bin/vm
 	bin/vm fasl/init.fasl -r bin/fasl-build.scm bin/vm fasl/init.fasl -r owl/ol.scm -o $@
 
-fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
+fasl/ol.fasl: fasl/boot.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
 	# selfcompile boot.fasl until a fixed point is reached
+	make bin/vm
 	bin/vm fasl/init.fasl -r bin/fasl-build.scm -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
 
 ## binary image
@@ -98,6 +100,24 @@ owl/unicode-char-folds.scm:
 	echo "(define char-folds '(" >owl/unicode-char-folds.scm
 	curl http://www.unicode.org/Public/6.0.0/ucd/CaseFolding.txt | grep "[0-9A-F]* [SFC]; " | sed -re 's/ #.*//' -e 's/( [SFC])?;//g' -e 's/^/ /' -e 's/ / #x/g' -e 's/ /(/' -e 's/$$/)/' | tr "[A-F]" "[a-f]" >> owl/unicode-char-folds.scm
 	echo '))' >>owl/unicode-char-folds.scm
+
+## Release tarball
+
+tarball: c/ol.c
+	# check that version is specified
+	echo "${VERSION}" | grep [0-9]
+	# make a new tarball
+	-rm -rf owl-${VERSION}
+	mkdir owl-${VERSION}
+	cp -va bin owl-${VERSION} # keep times
+	rm owl-${VERSION}/bin/vm owl-${VERSION}/bin/ol
+	cp -va Makefile c fasl LICENCE README.md THANKS owl scheme tests doc owl-${VERSION}
+	tar -f - -c owl-${VERSION} | gzip -9 > owl-${VERSION}.tar.gz
+	# check that build of the contents succeeds
+	find owl-${VERSION}
+	cd owl-${VERSION} && make
+	owl-${VERSION}/bin/ol --version
+
 
 ## Installation
 
