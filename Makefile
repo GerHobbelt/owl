@@ -103,7 +103,7 @@ owl/unicode-char-folds.scm:
 
 ## Release tarball
 
-tarball: c/ol.c
+tarball: c/ol.c bin/ol
 	# check that version is specified
 	echo "${VERSION}" | grep [0-9]
 	# make a new tarball
@@ -117,6 +117,10 @@ tarball: c/ol.c
 	find owl-${VERSION}
 	cd owl-${VERSION} && make
 	owl-${VERSION}/bin/ol --version
+	bin/vm fasl/ol.fasl --run owl/ol.scm -s none -o ol-${VERSION}.c
+	cc -O -o ol-${VERSION} ol-${VERSION}.c
+	./ol-${VERSION} --version
+	gzip -9 ol-${VERSION}.c
 
 
 ## Installation
