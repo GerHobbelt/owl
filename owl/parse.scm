@@ -8,6 +8,7 @@ owl cfg parsing combinators and macros
       parses
       byte
       imm
+      input-ready?              ;; parser, receives fd
       seq
       epsilon ε
       byte-if
@@ -65,6 +66,19 @@ owl cfg parsing combinators and macros
                (if (eq? (type hd) type-fix+)
                   (backtrack (cdr l) (cons hd r) p why)
                   (hd (cdr l) r p why)))))
+
+      (define (input-ready? port)
+         (λ (l r p ok)
+            ;; already read tell what happened
+            ;; uncomputed = unread, check if port is ready for reading (without blocking)
+            ;;   - note: may also be readable but will give eof
+            (ok l r p
+               (cond
+                  ((null? r) #false)
+                  ((pair? r) #true)
+                  ((eq? 'timeout (interact 'iomux (tuple 'read-timeout port 100)))
+                     #false)
+                  (else #true)))))
 
       (define eof-error "end of input")
 
