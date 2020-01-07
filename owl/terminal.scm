@@ -206,13 +206,24 @@
                   (λ (x) (> x 31))))) ;; 127 is also handled specially
            (tuple 'key cp)))
 
+      ;; esc[X
       (define bracket-chars
          (list->ff
-            (list
+            (list  ;  X
                (cons 65 (tuple 'arrow 'up))
                (cons 66 (tuple 'arrow 'down))
                (cons 67 (tuple 'arrow 'right))
                (cons 68 (tuple 'arrow 'left)))))
+
+      ;; esc[X~
+      (define tilde-chars
+         (list->ff
+            (list ;   X
+               (cons #\1 (tuple 'home))
+               (cons #\4 (tuple 'end))
+               (cons #\5 (tuple 'page-up))
+               (cons #\6 (tuple 'page-down))
+               (cons #\2 (tuple 'insert)))))
 
       (define special-keys
          (list->ff
@@ -256,19 +267,38 @@
             ((bs (get-plus! (get-byte-if (λ (x) (and (<= #\0 x) (<= x #\9)))))))
             (fold (λ (n b) (+ (* n 10) (- b #\0))) 0 bs)))
 
-      (define get-escape-sequence
+      (define get-plain-escape
          (get-parses
             ((skip (get-imm esc))
-             (skip (get-imm #\[))
+             (is (get-input-ready? stdin))
+             (verify
+                (begin
+                   ;(print (list 'input 'ready 'is is))
+                    (eq? is #false)) 'foo))
+            (tuple 'esc)))
+
+      (define get-esc-caret-sequence
+         (get-parses
+            ((skip (get-imm #\[))
              (val
                 (get-one-of
                    (get-by-ff bracket-chars)
+                   (get-parses
+                      ((val (get-by-ff tilde-chars))
+                       (skip (get-imm #\~)))
+                      val)
                    (get-parses
                       ((a get-natural)
                        (skip (get-imm  #\;))
                        (b get-natural)
                        (skip (get-imm #\R)))
                       (tuple 'cursor-position a b)))))
+            val))
+
+      (define get-escape-sequence
+         (get-parses
+            ((skip (get-imm esc))
+             (val get-esc-caret-sequence))
             val))
 
       (define get-special-key
@@ -286,24 +316,18 @@
       (define get-terminal-input
          (get-one-of
             get-special-key
+            get-plain-escape    ;; must be before escape sequence to avoid blocking
             get-escape-sequence ;; esc[ ... stuff
             get-small-char
             get-quoted-key   ;; ∀ x, ctrl-v <x> → #(key <x>)
             ))
 
-      (define get-meta-node
-         (get-either
-            get-terminal-input
-            (get-parses
-               ((skip (get-imm esc))
-                (val get-terminal-input))
-               (tuple 'meta val))))
-
       (define (terminal-input opts)
          (set-terminal-rawness #true)
          (get-byte-stream->exp-stream
-            (port->byte-stream stdin)
-            get-meta-node
+            (port->byte-stream
+               (get opts 'port stdin))
+            get-terminal-input
             (λ (cont ll error)
                (cond
                   ((and (= (car ll) 4) (get opts 'eof-exit? #t))
