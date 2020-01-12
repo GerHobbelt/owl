@@ -267,7 +267,7 @@
             ((bs (get-plus! (get-byte-if (λ (x) (and (<= #\0 x) (<= x #\9)))))))
             (fold (λ (n b) (+ (* n 10) (- b #\0))) 0 bs)))
 
-      (define get-plain-escape
+      (define get-nonblocking-plain-escape
          (get-parses
             ((skip (get-imm esc))
              (is (get-input-ready? stdin))
@@ -277,6 +277,11 @@
                     (eq? is #false)) 'foo))
             (tuple 'esc)))
 
+      (define get-plain-escape
+         (get-parses
+            ((skip (get-imm esc)))
+            (tuple 'esc)))
+      
       (define get-esc-caret-sequence
          (get-parses
             ((skip (get-imm #\[))
@@ -316,8 +321,9 @@
       (define get-terminal-input
          (get-one-of
             get-special-key
-            get-plain-escape    ;; must be before escape sequence to avoid blocking
+            get-nonblocking-plain-escape    ;; must be before escape sequence to avoid blocking
             get-escape-sequence ;; esc[ ... stuff
+            get-plain-escape    ;; not an escape sequence, could merge with above      
             get-small-char
             get-quoted-key   ;; ∀ x, ctrl-v <x> → #(key <x>)
             ))
