@@ -54,7 +54,7 @@ done
 
 for file in tests/*$SUFFIX.sh
 do
-   ( (sh "$file" "$@" 2>&1 || echo "NONZERO: $file $?") | grep -v SEED | difflog "$file") &
+   ( (sh "$file" "$@" || echo "NONZERO: $file $?") | grep -v SEED | difflog "$file") &
    CURJOBS=$((CURJOBS + 1))
    waitnjobs $MAXJOBS
 done
