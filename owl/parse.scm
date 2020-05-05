@@ -289,18 +289,21 @@ owl cfg parsing combinators and macros
             (byte-if (C lesser? 128))
             (parses
                ((a (byte-between 127 224))
-                (verify (not (eq? a #b11000000)) "blank leading 2-byte char") ;; would be non-minimal
-                (b extension-byte))
+                (b extension-byte)
+                (verify (not (< (two-byte-point a b) min-2byte)) "invalid 2-byte utf-8"))
                (two-byte-point a b))
             (parses
                ((a (byte-between 223 240))
-                (verify (not (eq? a #b11100000)) "blank leading 3-byte char") ;; would be non-minimal
-                (b extension-byte) (c extension-byte))
+                (b extension-byte) 
+                (c extension-byte)
+                (verify (not (< (three-byte-point a b c) min-3byte)) "invalid 3-byte utf-8"))
                (three-byte-point a b c))
             (parses
                ((a (byte-between 239 280))
-                (verify (not (eq? a #b11110000)) "blank leading 4-byte char") ;; would be non-minimal
-                (b extension-byte) (c extension-byte) (d extension-byte))
+                (b extension-byte) 
+                (c extension-byte) 
+                (d extension-byte)
+                (verify (not (< (four-byte-point a b c d) min-3byte)) "invalid 4-byte utf-8"))
                (four-byte-point a b c d))))
 
       (define (rune-if pred)
