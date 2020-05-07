@@ -35,6 +35,7 @@ environment.
 
    (begin
 
+      ;; these are to be deprecated
       (define (ok? x) (eq? (ref x 1) 'ok))
       (define (ok exp env) (tuple 'ok exp env))
       (define (fail reason) (tuple 'fail reason))

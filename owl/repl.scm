@@ -599,7 +599,7 @@
 
       (define (eval-repl exp env repl)
          (lets/cc ret
-            ((abort (λ (why) (tuple 'fail (list "Macro expansion of " exp " failed: " why))))
+            ((abort (λ (why) (ret (fail (list "Macro expansion of " exp " failed: " why)))))
              (env exp (macro-expand exp env abort)))
             (cond
                ((import? exp) ;; <- new library import, temporary version
