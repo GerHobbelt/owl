@@ -3,6 +3,7 @@
    (export
       pair? null null?
       caar cadr cdar cddr
+      car* cdr*
       list?
       zip fold foldr map for-each
       memq assq last
@@ -16,6 +17,7 @@
       first find find-tail
       take-while                ;; pred, lst -> as, bs
       break
+      split                     ;; split pred lst -> lst'
       fold2
       halve
       interleave
@@ -35,6 +37,12 @@
 
       ;; any -> bool
       (define null? (C eq? #n))
+
+      ;; (a . b) -> a, _ -> _
+      (define (car* a) (if (pair? a) (car a) a))
+
+      ;; (a . b) -> b, _ -> _
+      (define (cdr* a) (if (pair? a) (cdr a) a))
 
       ;; '((a . b) . c) -> a
       (define caar (B car car))
@@ -219,6 +227,15 @@
                (lets ((l r (break pred (cdr lst))))
                   (values (cons (car lst) l) r)))
             (values '() lst)))
+
+      (define (split pred lst)
+         (lets ((h t (break pred lst)))
+            (if (pair? t)
+               (cons h (split pred (cdr t)))
+               (list h))))
+
+      (example
+         (split (lambda (x) (eq? x 'x)) '(a b x c d x e)) = '((a b) (c d) (e)))
 
       (define (keep pred lst)
          (foldr (λ (x tl) (if (pred x) (cons x tl) tl)) #n lst))
