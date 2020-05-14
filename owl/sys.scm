@@ -601,8 +601,17 @@ This library defines various system calls and wrappers for calling them.
                full
                #false)))
 
+      (define (leading-dash? s)
+         (not (eq? #\/ (car* (string->list s)))))
+
+      (define (colon-cut s)
+         (map list->string
+            (split
+               (lambda (x) (eq? x #\:))
+               (string->list s))))
+
       (define (resolve-program p)
-         (if (m/^\// p)
+         (if (leading-dash? p)
             p ;; absolute path
             (fold
                (λ (res option)
@@ -610,7 +619,7 @@ This library defines various system calls and wrappers for calling them.
                      (check-file option p)))
                #false
                (cons (getcwd)
-                  (c/:/ (or (getenv "PATH") ""))))))
+                  (colon-cut (or (getenv "PATH") ""))))))
 
       (define (execvp args)
          (let ((cmd (resolve-program (car args))))

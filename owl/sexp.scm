@@ -31,7 +31,8 @@
       (owl unicode)
       (only (owl syscall) error)
       (only (owl intern) intern-symbols string->uninterned-symbol)
-      (only (owl regex) get-sexp-regex))
+      (only (owl regex) get-sexp-regex)
+      )
 
    (begin
 
@@ -382,7 +383,7 @@
                (get-one-of
                   (get-list-of (get-sexp))
                   get-number         ;; more than a simple integer
-                  get-sexp-regex ;; must be before identifiers, which also may start with /
+                  get-sexp-regex ;; to be deprecated
                   get-identifier
                   (get-hash-prefixed (get-sexp))
                   get-string
