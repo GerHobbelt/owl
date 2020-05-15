@@ -30,6 +30,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (owl math)
       (owl render)
       (owl lazy)
+      (owl regex)
       (only (owl fasl) objects-below)
       (owl eval cgen)
       (only (owl sys) mem-strings)
@@ -285,11 +286,13 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
             ((equal? str "fasl") 'fasl)
             (else #false)))
 
+      (define suffix-only (string->regex "s/^.*\\.([a-z]+)$/\\1/"))
+
       ; → c | fasl (| s)
       (define (choose-output-format opts maybe-path)
          (lets ((path (get opts 'output maybe-path)))
             (if (string? path)
-               (cook-format (s/^.*\.([a-z]+)$/\1/ path))
+               (cook-format (suffix-only path))
                #false)))
 
       (define owl-ohai-resume "Welcome back.")

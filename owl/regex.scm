@@ -22,7 +22,7 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
    (import
       (owl core)
       (only (owl parse) one-of try-parse)
-      (prefix (only (owl parse) byte either epsilon imm parses star plus) get-)
+      (prefix (only (owl parse) byte rune either epsilon imm parses star plus) get-)
       (only (owl syscall) error)
       (owl io)
       (owl lcd ff)
@@ -496,13 +496,13 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
       ;; it may either itself find all the matches and perform substitutions,
       ;; handle the first one, or something completely different.
 
-      ;; fixme: trailing \ is handled wrong
+      ;; fixme: trailing \ is allowed
       ;; copy and fill in submatches
       (define (replace rep ms tl)
          (foldr
             (λ (char tl)
                (cond
-                  ((eq? char 92) ;; \
+                  ((eq? char #\\) ;; handle quotation
                      (if (null? tl)
                         (cons char tl)
                         (let ((op (car tl)))
@@ -512,8 +512,16 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
                                     (if submatch
                                        (append submatch (cdr tl))
                                        tl))) ;; todo: add a fail cont and complain about bad backreference
-                              ((eq? op 92) tl) ; \\
-                              (else ;; todo: warn about unhandeld quote
+                              ((eq? op #\\) 
+                                 tl) ; \\
+                              ((eq? op #\n)
+                                 (cons #\newline (cdr tl)))
+                              ((eq? op #\t)
+                                 (cons #\tab (cdr tl)))
+                              ((eq? op #\r)
+                                 (cons #\return (cdr tl)))
+                              (else 
+                                 ;; todo: unhandeld quote warning should turn up at parse time
                                  tl)))))
                   (else
                      (cons char tl))))
@@ -933,15 +941,16 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
             )
            (make-cutter rex start?)))
 
+      ;; could allow alternate terminals now that the syntax is decoubled from sexps
       (define get-replace-char
          (get-either
-            (get-parses ;; quoted
-               ((skip (get-imm 92)) ;; \\
-                (char (get-imm 98)))
+            (get-parses ;; quoted terminal
+               ((skip (get-imm #\\)) 
+                (char (get-imm #\/)))
                char)
-            (get-parses ;; something other than /
-               ((char get-byte)
-                (verify (not (eq? char 47)) #false))
+            (get-parses ;; something other than the terminal
+               ((char get-rune)
+                (verify (not (eq? char #\/)) #false))
                char)))
 
       (define get-maybe-g

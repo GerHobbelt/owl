@@ -113,12 +113,14 @@
 
 (define error-usage-text "ol -h helps.")
 
+(define with-c-suffix
+   (string->regex "s/\\.[a-zA-Z0-0]+$/.c/"))
+
 (define (c-source-name path)
-   (cond
-      ((m/\.[a-z]+$/ path) ;; .scm, .lisp, .owl etc
-         (s/\.[a-z]+$/.c/ path))
-      (else
-         (string-append path ".c"))))
+   (let ((new (with-c-suffix path)))
+      (if (string=? path new)
+         (string-append path ".c")
+         new)))
 
 (define (owl-run outcome args path)
    (if outcome
@@ -294,7 +296,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
                   ((null? others)
                      (greeting env)
                      (repl-trampoline repl
-                        (env-set env '*readline* 
+                        (env-set env '*readline*
                            (if (get dict 'no-readline)
                               #false
                               (sys-isatty stdin)))))

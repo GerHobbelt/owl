@@ -431,8 +431,9 @@
                            (cons #\/ tl))))
                   #n iset))))
 
-      (define (envalidate-path path)
-         (s/([/.])\1+/\1/g path))
+      ;; remove double slashes and dots
+      (define envalidate-path
+         (string->regex "s/([/.])\\1+/\\1/g"))
 
       ;; try to find and parse contents of <path> and wrap to (begin ...) or call fail
       (define (repl-include env path fail)
