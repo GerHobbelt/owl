@@ -29,7 +29,6 @@
       (owl port)
       (owl primop)
       (owl unicode)
-      (only (owl regex) get-sexp-regex)
       (only (owl syscall) error)
       (only (owl intern) intern-symbols string->uninterned-symbol))
 
@@ -382,11 +381,6 @@
                (get-one-of
                   (get-list-of (get-sexp))
                   get-number         ;; more than a simple integer
-                  (get-parses
-                     ((val get-sexp-regex))
-                     (begin
-                        (print "Warning: inline regex used. Please convert it to a corresponding (string->regex ...) value.")
-                        val))
                   get-identifier
                   (get-hash-prefixed (get-sexp))
                   get-string
