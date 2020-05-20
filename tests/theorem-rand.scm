@@ -417,12 +417,6 @@
          ∀ f ∊ (List-of Short)
             f = (fasl-decode (fasl-encode f) 'bad)
 
-      theorem bisect-1
-         ∀ a n m ∊ Nat
-            b ← (+ a n)
-            c ← (+ b (+ m 1))
-            b = (bisect (C >= b) a c)
-
       theorem rlist-car-cons
          ∀ a ∊ Byte ∀ r ∊ Rlist
             a = (rcar (rcons a r))
