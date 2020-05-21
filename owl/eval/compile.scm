@@ -138,14 +138,14 @@ Compile AST to a code instruction tree suitable for assembly
                ((null? lit)
                   ;; the function will be of the form
                   ;; #(closure-header <code> e0 ... en)
-                  (tuple 'clos-code (find-literals regs) lit-offset env this
+                  (tuple 'cons-close #false (find-literals regs) lit-offset env this
                      (cont
                         (cons (tuple 'val (list 'a-closure) this) regs)
                         this)))
                (else
                   ;; the function will be of the form
                   ;; #(clos-header #(proc-header <code> l0 .. ln) e0 .. em)
-                  (tuple 'clos-proc (find-literals regs) lit-offset env this
+                  (tuple 'cons-close #true (find-literals regs) lit-offset env this
                      (cont
                         (cons (tuple 'val (list 'a-closure) this) regs)
                         this))))))

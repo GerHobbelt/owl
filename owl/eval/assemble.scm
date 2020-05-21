@@ -149,35 +149,18 @@ This library implements bytecode assembly.
                         (fail (list "Bad opcode arity: " (list op (length args) (length to))))))
                   (else
                      (fail (list "bad case of primop in assemble: " op)))))
-            ;; fixme: closures should have just one RTL node instead of separate ones for clos-proc and clos-code
-            ((clos-proc lpos offset env to more)
-               ;; make a 2-level closure
+            ((cons-close closure? lpos offset env to more)
+
+               ;; closure = clos -> proc -> code
                (if (= lpos 1)
-                  (cons (inst->op 'clos1)
+                  (cons (inst->op (if closure? 'clos1 'cloc1))
                      (cons (+ 2 (length env))
                         ;; size of object (hdr code e0 ... en)
                         (cons offset
                            (append env
                               (cons to
                                  (assemble more fail))))))
-                  (cons (inst->op 'clos)
-                     (cons (+ 2 (length env))
-                        ;; size of object (hdr code e0 ... en)
-                        (cons lpos
-                           (cons offset
-                              (append env
-                                 (cons to
-                                    (assemble more fail)))))))))
-            ((clos-code lpos offset env to more)      ;; make a 1-level closure
-               (if (= lpos 1)
-                  (cons (inst->op 'cloc1)
-                     (cons (+ 2 (length env))
-                        ;; size of object (hdr code e0 ... en)
-                        (cons offset
-                           (append env
-                              (cons to
-                                 (assemble more fail))))))
-                  (cons (inst->op 'cloc)
+                  (cons (inst->op (if closure? 'clos 'cloc))
                      (cons (+ 2 (length env))
                         ;; size of object (hdr code e0 ... en)
                         (cons lpos
