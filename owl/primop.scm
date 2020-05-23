@@ -20,6 +20,9 @@ VM primops
       apply
       call/cc
       lets/cc
+      call/cc      ;; unary continuation, the usual suspect
+      call/cc2     ;; returning two values
+      call/cc3     ;; return three values
       create-type
       object-size
       len
@@ -109,22 +112,9 @@ VM primops
 
       (define apply-error "implementation restriction: please fold a long list instead of applying a function")
 
-      (define apply
-         (case-lambda
-            ((fn l)
-               (if (null? l) (fn)
-                  (lets ((a l l))
-                     (if (null? l) (fn a)
-                        (lets ((b l l))
-                           (if (null? l) (fn a b)
-                              (lets ((c l l))
-                                 (if (null? l) (fn a b c)
-                                    (lets ((d l l))
-                                       (if (null? l) (fn a b c d)
-                                          (lets ((e l l))
-                                             (if (null? l) (fn a b c d e)
-                                                (car apply-error)))))))))))))
-            ((fn a l)
+      (define (apply fn l)
+         (if (null? l) (fn)
+            (lets ((a l l))
                (if (null? l) (fn a)
                   (lets ((b l l))
                      (if (null? l) (fn a b)
@@ -134,30 +124,7 @@ VM primops
                                  (if (null? l) (fn a b c d)
                                     (lets ((e l l))
                                        (if (null? l) (fn a b c d e)
-                                          (car apply-error)))))))))))
-            ((fn a b l)
-               (if (null? l) (fn a b)
-                  (lets ((c l l))
-                     (if (null? l) (fn a b c)
-                        (lets ((d l l))
-                           (if (null? l) (fn a b c d)
-                              (lets ((e l l))
-                                 (if (null? l) (fn a b c d e)
-                                    (car apply-error)))))))))
-            ((fn a b c l)
-               (if (null? l) (fn a b c)
-                  (lets ((d l l))
-                     (if (null? l) (fn a b c d)
-                        (lets ((e l l))
-                           (if (null? l) (fn a b c d e)
-                              (car apply-error)))))))
-            ((fn a b c d l)
-               (if (null? l) (fn a b c d)
-                  (lets ((e l l))
-                     (if (null? l) (fn a b c d e)
-                        (car apply-error)))))
-            (x
-               (car apply-error))))
+                                          (car apply-error)))))))))))))
 
       (define primops
          (list
@@ -194,27 +161,20 @@ VM primops
       (define (get-word-size) (sys-prim 8 1 #f #f))
       (define (get-memory-limit) (sys-prim 9 #f #f #f))
 
-      ;; todo: add get-heap-metrics
-
       ;; stop the vm *immediately* without flushing input or anything else with return value n
       (define (halt n) (sys-prim 6 n #f #f))
 
-      ;; a minimal definition would be this, but we also want variable arities here
-      ; (define call/cc  ('_sans_cps (λ (k f) (f k (λ (r a) (k a))))))
-
       (define call/cc
          ('_sans_cps
-            (λ (k f)
-               (f k
-                  (case-lambda
-                     ((_ a) (k a))
-                     ((_ a b) (k a b))
-                     ((_ a b c) (k a b c))
-                     ((_ a b c d) (k a b c d))
-                     ((_ a b c d e) (k a b c d e))
-                     (x
-                        (car "implementation restriction: add more values to continuation handling")
-                        ))))))
+            (λ (k f) (f k (lambda (_ a) (k a))))))
+
+      (define call/cc2
+         ('_sans_cps
+            (λ (k f) (f k (lambda (_ a b) (k a b))))))
+
+      (define call/cc3
+         ('_sans_cps
+            (λ (k f) (f k (lambda (_ a b c) (k a b c))))))
 
       (define-syntax lets/cc
          (syntax-rules (call/cc)
@@ -222,6 +182,13 @@ VM primops
                (syntax-error "let/cc: continuation name cannot be " (quote (om . nom))))
             ((lets/cc var . body)
                (call/cc (λ (var) (lets . body))))))
+
+      (define-syntax lets/cc1
+         (syntax-rules (call/cc1)
+            ((lets/cc1 (om . nom) . fail)
+               (syntax-error "let/cc1: continuation name cannot be " (quote (om . nom))))
+            ((lets/cc1 var . body)
+               (call/cc1 (λ (var) (lets . body))))))
 
       ;; unsafe function - not to be exported!
       (define get-header (bytes->bytecode '(1 4 0 5 24 5)))

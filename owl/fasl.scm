@@ -330,7 +330,7 @@ up Owl are just fasl-encoded functions.
                (decoder (ll) got fail))))
 
       (define (decode-or ll err) ; -> ll obj | #n (err why)
-         (call/cc ; setjmp2000
+         (call/cc2 ; setjmp2000
             (λ (ret)
                (lets ((fail (B (H ret #n) err)))
                   (cond

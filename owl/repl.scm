@@ -482,7 +482,7 @@
       (define (library-import env exps fail repl)
          (fold
             (λ (env iset)
-               (lets ((status lib (call/cc (λ (ret) (import-set->library iset (env-get env library-key #n) ret)))))
+               (lets ((status lib (call/cc2 (λ (ret) (import-set->library iset (env-get env library-key #n) ret)))))
                   (cond
                      ((eq? status 'needed)
                         (lets ((status env (try-autoload env repl lib)))
