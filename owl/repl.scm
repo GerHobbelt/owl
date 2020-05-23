@@ -295,11 +295,10 @@
                (repl env in))
             ((expand)
                (lets ((exp in (uncons in #false)))
-                  (tuple-case (macro-expand exp env) ;; fixme: api changed
-                     ((ok exp env)
-                        (print exp))
-                     ((fail reason)
-                        (print ";; Macro expansion failed: " reason)))
+                  (lets/cc ret
+                     ((abort (λ (why) (print ";; expansion failed: " exp) (ret #false)))
+                      (env exp (macro-expand exp env abort)))
+                     (print ";; " exp))
                   (prompt env (repl-message))
                   (repl env in)))
             ((quit)
