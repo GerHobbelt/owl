@@ -91,11 +91,6 @@ avoid having to track variable shadowing.
             ((values vals)
                (lets ((vals free (alpha-list alpha vals env free)))
                   (values (tuple 'values vals) free)))
-            ((case-lambda fn then)
-               (lets
-                  ((fn free (alpha fn env free))
-                   (then free (alpha then env free)))
-                  (values (tuple 'case-lambda fn then) free)))
             (else
                (error "alpha: unknown AST node: " exp))))
 

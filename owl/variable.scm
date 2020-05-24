@@ -21,7 +21,7 @@ This library introduces seemingly variable values
    (begin
 
       (define (handler id)
-         (case-lambda-new
+         (case-lambda
             (() (interact id '(get)))                ;; read (sync)
             ((val) (mail id (cons 'set val)))        ;; write (async, which is efficient but may cause odd bugs if confused with sync 'set)
             ((op val) (interact id (cons op val))))) ;; any (sync)
@@ -64,7 +64,7 @@ This library introduces seemingly variable values
          (handler id))
 
       (define make-variable
-         (case-lambda-new
+         (case-lambda
             ((id val) (start-variable id val))
             ((id) (start-variable id #false))
             (() (start-variable (list 'var) #false))))

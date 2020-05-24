@@ -381,13 +381,6 @@ This library implements hygienic macro expansion.
                                         (body free
                                           (expand body (env-bind env formals) free abort)))
                                        (values (list 'lambda formals body) free))))
-                              ((_case-lambda)
-                                 (if (or (null? (cdr exp)) (null? (cddr exp))) ;; (_case-lambda <lambda> <(case-)lambda>)
-                                    (abort (list "Bad _case-lambda: " exp))
-                                    (lets
-                                       ((first free (expand (cadr exp)  env free abort))
-                                        (rest  free (expand (caddr exp) env free abort)))
-                                       (values (list '_case-lambda first rest) free))))
                               ((rlambda)
                                  (lets
                                     ((formals (list-ref exp 1))

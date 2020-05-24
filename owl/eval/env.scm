@@ -168,8 +168,6 @@
                                  (map walk (caddr exp))
                                  (walk (car (cdddr exp)))))
                            (fail (list "funny rlambda: " (list exp 'len (length exp) 'forms (formals-cool? exp))))))
-                     ((_case-lambda)
-                        (cons (car exp) (map walk (cdr exp))))
                      ((values receive _branch)
                         (cons (car exp)
                            (map walk (cdr exp))))
@@ -272,7 +270,6 @@
                (cons 'receive (tuple 'special 'receive))
                (cons '_branch (tuple 'special '_branch))
                (cons '_define (tuple 'special '_define))
-               (cons '_case-lambda (tuple 'special '_case-lambda))
                (cons 'values   (tuple 'special 'values)))))
 
       ;; take a subset of env

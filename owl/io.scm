@@ -166,7 +166,7 @@ Simple direct blocking IO (replaces the old thread-based one)
 
       ;; get a block of size up to block size
       (define read-bytevector
-         (case-lambda-new
+         (case-lambda
             ((size)
                (try-get-block stdin size #t))
             ((size port)
@@ -350,7 +350,7 @@ Simple direct blocking IO (replaces the old thread-based one)
                   (printer (cdr lst) len (cons (car lst) out) fd)))))
 
       (define write-bytevector
-         (case-lambda-new
+         (case-lambda
             ((vec)
                (write-really vec stdout))
             ((vec port)
@@ -379,7 +379,7 @@ Simple direct blocking IO (replaces the old thread-based one)
          (printer (render obj '()) 0 #n to))
 
       (define print
-         (case-lambda-new
+         (case-lambda
             ((obj) (print-to stdout obj))
             (xs (printer (foldr render '(#\newline) xs) 0 #n stdout))))
 

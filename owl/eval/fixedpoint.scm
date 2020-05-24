@@ -60,9 +60,6 @@ This is done by constructing the fixed points manually.
                   (walk body (union formals bound) found))
                ((lambda-var fixed? formals body)
                   (walk body (union formals bound) found))
-               ((case-lambda fn else)
-                  (walk fn bound
-                     (walk else bound found)))
                ((call rator rands)
                   (walk rator bound
                      (walk-list rands bound found)))
@@ -432,10 +429,6 @@ This is done by constructing the fixed points manually.
                    (then (unletrec then env))
                    (else (unletrec else env)))
                   (tuple 'branch kind a b then else)))
-            ((case-lambda func else)
-               (tuple 'case-lambda
-                  (unletrec func env)
-                  (unletrec else env)))
             (else
                (error "Funny AST node in unletrec: " exp))))
 

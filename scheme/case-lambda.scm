@@ -4,7 +4,7 @@
       (owl core))
 
    (export
-      case-lambda-new)
+      case-lambda)
 
    (begin
 

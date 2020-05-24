@@ -101,25 +101,6 @@ Convert lambdas to closures where necessary
                         (tuple 'closure-var fixed? formals body clos)
                         (tuple 'lambda-var fixed? formals body))
                      (union used clos))))
-            ((case-lambda func else)
-               ;; fixme: operator position handling of resulting unclosurized case-lambdas is missing
-               (if close?
-                  ;; a normal value requiring a closure, and first node only
-                  (lets
-                     ((func this-used (closurize func #n #f)) ;; no used, don't close
-                      (else this-used (closurize else this-used #false))) ;; same used, dont' close rest
-                     (values
-                        (tuple 'closure-case (tuple 'case-lambda func else) this-used)  ;; used the ones in here
-                        (union used this-used)))                   ;; needed others and the ones in closure
-                  ;; operator position case-lambda, which can (but isn't yet) be dispatche at compile
-                  ;; time, or a subsequent case-lambda node (above case requests no closurization)
-                  ;; which doesn't need to be closurized
-                  (lets
-                     ((func used (closurize func used #false)) ;; don't closurize codes
-                      (else used (closurize else used #false))) ;; ditto for the rest of the tail
-                     (values
-                        (tuple 'case-lambda func else)
-                        used))))
             (else
                (error "closurize: unknown exp type: " exp))))
 
@@ -199,11 +180,6 @@ Convert lambdas to closures where necessary
                    (closure-exp (tuple 'closure-case body clos bused))
                    (used (append used (list (cons closure-tag closure-exp)))))
                   (values (tuple 'make-closure (+ 1 (length used)) clos bused) used)))
-            ((case-lambda func else)
-               (lets
-                  ((func used (literalize func used))
-                   (else used (literalize else used)))
-                  (values (tuple 'case-lambda func else) used)))
             (else
                (error "literalize: unknown exp type: " exp))))
 

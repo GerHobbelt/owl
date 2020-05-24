@@ -165,7 +165,7 @@
       ;; append list ... -> list', join lists
       ;;    (append '(1) '() '(2 3)) = '(1 2 3)
       (define append
-         (case-lambda-new
+         (case-lambda
             ((a b) (append2 a b))
             (lst (concatenate lst))))
 

@@ -10,8 +10,7 @@
       lets or and list
       ilist tuple tuple-case
       define-library
-      ; case-lambda
-      case-lambda-new
+      case-lambda
       define-values
       define-record-type
       _record-values
@@ -58,20 +57,6 @@
             ((syntax-error . stuff)
                (error "Syntax error: " (quote stuff)))))
 
-      ;; expand case-lambda syntax to to (_case-lambda <lambda> (_case-lambda ... (_case-lambda <lambda> <lambda)))
-      (define-syntax case-lambda
-         (syntax-rules (lambda _case-lambda)
-            ((case-lambda) #false)
-            ; ^ should use syntax-error instead, but not yet sure if this will be used before error is defined
-            ((case-lambda (formals . body))
-               ;; downgrade to a run-of-the-mill lambda
-               (lambda formals . body))
-            ((case-lambda (formals . body) . rest)
-               ;; make a list of options to be compiled to a chain of code bodies w/ jumps
-               ;; note, could also merge to a jump table + sequence of codes, but it doesn't really matter
-               ;; because speed-sensitive stuff will be compiled to C where this won't matter
-               (_case-lambda (lambda formals . body)
-                  (case-lambda . rest)))))
 
       (define-syntax begin
          (syntax-rules (define letrec define-values lets)
@@ -326,35 +311,35 @@
                (let ((type (ref tuple 1)))
                   (tuple-case 42 tuple type case ...)))))
 
-      (define-syntax case-lambda-new
+      (define-syntax case-lambda
          (syntax-rules (pair? null? let and walk)
 
-            ((case-lambda-new (formals . body) ...)
+            ((case-lambda (formals . body) ...)
                ;; construct the wrapping lambda
                (lambda args
-                  (case-lambda-new walk args (formals . body) ...)))
+                  (case-lambda walk args (formals . body) ...)))
 
-            ((case-lambda-new walk args (() . body) x ...)
+            ((case-lambda walk args (() . body) x ...)
                (if (eq? args #n)
                   (begin . body)
-                  (case-lambda-new walk args x ...)))
+                  (case-lambda walk args x ...)))
 
-            ((case-lambda-new walk args ((a) . body) opts ...)
+            ((case-lambda walk args ((a) . body) opts ...)
                (if (and (eq? 1 (type args)) (eq? #null (cdr args)))
                   (let ((a (car args))) . body)
-                  (case-lambda-new walk args opts ...)))
+                  (case-lambda walk args opts ...)))
 
-            ((case-lambda-new walk args ((a b) . body) opts ...)
+            ((case-lambda walk args ((a b) . body) opts ...)
                (if (and (eq? 1 (type args)) (eq? 1 (type (cdr args))) (eq? #null (cdr (cdr args))))
                   (let ((a (car args)) (b (car (cdr args)))) . body)
-                  (case-lambda-new walk args opts ...)))
+                  (case-lambda walk args opts ...)))
 
-            ((case-lambda-new walk args ((a b c) . body) opts ...)
+            ((case-lambda walk args ((a b c) . body) opts ...)
                (if (and (eq? 1 (type args)) (eq? 1 (type (cdr args))) (eq? 1 (type (cdr (cdr args)))) (eq? #null (cdr (cdr (cdr args)))))
                   (let ((a (car args)) (b (car (cdr args))) (c (car (cdr (cdr args))))) . body)
-                  (case-lambda-new walk args opts ...)))
+                  (case-lambda walk args opts ...)))
 
-            ((case-lambda-new walk args ((a b c d) . body) opts ...)
+            ((case-lambda walk args ((a b c d) . body) opts ...)
                (if (and (eq? 1 (type args)) 
                         (eq? 1 (type (cdr args))) 
                         (eq? 1 (type (cdr (cdr args)))) 
@@ -364,30 +349,30 @@
                         (b (car (cdr args))) 
                         (c (car (cdr (cdr args)))) 
                         (d (car (cdr (cdr (cdr args)))))) . body)
-                  (case-lambda-new walk args opts ...)))
+                  (case-lambda walk args opts ...)))
 
-            ((case-lambda-new walk args ((a b c d . e) . body) opts ...)
+            ((case-lambda walk args ((a b c d . e) . body) opts ...)
                (car "case-lambda-too-large"))
 
-            ((case-lambda-new walk args ((a b c . d) . body) opts ...)
+            ((case-lambda walk args ((a b c . d) . body) opts ...)
                (if (and (eq? 1 (type args)) (eq? 1 (type (cdr args))))
                   (let ((a (car args)) (b (car (cdr args))) (c (car (cdr (cdr args)))) (d (cdr (cdr (cdr args))))) . body)
-                  (case-lambda-new walk args opts ...)))
+                  (case-lambda walk args opts ...)))
 
-            ((case-lambda-new walk args ((a b . c) . body) opts ...)
+            ((case-lambda walk args ((a b . c) . body) opts ...)
                (if (and (eq? 1 (type args)) (eq? 1 (type (cdr args))))
                   (let ((a (car args)) (b (car (cdr args))) (c (cdr (cdr args)))) . body)
-                  (case-lambda-new walk args opts ...)))
+                  (case-lambda walk args opts ...)))
 
-            ((case-lambda-new walk args ((a . b) . body) opts ...)
+            ((case-lambda walk args ((a . b) . body) opts ...)
                (if (eq? 1 (type args))
                   (let ((a (car args)) (b (cdr args))) . body)
-                  (case-lambda-new walk args opts ...)))
+                  (case-lambda walk args opts ...)))
 
-            ((case-lambda-new walk args (a . body) opts ...)
+            ((case-lambda walk args (a . body) opts ...)
                (let ((a args)) . body))
 
-            ((case-lambda-new walk args)
+            ((case-lambda walk args)
                (car "unsupported-case-lambda-args"))
             ))
 

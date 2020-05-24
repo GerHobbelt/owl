@@ -566,21 +566,6 @@ Compile AST to a code instruction tree suitable for assembly
             (else
                (error "bytecode->list: " thing))))
 
-      (define (rtl-case-lambda rtl exp clos literals)
-         (tuple-case exp
-            ((lambda-var fixed? formals body)
-               (rtl-plain-lambda rtl exp clos literals #n))
-            ((lambda formals body) ;; soon to be deprecated
-               (rtl-case-lambda rtl
-                  (tuple 'lambda-var #true formals body)
-                  clos literals))
-            ((case-lambda func else)
-               (rtl-plain-lambda rtl func clos literals
-                  (bytecode->list
-                     (rtl-case-lambda rtl else clos literals))))
-            (else
-               (error "rtl-case-lambda: bad node " exp))))
-
       ;; todo: separate closure nodes from lambdas now that the arity may vary
       ;; todo: control flow analysis time - if we can see what the arguments are here, the info could be used to make most continuation returns direct via known call opcodes, which could remove an important branch prediction killer
       ;;; proc = #(procedure-header <code-ptr> l0 ... ln)
@@ -595,11 +580,6 @@ Compile AST to a code instruction tree suitable for assembly
                (rtl-plain-lambda rtl-procedure
                   (tuple 'lambda-var fixed? formals body)
                   clos (rtl-literals rtl-procedure literals) #n))
-            ((closure-case body clos literals)
-               (lets
-                  ((lits (rtl-literals rtl-procedure literals))
-                   (body (rtl-case-lambda rtl-procedure body clos lits)))
-                  body))
             (else
                (error "rtl-procedure: bad input: " node))))
 

@@ -212,8 +212,6 @@ This library implements bytecode assembly.
          (interact 'intern (raw bytes type-bytecode)))
 
       ; code rtl object -> executable code
-      ;; todo: exit via fail cont
-      ;; todo: pass tail here or have case-lambda nodes be handled internally with a foldr
       (define (assemble-code obj tail)
          (tuple-case obj
             ((code arity insts)
@@ -232,8 +230,8 @@ This library implements bytecode assembly.
                            (ilist
                               (if fixed? 2 25)
                               (if fixed? arity (- arity 1)) ;; last is the optional one
-                              (>> len 8)       ;; jump hi
-                              (fxand len #xff) ;; jump lo
+                              (>> len 8)       ;; jump hi ;; fixme - removable now
+                              (fxand len #xff) ;; jump lo ;; fixme - removable now
                               (append bytes
                                  (if (null? tail)
                                     (list 61) ;; force error
