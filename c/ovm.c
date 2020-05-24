@@ -959,7 +959,7 @@ apply: /* apply something at ob to values in regs, or maybe switch context */
       } else if (hdr == make_header(0, TCLOS)) { /* clos */
          R[1] = (word) ob; ob = (word *) ob[1];
          R[2] = (word) ob; ob = (word *) ob[1];
-      } else if (!is_type(hdr, TBYTECODE)) { /* not even code, extend bits later */
+      } else if (!is_type(hdr, TBYTECODE)) { /* not even code */
          error(259, ob, INULL);
       }
       if (!ticker--)
@@ -1236,6 +1236,19 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
       case 51: /* cons a b r */
          A2 = cons(A0, A1);
          NEXT(3);
+      case 57: { /* jmp-var-args a hi lo */
+         uint needed = *ip;
+         if (acc == needed) {
+            R[acc + 3] = INULL; /* add empty extra arg list */
+         } else if (acc > needed) {
+            word tail; /* TODO: no call overflow handling yet */
+            for (tail = INULL; acc > needed; --acc)
+               tail = cons(R[acc + 2], tail);
+            R[acc + 3] = tail;
+         } else {
+            error(57,ob,INULL);
+         }
+         NEXT(1); }
       case 58: { /* fx>> x n hi lo */
          hval x = immval(A0);
          uint n = immval(A1);
@@ -1245,12 +1258,23 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
       case 59: /* lraw lst type r (FIXME: alloc amount testing compiler pass not in place yet) */
          A2 = prim_lraw(A0, A1);
          NEXT(3);
+      case 60: /* arity a  */
+         if (acc == *ip) {
+            NEXT(1);
+         } else {
+            word *t;
+            allocate(acc + 1, t);
+            *t = make_header(acc + 1, TTUPLE);
+            memcpy(t + 1, R + 3, acc * W);
+            error(60, ob, t);
+         }
       case 61: { /* arity error */
-         word *t;
-         allocate(acc + 1, t);
-         *t = make_header(acc + 1, TTUPLE);
-         memcpy(t + 1, R + 3, acc * W);
-         error(61, ob, t); }
+            word *t;
+            allocate(acc + 1, t);
+            *t = make_header(acc + 1, TTUPLE);
+            memcpy(t + 1, R + 3, acc * W);
+            error(61, ob, t);
+          }
       case 62: /* set-ticker <val> <to> -> old ticker value */
          /* ponder: it should be possible to remove this, if the only use is to yield control */
          A1 = F(ticker);

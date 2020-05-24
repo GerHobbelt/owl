@@ -226,16 +226,12 @@ This library implements bytecode assembly.
                          (len (length bytes)))
                         (if (> len #xffff)
                            (error "too much bytecode: " len))
+                        ;; drop instructions 2 and 25 after conversion
                         (bytes->bytecode
-                           (ilist
-                              (if fixed? 2 25)
-                              (if fixed? arity (- arity 1)) ;; last is the optional one
-                              (>> len 8)       ;; jump hi ;; fixme - removable now
-                              (fxand len #xff) ;; jump lo ;; fixme - removable now
-                              (append bytes
-                                 (if (null? tail)
-                                    (list 61) ;; force error
-                                    tail))))))))
+                           (if fixed?
+                              (ilist 60 arity (append bytes tail))
+                              (ilist 57 (- arity 1) ;; last is the optinal one
+                                 (append bytes tail))))))))
             (else
                (error "assemble-code: unknown AST node " obj))))
 ))
