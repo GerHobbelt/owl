@@ -55,7 +55,7 @@ Typical use cases for them is packing data for an operating system call,
          (bytevector-concatenate lst))
 
       (define bytevector-copy
-         (case-lambda
+         (case-lambda-new
             ((vec)
                vec)
             ((vec top)

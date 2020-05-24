@@ -138,16 +138,14 @@ Threfore we have a total complexity of O(log n) for access and update.
                   ((null) (fst x (snd a rnull)))))
             ((null) (fst x rnull))))
 
-      (define rcar 
-         (case-lambda
-            ((rl)
-               (node-case rl
-                  ((fst a rl) a)
-                  ((null) (error "rcar on non-rcons" rl))))
-            ((rl def)
-               (node-case rl
-                  ((fst a rl) a)
-                  ((null) def)))))
+      (define (rcar rl . def)
+         (if (null? def)
+            (node-case rl
+               ((fst a rl) a)
+               ((null) (error "rcar on non-rcons" rl)))
+            (node-case rl
+               ((fst a rl) a)
+               ((null) (car def)))))
 
       (define (tof) #f)
 

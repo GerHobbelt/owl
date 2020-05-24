@@ -4,8 +4,9 @@
       (owl core))
 
    (export
-      case-lambda)
+      case-lambda-new)
 
    (begin
-      ;; defined in (owl defmac)
+
+      ;; defined in (owl core)
       42))

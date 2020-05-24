@@ -224,7 +224,7 @@ the time according to various more and less sensible rules.
          (if (< n 10) "0" ""))
 
       (define date
-         (case-lambda
+         (case-lambda-new
             (() (naive-date (time)))
             ((sec) (naive-date sec))))
 

@@ -272,7 +272,7 @@
               (values x y w ll)))
 
       (define editable-readline
-         (case-lambda
+         (case-lambda-new
             (()
                (lets ((x y w ll (get-dimensions (terminal-input empty))))
                   (readline ll null x y w readline-default-options)))

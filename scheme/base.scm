@@ -307,7 +307,7 @@
       (define list-copy self)
 
       (define make-bytevector
-         (case-lambda
+         (case-lambda-new
             ((n)
                (list->bytevector (make-list n 0)))
             ((n val)
@@ -331,7 +331,7 @@
          (str-fold (λ (_ c) (proc c)) #t str))
 
       (define string->number
-         (case-lambda
+         (case-lambda-new
             ((str base)
                (list->number (string->list str) base))
             ((str)
@@ -345,7 +345,7 @@
          (list->string (render-number n '() base)))
 
       (define number->string
-         (case-lambda
+         (case-lambda-new
             ((n) (number->string/base n 10))
             ((n base) (number->string/base n base))))
 

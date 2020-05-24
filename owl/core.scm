@@ -10,7 +10,8 @@
       lets or and list
       ilist tuple tuple-case
       define-library
-      case-lambda
+      ; case-lambda
+      case-lambda-new
       define-values
       define-record-type
       _record-values
@@ -37,23 +38,11 @@
       type-tuple
       type-symbol
       type-const
-      type-rlist-spine
-      type-rlist-node
       type-port
       type-string
       type-string-wide
       type-string-dispatch
       type-thread-state
-
-      ;; sketching types
-      type-ff               ;; k v, k v l, k v l r, black node with children in order
-      type-ff-r             ;; k v r, black node, only right black child
-      type-ff-red           ;; k v, k v l, k v l r, red node with (black) children in order
-      type-ff-red-r         ;; k v r, red node, only right (black) child
-
-      ;; k v, l k v r       -- type-ff
-      ;; k v r, k v l r+    -- type-ff-right
-      ;; k v l, k v l+ r    -- type-ff-leftc
 
       maybe
    )
@@ -337,6 +326,71 @@
                (let ((type (ref tuple 1)))
                   (tuple-case 42 tuple type case ...)))))
 
+      (define-syntax case-lambda-new
+         (syntax-rules (pair? null? let and walk)
+
+            ((case-lambda-new (formals . body) ...)
+               ;; construct the wrapping lambda
+               (lambda args
+                  (case-lambda-new walk args (formals . body) ...)))
+
+            ((case-lambda-new walk args (() . body) x ...)
+               (if (eq? args #n)
+                  (begin . body)
+                  (case-lambda-new walk args x ...)))
+
+            ((case-lambda-new walk args ((a) . body) opts ...)
+               (if (and (eq? 1 (type args)) (eq? #null (cdr args)))
+                  (let ((a (car args))) . body)
+                  (case-lambda-new walk args opts ...)))
+
+            ((case-lambda-new walk args ((a b) . body) opts ...)
+               (if (and (eq? 1 (type args)) (eq? 1 (type (cdr args))) (eq? #null (cdr (cdr args))))
+                  (let ((a (car args)) (b (car (cdr args)))) . body)
+                  (case-lambda-new walk args opts ...)))
+
+            ((case-lambda-new walk args ((a b c) . body) opts ...)
+               (if (and (eq? 1 (type args)) (eq? 1 (type (cdr args))) (eq? 1 (type (cdr (cdr args)))) (eq? #null (cdr (cdr (cdr args)))))
+                  (let ((a (car args)) (b (car (cdr args))) (c (car (cdr (cdr args))))) . body)
+                  (case-lambda-new walk args opts ...)))
+
+            ((case-lambda-new walk args ((a b c d) . body) opts ...)
+               (if (and (eq? 1 (type args)) 
+                        (eq? 1 (type (cdr args))) 
+                        (eq? 1 (type (cdr (cdr args)))) 
+                        (eq? 1 (type (cdr (cdr (cdr args))))) 
+                        (eq? #null (cdr (cdr (cdr (cdr args))))))
+                  (let ((a (car args)) 
+                        (b (car (cdr args))) 
+                        (c (car (cdr (cdr args)))) 
+                        (d (car (cdr (cdr (cdr args)))))) . body)
+                  (case-lambda-new walk args opts ...)))
+
+            ((case-lambda-new walk args ((a b c d . e) . body) opts ...)
+               (car "case-lambda-too-large"))
+
+            ((case-lambda-new walk args ((a b c . d) . body) opts ...)
+               (if (and (eq? 1 (type args)) (eq? 1 (type (cdr args))))
+                  (let ((a (car args)) (b (car (cdr args))) (c (car (cdr (cdr args)))) (d (cdr (cdr (cdr args))))) . body)
+                  (case-lambda-new walk args opts ...)))
+
+            ((case-lambda-new walk args ((a b . c) . body) opts ...)
+               (if (and (eq? 1 (type args)) (eq? 1 (type (cdr args))))
+                  (let ((a (car args)) (b (car (cdr args))) (c (cdr (cdr args)))) . body)
+                  (case-lambda-new walk args opts ...)))
+
+            ((case-lambda-new walk args ((a . b) . body) opts ...)
+               (if (eq? 1 (type args))
+                  (let ((a (car args)) (b (cdr args))) . body)
+                  (case-lambda-new walk args opts ...)))
+
+            ((case-lambda-new walk args (a . body) opts ...)
+               (let ((a args)) . body))
+
+            ((case-lambda-new walk args)
+               (car "unsupported-case-lambda-args"))
+            ))
+
 
       (define-syntax define-library
          (syntax-rules (export _define-library define-library)
@@ -349,12 +403,8 @@
              (_define-library (quote thing) ...))
 
             ;; fail otherwise
-            ((_ . wtf)
+            ((_ . wat)
                (syntax-error "Weird library contents: " (quote . (define-library . wtf))))))
-
-      ;; toplevel library operations expand to quoted values to be handled by the repl
-      ;(define-syntax import  (syntax-rules (_import)  ((import  thing ...) (_import  (quote thing) ...))))
-      ;(define-syntax include (syntax-rules (_include) ((include thing ...) (_include (quote thing) ...))))
 
       (define (B f g) (λ (x) (f (g x))))
 
@@ -405,8 +455,6 @@
       (define type-bytevector       19) ;; see also TBVEC in c/ovm.c
       (define type-symbol            4)
       (define type-tuple             2)
-      (define type-rlist-node       14)
-      (define type-rlist-spine      10)
       (define type-string            3)
       (define type-string-wide      22)
       (define type-string-dispatch  21)
@@ -414,12 +462,6 @@
       (define type-record            5)
       (define type-int+             40)
       (define type-int-             41)
-
-      ;; transitional trees or future ffs
-      (define type-ff               24)
-      (define type-ff-r             25)
-      (define type-ff-red           26)
-      (define type-ff-red-r         27)
 
       ;; IMMEDIATE
       (define type-fix+              0)
@@ -437,6 +479,10 @@
       (define (immediate? obj) (eq? (fxand obj 0) 0))
       (define (allocated? obj) (lesser? (fxior 0 obj) obj))
       (define raw? sizeb)
+
+
+      ;; records could be removed
+      
       (define (record? x) (eq? type-record (type x)))
 
       (define-syntax _record-values

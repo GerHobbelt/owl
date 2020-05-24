@@ -449,7 +449,7 @@
          (get-fd->exp-stream port sexp-parser (get-silent-syntax-fail (list #false))))
 
       (define read-ll
-         (case-lambda
+         (case-lambda-new
             (()     (read-port stdin))
             ((thing)
                (cond

@@ -124,7 +124,7 @@
                   (loop (check-mail) (cons envp spam) rounds)))))
 
       (define thunk->thread
-         (case-lambda
+         (case-lambda-new
             ((id thunk)
                (fork-named id thunk))
             ((thunk)

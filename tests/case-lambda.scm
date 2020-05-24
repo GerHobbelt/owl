@@ -1,15 +1,15 @@
-;; case-lambda is being added
+;; case-lambda-new is being added
 ;; here are things that happen to work at the moment
 
 ;; downgrades to regular lambdas
 
-(define foo (case-lambda (x x)))
+(define foo (case-lambda-new (x x)))
 (print (foo 1 2 3))
 
-(define foo (case-lambda ((a) a)))
+(define foo (case-lambda-new ((a) a)))
 (print (foo "trololo"))
 
-(define foo (case-lambda ((a b c . d) (list a b c d))))
+(define foo (case-lambda-new ((a b c . d) (list a b c d))))
 (print (foo 11 22 33 ))
 (print (foo 11 22 33 44))
 (print (foo 11 22 33 44 55))
@@ -17,7 +17,7 @@
 ;; dispatch, fixed, simple
 
 (define foo
-   (case-lambda
+   (case-lambda-new
       (() 0)
       ((a) 1)
       ((a b) 2)
@@ -29,7 +29,7 @@
 (print (foo 11 22 33))
 
 (define foo
-   (case-lambda
+   (case-lambda-new
       ((a) 1)
       ((a b) 2)
       (() 0)
@@ -43,7 +43,7 @@
 ;; dispatch w/ variable arity
 
 (define foo
-   (case-lambda
+   (case-lambda-new
       ((a) (list a))
       ((a) 111)    ;; not reachable
       ((a b . c) (list a b c))
@@ -59,7 +59,7 @@
 ;; dispatch, variable arity, literal values, check that their indeces are ok
 
 (define foo
-   (case-lambda
+   (case-lambda-new
       (() 'zero)
       ((a) (list 'o 'n 'e))
       ((a b) 'two)    ;; not reachable
@@ -76,12 +76,12 @@
 
 ;; Operator position, should do compile time dispatch
 ;
-; (print ((case-lambda ((a) a) (xs xs)) 1 2 3))
+; (print ((case-lambda-new ((a) a) (xs xs)) 1 2 3))
 
 ;; Recursion
 ;
 ; (define slartibartfast
-;    (case-lambda
+;    (case-lambda-new
 ;      ((a) a)
 ;      ((a b) (slartibartfast b))
 ;      ((a b . c) (slartibartfast b c))))

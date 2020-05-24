@@ -232,13 +232,13 @@
 
 
       ;;;
-      ;;; Variable arity versions
+      ;;; Variable arity versions, maybe move to scheme library?
       ;;;
 
       (define add +)
 
       (define +
-         (case-lambda
+         (case-lambda-new
             ((a b) (add a b))
             ((a) a)
             (() 0)
@@ -248,7 +248,7 @@
       (define sub -)
 
       (define -
-         (case-lambda
+         (case-lambda-new
             ((a b) (sub a b))
             ((a) (sub 0 a))
             ((a b . xs)
@@ -257,7 +257,7 @@
       (define mul *)
 
       (define *
-         (case-lambda
+         (case-lambda-new
             ((a b) (mul a b))
             ((a b . xs) (mul a (fold mul b xs)))
             ((a) a)
@@ -266,7 +266,7 @@
       (define div /)
 
       (define /
-         (case-lambda
+         (case-lambda-new
             ((a b) (div a b))
             ((a) (div 1 a))
             ((a . bs) (div a (product bs)))))
@@ -283,7 +283,7 @@
       ;; the rest are redefined against the old binary ones
 
       (define (vararg-predicate op) ;; turn into a macro
-         (case-lambda
+         (case-lambda-new
             ((a b) (op a b))
             ((a . bs) (each op a bs))))
 
@@ -298,7 +298,7 @@
 
       ;; ditto for foldables
       (define (vararg-fold op zero)
-         (case-lambda
+         (case-lambda-new
             ((a b) (op a b))
             ((a) a)
             ((a . bs) (fold op a bs))
