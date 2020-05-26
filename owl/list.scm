@@ -6,7 +6,7 @@
       car* cdr*
       list?
       zip fold foldr map for-each
-      memq assq last
+      memq assq getq last
       fold-map foldr-map
       append concatenate
       reverse
@@ -135,6 +135,14 @@
             ((null? lst) #false)
             ((eq? k (car (car lst))) (car lst))
             (else (assq k (cdr lst)))))
+
+      (define (getq lst k def)
+         (cond
+            ((null? lst) def)
+            ((eq? (car (car lst)) k)
+               (cdr (car lst)))
+            (else
+               (getq (cdr lst) k def))))
 
       (example
          (assq 'a '((a . 1) (b . 2))) = '(a . 1)
