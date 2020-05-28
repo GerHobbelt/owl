@@ -353,11 +353,11 @@ Compile AST to a code instruction tree suitable for assembly
          ;   (cond
          ;      ((eq? type-bytecode t) ;; raw bytecode
          ;         (let ((op (ref obj 0)))
-         ;            (if (eq? op 61)
+         ;            (if (eq? op 61) ;; <- deprecated arity check
          ;               (tuple 'code (ref obj 1))
          ;               #false)))
          ;      ((eq? t type-proc)
-         ;         (tuple 'proc (ref (ref obj 1) 0)))
+         ;         (tuple 'proc (ref (ref obj 1) 0))) ;; <- assumes arity check everywhere
          ;      ((eq? t type-clos)
          ;         (tuple 'clos (ref (ref (ref obj 1) 1) 0)))
          ;      (else
@@ -370,16 +370,13 @@ Compile AST to a code instruction tree suitable for assembly
       (define (rtl-pick-call regs rator nargs)
          (tuple-case rator
             ((value rator)
-               (tuple-case (fn-type rator)
+               (tuple-case (fn-type rator) ;; <- fixme, can be enabled again
                   ((code n) 'goto-code)
                   ((proc n) 'goto-proc)
                   ((clos n) 'goto-clos)
                   (else
-                     ;(if (or (not rator) (ff? rator)) ;; finite functions are also applicable
-                     ;   #false
-                     ;   (error "Bad operator: " rator))
-                     #false ;; <- can't remember why we're not failing here. changed while adding variable arity?
-                     )))
+                     ;; operator type not known at compile time
+                     #false)))
             (else
                ;(print "XXXXXXXXXXXXXXXXXXXXXXX non value call " rator)
                ;(print "ENV:")
@@ -573,9 +570,7 @@ Compile AST to a code instruction tree suitable for assembly
       (define (rtl-procedure node)
          (tuple-case node
             ((closure formals body clos literals)
-               (rtl-plain-lambda rtl-procedure
-                  (tuple 'lambda-var #true formals body)
-                  clos (rtl-literals rtl-procedure literals) #n))
+               (rtl-procedure (tuple 'closure-var #t formals body clos literals)))
             ((closure-var fixed? formals body clos literals)
                (rtl-plain-lambda rtl-procedure
                   (tuple 'lambda-var fixed? formals body)
@@ -587,6 +582,8 @@ Compile AST to a code instruction tree suitable for assembly
       (define (rtl-exp exp)
          (tuple-case exp
             ((closure formals body clos literals)
+               (rtl-exp (tuple 'closure-var #t formals body clos literals)))
+            ((closure-var fixed? formals body clos literals)
                (if (null? clos)
                   (rtl-procedure exp)
                   (error "rtl-exp: free variables in entry closure: " clos)))

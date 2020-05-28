@@ -89,7 +89,7 @@ Convert lambdas to closures where necessary
                    (clos (diff bused formals)))
                   (values
                      (if close?
-                        (tuple 'closure formals body clos)
+                        (tuple 'closure-var #t formals body clos)
                         (tuple 'lambda formals body))
                      (union used clos))))
             ((lambda-var fixed? formals body)
@@ -172,12 +172,6 @@ Convert lambdas to closures where necessary
                (lets
                   ((body bused (literalize body #n))
                    (closure-exp (tuple 'closure-var fixed? formals body clos bused))
-                   (used (append used (list (cons closure-tag closure-exp)))))
-                  (values (tuple 'make-closure (+ 1 (length used)) clos bused) used)))
-            ((closure-case body clos) ;; clone branch, merge later
-               (lets
-                  ((body bused (literalize body #n))
-                   (closure-exp (tuple 'closure-case body clos bused))
                    (used (append used (list (cons closure-tag closure-exp)))))
                   (values (tuple 'make-closure (+ 1 (length used)) clos bused) used)))
             (else
