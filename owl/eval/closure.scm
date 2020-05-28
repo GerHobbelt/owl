@@ -20,6 +20,7 @@ Convert lambdas to closures where necessary
       (owl eval assemble))
 
    (begin
+
       (define (ok exp env) (tuple 'ok exp env))
       (define (fail reason) (tuple 'fail reason))
 
@@ -152,28 +153,17 @@ Convert lambdas to closures where necessary
             ((lambda-var fixed? formals body)
                (lets ((body used (literalize body used)))
                   (values (tuple 'lambda-var fixed? formals body) used)))
-            ((closure formals body clos)
+            ((closure-var fixed? formals body clos) ;; clone branch, merge later
                ;; note, the same closure exp (as in eq?) is stored to both literals
                ;; and code. the one in code will be used to make instructions
                ;; for closing it and the one in literals will be the executable
                ;; part to close against.
                (lets
                   ((body bused (literalize body #n))
-                   (closure-exp (tuple 'closure formals body clos bused))
-                   (used (append used (list (cons closure-tag closure-exp)))))
-                  (values
-                     ;;; literals will be #(header <code> l0 ... ln)
-                     (tuple 'make-closure (+ 1 (length used)) clos bused)
-                     ;; also literals are passed, since the closure type
-                     ;; and calling protocol are different depending on
-                     ;; whether there are literals
-                     used)))
-            ((closure-var fixed? formals body clos) ;; clone branch, merge later
-               (lets
-                  ((body bused (literalize body #n))
                    (closure-exp (tuple 'closure-var fixed? formals body clos bused))
                    (used (append used (list (cons closure-tag closure-exp)))))
-                  (values (tuple 'make-closure (+ 1 (length used)) clos bused) used)))
+                  (values (tuple 'make-closure (+ 1 (length used)) clos bused) used))
+                  )
             (else
                (error "literalize: unknown exp type: " exp))))
 

@@ -447,26 +447,6 @@ Compile AST to a code instruction tree suitable for assembly
                                           ((then (rtl-any regs then))
                                            (else (rtl-any regs else)))
                                           (tuple 'jeq ap bp then else))))))))))
-                  ;; NOT IN USE YET -- typed binding
-                  ((eq? kind 4)   ; (branch-4 name type (λ (f0 .. fn) B) Else)
-                     ; FIXME check object size here (via meta)
-                     (let ((b (extract-value b)))
-                        (if (and (fixnum? b) (<= 0 b 255))
-                           (rtl-simple regs a
-                              (λ (regs ap)
-                                 (tuple-case then
-                                    ((lambda formals body)
-                                       (bind (rtl-bind regs formals)
-                                          (λ (selected then-regs)
-                                             (let
-                                                ((then-body (rtl-any then-regs body))
-                                                 (else (rtl-any regs else)))
-                                                (tuple 'jab ap b
-                                                   (tuple 'lambda selected then-body)
-                                                   else)))))
-                                    (else
-                                       (error "rtl-any: bad jab then branch: " then)))))
-                           (error "rtl-any: bad alloc binding branch type: " b))))
                   (else
                      (error "rtl-any: unknown branch type: " kind))))
             ((call rator rands)
@@ -569,8 +549,6 @@ Compile AST to a code instruction tree suitable for assembly
       ; env node → env' owl-func
       (define (rtl-procedure node)
          (tuple-case node
-            ((closure formals body clos literals)
-               (rtl-procedure (tuple 'closure-var #t formals body clos literals)))
             ((closure-var fixed? formals body clos literals)
                (rtl-plain-lambda rtl-procedure
                   (tuple 'lambda-var fixed? formals body)
@@ -581,8 +559,6 @@ Compile AST to a code instruction tree suitable for assembly
       ; exp → exp'
       (define (rtl-exp exp)
          (tuple-case exp
-            ((closure formals body clos literals)
-               (rtl-exp (tuple 'closure-var #t formals body clos literals)))
             ((closure-var fixed? formals body clos literals)
                (if (null? clos)
                   (rtl-procedure exp)
