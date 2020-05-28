@@ -52,19 +52,12 @@ VM primops
       (define (func lst)
          (lets ((arity lst lst))
             (bytes->bytecode
-               (ilist 2 arity 0 (len lst)
-                  (app lst (list 61)))))) ;; fail if arity mismatch
+               (ilist 60 arity lst))))
 
       ;; changing any of the below 3 primops is tricky. they have to be recognized by the primop-of of
       ;; the repl which builds the one in which the new ones will be used, so any change usually takes
       ;; 2 rebuilds.
 
-      ; these 2 primops require special handling, mainly in cps
-      (define ff-bind ;; turn to badinst soon, possibly return later
-         ; (func '(2 49))
-         '__ff-bind__
-
-         )
       (define bind
          ; (func '(2 32 4 5 24 5))
          '__bind__
@@ -148,7 +141,6 @@ VM primops
             (tuple 'listuple     35 3 1 listuple)  ;; (listuple type size lst)
             (tuple 'mkblack      48 4 1 mkblack) ;; (mkblack l k v r)
             (tuple 'mkred       176 4 1 mkred)   ;; ditto, opcode: FFRED << 6 | 48
-            (tuple 'ff-bind      49 1 #false ff-bind)  ;; SPECIAL ** (ffbind thing (lambda (name ...) body))
             (tuple 'fx-          21 2 2 fx-) ;; (fx- a b) -> lo u
             (tuple 'fx+          22 2 2 fx+) ;; (fx+ a b) -> lo hi
             (tuple 'fxqr         26 3 3 fxqr)  ;; (fxdiv ah al b) -> qh ql r
@@ -208,6 +200,8 @@ VM primops
             ((eq? op 32) 'bind)
             ((eq? op 50) 'run)
             ((eq? op 61) 'arity-error)
+            ((eq? op 60) 'arity-error)
+            ((eq? op 57) 'variable-arity-error)
             (else #false)))
 
       (define (primop-name pop)
