@@ -48,14 +48,21 @@ Convert lambdas to closures where necessary
                            ((cont used (closurize (car rands) used #false))
                             (rands used (closurize-list closurize (cdr rands) used)))
                            (values (mkcall rator (cons cont rands)) used)))
+                     ((lambda-var fixed? formals body)
+                        (if fixed?
+                           (lets
+                              ((cont used (closurize (car rands) used #false))
+                               (rands used (closurize-list closurize (cdr rands) used)))
+                              (values (mkcall rator (cons cont rands)) used))
+                           (error "variable arity receiver lambda: " (car rands))))
                      ((var name)
                         (let
                            ((dummy-cont
                               ;;; FIXME, should check arity & gensym
                               ;;; used only once and called immediately
-                              (mklambda (list '_foo)
-                                 (mkcall (mkvar name)
-                                    (list (mkvar '_foo))))))
+                              (tuple 'lambda-var #t
+                                 (list '_foo)
+                                 (mkcall (mkvar name) (list (mkvar '_foo))))))
                            (closurize-call closurize rator
                               (cons dummy-cont (cdr rands))
                               used)))
@@ -66,6 +73,7 @@ Convert lambdas to closures where necessary
                    (rands used (closurize-list closurize rands used)))
                   (values (mkcall rator rands) used)))))
 
+      ;; todo: could close? be removed now?
       (define (closurize exp used close?)
          (tuple-case exp
             ((value val)
@@ -85,14 +93,7 @@ Convert lambdas to closures where necessary
             ((call rator rands)
                (closurize-call closurize rator rands used))
             ((lambda formals body)
-               (lets
-                  ((body bused (closurize body #n #t))
-                   (clos (diff bused formals)))
-                  (values
-                     (if close?
-                        (tuple 'closure-var #t formals body clos)
-                        (tuple 'lambda formals body))
-                     (union used clos))))
+               (closurize (tuple 'lambda-var #t formals body) used close?))
             ((lambda-var fixed? formals body)
                (lets
                   ((body bused (closurize body #n #t))
@@ -149,7 +150,7 @@ Convert lambdas to closures where necessary
                (literalize-call literalize rator rands used))
             ((lambda formals body)
                (lets ((body used (literalize body used)))
-                  (values (tuple 'lambda formals body) used)))
+                  (values (tuple 'lambda-var #t formals body) used)))
             ((lambda-var fixed? formals body)
                (lets ((body used (literalize body used)))
                   (values (tuple 'lambda-var fixed? formals body) used)))

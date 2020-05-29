@@ -60,7 +60,9 @@ avoid having to track variable shadowing.
                               (put env (car node) (cdr node)))
                             env (zip cons formals new-formals))
                         free)))
-                  (values (mklambda new-formals body) free)))
+                  (values (mklambda new-formals body) free))
+               ; (alpha (tuple 'lambda-var #t exp env free) env free)
+               )
             ((lambda-var fixed? formals body) ;; <- mostly clone branch to be merged later
                (lets
                   ((new-formals free (gensyms free (length formals)))

@@ -461,6 +461,13 @@ Compile AST to a code instruction tree suitable for assembly
                               ;; fixme: should be a way to show just parts of AST nodes, which may look odd
                               (error "Bad number of arguments for primitive: "
                                  (list 'op (primop-name op) 'got (length (cdr rands)) 'arguments))))
+                        ((lambda-var fixed? formals body)
+                           (if (and fixed? (opcode-arity-ok? op (length (cdr rands))))
+                              (rtl-primitive regs op formals (cdr rands)
+                                 (C rtl-any body))
+                              ;; fixme: should be a way to show just parts of AST nodes, which may look odd
+                              (error "Bad number of arguments for primitive: "
+                                 (list 'op (primop-name op) 'got (length (cdr rands)) 'arguments))))
                         (else
                            (error "bad primitive args: " rands)))
                      (tuple-case rator
@@ -472,6 +479,16 @@ Compile AST to a code instruction tree suitable for assembly
                                  (if (= (length formals) (length args))
                                     (rtl-any (create-aliases regs formals args) body)
                                     (error "Bad argument count in lambda call: " (list 'args args 'formals formals))))))
+                        ((lambda-var fixed? formals body)
+                           ;; ((lambda (args) ...) ...) => add new aliases for values
+                           (if fixed?
+                              (rtl-args regs rands
+                                 (λ (regs args)
+                                    ;;; note that this is an alias thing...
+                                    (if (= (length formals) (length args))
+                                       (rtl-any (create-aliases regs formals args) body)
+                                       (error "Bad argument count in lambda call: " (list 'args args 'formals formals)))))
+                              (rtl-call regs rator rands)))
                         (else
                            (rtl-call regs rator rands))))))
             (else

@@ -1,4 +1,5 @@
 #| doc
+
 Owl does not allow you to use a special toplevel or use mutations to implement recursion.
 Lambdas are the only way to make variable bindings.
 Up to this point the compiler also has `rlambda` functions,
@@ -7,6 +8,7 @@ They are essentially to `letrec` what `lambda` is to `let`.
 This compilation step gets rid of all the rlambdas
    turning them the ones we all know and love.
 This is done by constructing the fixed points manually.
+
 |#
 
 ;; todo: vararg lambdas cannot get self as last parameter!
@@ -77,8 +79,12 @@ This is done by constructing the fixed points manually.
 
          (walk exp #n #n))
 
+
       (define (lambda? exp env)
-         (eq? (ref exp 1) 'lambda))
+         (or
+            (eq? (ref exp 1) 'lambda)     ;; old, to be new
+            (eq? (ref exp 1) 'lambda-var) ;; new
+            ))
 
       (define (set-deps node deps) (set node 3 deps))
       (define deps-of (C ref 3))
@@ -137,7 +143,8 @@ This is done by constructing the fixed points manually.
 
       (define (make-bindings names values body)
          (mkcall
-            (mklambda names body)
+            (tuple 'lambda-var #t names body)
+            ; (mklambda names body)
             values))
 
       (define (var-eq? node sym)
@@ -162,6 +169,12 @@ This is done by constructing the fixed points manually.
                   (if (memq name formals)
                      exp
                      (tuple 'lambda formals (walk body))))
+               ((lambda-var fixed? formals body)
+                  (if fixed?
+                     (if (memq name formals)
+                        exp
+                        (tuple 'lambda-var #t formals (walk body)))
+                     (error "carry-simple-recursion: variable lambda " exp)))
                ((branch kind a b then else)
                   (tuple 'branch kind (walk a) (walk b) (walk then) (walk else)))
                ((receive op fn)
@@ -174,7 +187,7 @@ This is done by constructing the fixed points manually.
                      (begin
                         ;(print " making a wrapper for " name)
                         ;(print "   - with deps " deps)
-                        (tuple 'lambda (reverse (cdr (reverse deps))) (tuple 'call exp (map mkvar deps))))
+                        (tuple 'lambda-var #t (reverse (cdr (reverse deps))) (tuple 'call exp (map mkvar deps))))
                      exp))
                (else
                   (error "carry-simple-recursion: what is this node type: " exp))))
@@ -203,7 +216,13 @@ This is done by constructing the fixed points manually.
                      (mkcall (carry-bindings rator env)
                         (map (C carry-bindings env) rands)))))
             ((lambda formals body)
-               (mklambda formals
+               (tuple 'lambda-var #t formals
+                  (carry-bindings body
+                     (env-bind env formals))))
+            ((lambda-var fixed? formals body)
+               (tuple
+                  'lambda-var fixed?
+                  formals
                   (carry-bindings body
                      (env-bind env formals))))
             ((branch kind a b then else)
@@ -223,7 +242,8 @@ This is done by constructing the fixed points manually.
                   ((recursive formals deps)
                      (let
                         ((lexp
-                           (mklambda formals
+                           (tuple
+                              'lambda-var #t formals
                               (mkcall exp (map mkvar (append formals deps))))))
                         ; (print "carry-bindings: made local closure " lexp)
                         lexp))
@@ -246,7 +266,7 @@ This is done by constructing the fixed points manually.
                   ((lexp (value-of node))
                    (formals (ref lexp 2))
                    (body (ref lexp 3)))
-                  (mklambda
+                  (tuple 'lambda-var #t
                      (append formals (deps-of node))
                      (carry-bindings body env))))
             nodes))
@@ -258,7 +278,7 @@ This is done by constructing the fixed points manually.
              (deps (deps-of node))
              (formals (ref lexp 2))
              (body (ref lexp 3)))
-            (mklambda formals
+            (tuple 'lambda-var #t formals
                (mkcall
                   (mkvar name)
                   (map mkvar
@@ -406,7 +426,7 @@ This is done by constructing the fixed points manually.
                   (unletrec rator env)
                   (unletrec-list rands)))
             ((lambda formals body)
-               (mklambda formals
+               (tuple 'lambda formals                          ;; <- fixme, cannot be converted yet
                   (unletrec body (env-bind env formals))))
             ((lambda-var fixed? formals body)
                (mkvarlambda formals
