@@ -20,6 +20,7 @@ Compile AST to a code instruction tree suitable for assembly
       (owl lazy)
       (owl sort)
       (owl primop)
+      (owl io)
       (only (owl eval env) primop-of)
       (owl eval assemble)
       (owl eval closure))
@@ -345,24 +346,28 @@ Compile AST to a code instruction tree suitable for assembly
                   (tuple 'move rator (car free)
                      (rtl-jump (car free) rands (cdr free) inst))))))
 
+      (define (known-arity obj type)
+         (let ((op (ref obj 0)))
+            (if (eq? op 2) ;; fixed arity
+               (tuple type (ref op 1))
+               #false))) ;; not handling variable arity or other kinds of code
+
       ;; value-to-be-called → #(<functype> <arity>) | #false = don't know, just call and see what happens at runtime
       (define (fn-type obj)
          ;; known call check doesn't work as such anymore (arity check can fail in other branches and most common case is not handled) so disabled for now
          ;; resulting in all calls going via a regular call instruction
-         ;(let ((t (type obj)))
-         ;   (cond
-         ;      ((eq? type-bytecode t) ;; raw bytecode
-         ;         (let ((op (ref obj 0)))
-         ;            (if (eq? op 61) ;; <- deprecated arity check
-         ;               (tuple 'code (ref obj 1))
-         ;               #false)))
-         ;      ((eq? t type-proc)
-         ;         (tuple 'proc (ref (ref obj 1) 0))) ;; <- assumes arity check everywhere
-         ;      ((eq? t type-clos)
-         ;         (tuple 'clos (ref (ref (ref obj 1) 1) 0)))
-         ;      (else
-         ;         (tuple 'bad-fn 0))))
-         #false)
+         (let ((t (type obj)))
+            (cond
+               ((eq? type-bytecode t) ;; raw bytecode
+                  (known-arity obj 'code))
+               ((eq? t type-proc)
+                  (known-arity (ref obj 1) 'proc))
+               ((eq? t type-clos)
+                  (known-arity (ref (ref obj 1) 1) 'clos))
+               (else
+                  (tuple 'bad-fn 0))))
+         ; #false
+         )
 
       (define bad-arity "Bad arity: ")
 
@@ -378,9 +383,9 @@ Compile AST to a code instruction tree suitable for assembly
                      ;; operator type not known at compile time
                      #false)))
             (else
-               ;(print "XXXXXXXXXXXXXXXXXXXXXXX non value call " rator)
-               ;(print "ENV:")
-               ;(for-each (λ (x) (print " - " x)) regs)
+               ; (print "non value call " rator)
+               ; (print "ENV:")
+               ; (for-each (λ (x) (print " - " x)) regs)
                #false)))
 
       (define (rtl-call regs rator rands)
@@ -407,22 +412,6 @@ Compile AST to a code instruction tree suitable for assembly
             ((value val) val)
             (else #false)))
 
-      ;; fixme: ??? O(n) search for opcode->primop. what the...
-      (define (opcode->primop op)
-         (let
-            ((node
-               (any
-                  (λ (x) (if (eq? (ref x 2) op) x #false))
-                  primops)))
-            (if node node (error "Unknown primop: " op))))
-
-      (define (opcode-arity-ok? op n)
-         (bind (opcode->primop op)
-            (λ (name op in out fn)
-               (cond
-                  ((eq? in n) #true)
-                  ((eq? in 'any) #true)
-                  (else #false)))))
 
       ;; compile any AST node node to RTL
       (define (rtl-any regs exp)
@@ -541,7 +530,6 @@ Compile AST to a code instruction tree suitable for assembly
             (else
                (error "bytecode->list: " thing))))
 
-      ;; todo: separate closure nodes from lambdas now that the arity may vary
       ;; todo: control flow analysis time - if we can see what the arguments are here, the info could be used to make most continuation returns direct via known call opcodes, which could remove an important branch prediction killer
       ;;; proc = #(procedure-header <code-ptr> l0 ... ln)
       ; env node → env' owl-func

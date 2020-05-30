@@ -26,7 +26,8 @@ VM primops
       create-type
       object-size
       len
-      )
+
+      opcode-arity-ok?)
 
    (import
       (owl core))
@@ -58,6 +59,7 @@ VM primops
       ;; the repl which builds the one in which the new ones will be used, so any change usually takes
       ;; 2 rebuilds.
 
+      ;; consider getting rid of bind later
       (define bind
          ; (func '(2 32 4 5 24 5))
          '__bind__
@@ -147,6 +149,25 @@ VM primops
             (tuple 'fx*          39 2 2 fx*)   ;; (fx* a b)      ;; 2 out
             (tuple 'fx>>         58 2 2 fx>>)   ;; (fx>> a b) -> hi lo, lo are the lost bits
             (tuple 'sys-prim     63 4 1 sys-prim)))
+
+      ;; warning: O(n)
+      (define (opcode->primop op)
+         (let loop ((primops primops))
+            (cond
+               ((null? primops) (car 1142)) ;; no (error ...) yet here, failing in a unique way to find this if necessary
+               ((eq? (ref (car primops) 2) op)
+                  (car primops))
+               (else
+                  (loop (cdr primops))))))
+
+      (define (opcode-arity-ok? op n)
+         (bind (opcode->primop op)
+            (λ (name op in out fn)
+               (cond
+                  ((eq? in n) #true)
+                  ((eq? in 'any) #true)
+                  (else #false)))))
+
 
       ;; special things exposed by the vm
       (define (set-memory-limit n) (sys-prim 7 n #f #f))
