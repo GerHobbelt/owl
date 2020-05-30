@@ -43,11 +43,6 @@ Convert lambdas to closures where necessary
                (begin
                   ;(print " no clos for " rator)
                   (tuple-case (car rands)
-                     ((lambda formals body)
-                        (lets
-                           ((cont used (closurize (car rands) used #false))
-                            (rands used (closurize-list closurize (cdr rands) used)))
-                           (values (mkcall rator (cons cont rands)) used)))
                      ((lambda-var fixed? formals body)
                         (if fixed?
                            (lets
@@ -60,7 +55,7 @@ Convert lambdas to closures where necessary
                            ((dummy-cont
                               ;;; FIXME, should check arity & gensym
                               ;;; used only once and called immediately
-                              (tuple 'lambda-var #t
+                              (mklambda
                                  (list '_foo)
                                  (mkcall (mkvar name) (list (mkvar '_foo))))))
                            (closurize-call closurize rator
@@ -92,8 +87,6 @@ Convert lambdas to closures where necessary
                      used)))
             ((call rator rands)
                (closurize-call closurize rator rands used))
-            ((lambda formals body)
-               (closurize (tuple 'lambda-var #t formals body) used close?))
             ((lambda-var fixed? formals body)
                (lets
                   ((body bused (closurize body #n #t))
@@ -148,9 +141,6 @@ Convert lambdas to closures where necessary
                      used)))
             ((call rator rands)
                (literalize-call literalize rator rands used))
-            ((lambda formals body)
-               (lets ((body used (literalize body used)))
-                  (values (tuple 'lambda-var #t formals body) used)))
             ((lambda-var fixed? formals body)
                (lets ((body used (literalize body used)))
                   (values (tuple 'lambda-var fixed? formals body) used)))

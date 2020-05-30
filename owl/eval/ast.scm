@@ -91,7 +91,7 @@ with checked structure to avoid having to constantly check S-expression structur
                                     ((not formals) ;; non-symbols, duplicate variables, etc
                                        (fail (list "Bad lambda: " exp)))
                                     (fixed?
-                                       (tuple 'lambda-var #t formals
+                                       (mklambda formals
                                           (translate body (env-bind env formals) fail)))
                                     (else
                                        (mkvarlambda formals

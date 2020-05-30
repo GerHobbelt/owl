@@ -454,13 +454,6 @@ Compile AST to a code instruction tree suitable for assembly
                (let ((op (and (eq? (ref rator 1) 'value) (primop-of (ref rator 2)))))
                   (if op
                      (tuple-case (car rands)
-                        ((lambda formals body)
-                           (if (opcode-arity-ok? op (length (cdr rands)))
-                              (rtl-primitive regs op formals (cdr rands)
-                                 (C rtl-any body))
-                              ;; fixme: should be a way to show just parts of AST nodes, which may look odd
-                              (error "Bad number of arguments for primitive: "
-                                 (list 'op (primop-name op) 'got (length (cdr rands)) 'arguments))))
                         ((lambda-var fixed? formals body)
                            (if (and fixed? (opcode-arity-ok? op (length (cdr rands))))
                               (rtl-primitive regs op formals (cdr rands)
@@ -471,14 +464,6 @@ Compile AST to a code instruction tree suitable for assembly
                         (else
                            (error "bad primitive args: " rands)))
                      (tuple-case rator
-                        ((lambda formals body)
-                           ;; ((lambda (args) ...) ...) => add new aliases for values
-                           (rtl-args regs rands
-                              (λ (regs args)
-                                 ;;; note that this is an alias thing...
-                                 (if (= (length formals) (length args))
-                                    (rtl-any (create-aliases regs formals args) body)
-                                    (error "Bad argument count in lambda call: " (list 'args args 'formals formals))))))
                         ((lambda-var fixed? formals body)
                            ;; ((lambda (args) ...) ...) => add new aliases for values
                            (if fixed?
@@ -542,10 +527,6 @@ Compile AST to a code instruction tree suitable for assembly
                   (if (null? literals)
                      exec ; #<bytecode>
                      (list->proc (cons exec literals)))))
-            ((lambda formals body) ;; to be deprecated
-               (rtl-plain-lambda rtl
-                  (tuple 'lambda-var #true formals body)
-                  clos literals tail))
             (else
                (error "rtl-plain-lambda: bad node " exp))))
 

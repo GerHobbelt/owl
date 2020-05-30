@@ -51,8 +51,6 @@ avoid having to track variable shadowing.
                   ((rator free (alpha rator env free))
                    (rands free (alpha-list alpha rands env free)))
                   (values (mkcall rator rands) free)))
-            ((lambda formals body)
-               (alpha (tuple 'lambda-var #t formals body) env free))
             ((lambda-var fixed? formals body) ;; <- mostly clone branch to be merged later
                (lets
                   ((new-formals free (gensyms free (length formals)))

@@ -30,9 +30,8 @@
             ((cont-sym free (fresh free))
              (body free (cps body env (mkvar cont-sym) free)))
             (values
-               (if fixed?
-                  (tuple 'lambda-var #t (cons cont-sym formals) body)
-                  (mkvarlambda (cons cont-sym formals) body))
+               (tuple 'lambda-var fixed? 
+                  (cons cont-sym formals) body)
                free)))
 
       (define (cps-lambda cps formals fixed? body env cont free)
@@ -47,9 +46,6 @@
                 (rands (cdr call)))
                (values (mkcall rator rands) free))
             (tuple-case (car args)
-               ((lambda formals body)
-                  (lets ((lexp free (cps-just-lambda cps formals #true body env free)))
-                     (cps-args cps (cdr args) (cons lexp call) env free)))
                ((lambda-var fixed? formals body)
                   (lets ((lexp free (cps-just-lambda cps formals fixed? body env free)))
                      (cps-args cps (cdr args) (cons lexp call) env free)))
@@ -64,7 +60,7 @@
                         (cps-args cps (cons (mkvar this) (cdr args)) call env free)))
                      (cps (car args)
                         env
-                        (tuple 'lambda-var #t (list this) rest)
+                        (mklambda (list this) rest)
                         free))))))
 
       (define (cps-values cps vals env cont free)
@@ -74,16 +70,11 @@
       (define (cps-bind cps rator rands env cont free)
          (if (= (length rands) 2)
             (tuple-case (cadr rands)
-               ((lambda formals body)
-                  (lets ((body free (cps body env cont free)))
-                     (cps-args cps (list (car rands))
-                        (list (tuple 'lambda-var #t formals body) rator)
-                           env free)))
                ((lambda-var fixed? formals body)
                   (if fixed?
                      (lets ((body free (cps body env cont free)))
                         (cps-args cps (list (car rands))
-                           (list (tuple 'lambda-var #t formals body) rator)
+                           (list (mklambda formals body) rator)
                            env free))
                      (error "bad tuple bind: " 'variable-arity)))
                (else
@@ -111,10 +102,6 @@
 
       (define (cps-call cps rator rands env cont free)
          (tuple-case rator
-            ((lambda formals body)
-               (cps-call cps
-                  (tuple 'lambda-var #t formals body)
-                  rands env cont free))
             ((lambda-var fixed? formals body)
                (cond
                   (fixed?
@@ -124,12 +111,12 @@
                            ;;; drop lambdas from ((lambda () X))
                            (values body free)
                            (cps-args cps rands
-                              (list (tuple 'lambda-var #t formals body))
+                              (list (mklambda formals body))
                               env free))))
                   ((enlist-improper-args formals rands) => ;; downgrade to a regular lambda converting arguments
                      (λ (rands)
                         (cps-call cps
-                           (tuple 'lambda-var #t formals body)
+                           (mklambda formals body)
                            rands env cont free)))
                   (else
                      (error "Bad head lambda arguments:" (list 'args formals 'rands rands)))))
@@ -139,12 +126,12 @@
                    (call-exp free
                      (cps-args cps rands (list cont (mkvar this)) env free)))
                   (cps rator env
-                     (tuple 'lambda-var #t (list this) call-exp)
+                     (mklambda (list this) call-exp)
                      free)))
             ((branch kind a b then else)
                (lets ((this free (fresh free)))
                   (cps
-                     (mkcall (tuple 'lambda-var #t (list this) (mkcall (mkvar this) rands))
+                     (mkcall (mklambda (list this) (mkcall (mkvar this) rands))
                         (list rator))
                      env cont free)))
             ((value val)
@@ -164,7 +151,7 @@
                      (cps-branch cps kind a b then else env (mkvar this) free)))
                   (values
                      (mkcall
-                        (tuple 'lambda-var #t (list this) exp)
+                        (mklambda (list this) exp)
                         (list cont))
                      free)))
             ((call? a)
@@ -172,13 +159,13 @@
                   ((this free (fresh free))
                    (rest free
                      (cps-branch cps kind (mkvar this) b then else env cont free)))
-                  (cps a env (tuple 'lambda-var #t (list this) rest) free)))
+                  (cps a env (mklambda (list this) rest) free)))
             ((call? b)
                (lets
                   ((this free (fresh free))
                    (rest free
                      (cps-branch cps kind a (mkvar this) then else env cont free)))
-                  (cps b env (tuple 'lambda-var #t (list this) rest) free)))
+                  (cps b env (mklambda (list this) rest) free)))
             (else
                (lets
                   ((then free (cps then env cont free))
@@ -189,12 +176,6 @@
 
       (define (cps-receive cps exp semi-cont env cont free)
          (tuple-case semi-cont
-            ((lambda formals  body)
-               (lets ((body-cps free (cps body env cont free)))
-                  (cps exp env
-                     (tuple 'lambda-var #t formals body-cps)
-                     free)))
-            ;; FIXME: this ends up as operator, but doesn't go through the call operator variable lambda conversion and thus confuses rtl-* which assume all operator lambdas are already taken care of by CPS
             ((lambda-var fixed? formals  body)
                (lets ((body-cps free (cps body env cont free)))
                   (cps exp env
@@ -209,8 +190,6 @@
                (cps-literal exp env cont free))
             ((var sym)
                (cps-literal exp env cont free))
-            ((lambda formals body)
-               (cps-lambda cps-exp formals #true body env cont free))
             ((lambda-var fixed? formals body)
                (cps-lambda cps-exp formals fixed? body env cont free))
             ((call rator rands)
@@ -241,13 +220,13 @@
                            ; (= (length (ref exp 3)) 1)
                            )
                         (ok
-                           (tuple 'lambda-var #t (list cont-sym)
+                           (mklambda (list cont-sym)
                               (mkcall (mkvar cont-sym)
                                  (list (car (ref exp 3)))))
                            env)
                         (lets ((exp free (cps-exp exp env (mkvar cont-sym) (gensym cont-sym))))
                            (ok
-                              (tuple 'lambda-var #t (list cont-sym) exp)
+                              (mklambda (list cont-sym) exp)
                               env))))))
             (fail "cps failed")))
    ))

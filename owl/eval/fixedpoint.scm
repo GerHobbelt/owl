@@ -58,8 +58,6 @@ This is done by constructing the fixed points manually.
             (tuple-case exp
                ((var exp)
                   (take exp found bound))
-               ((lambda formals body)
-                  (walk body (union formals bound) found))
                ((lambda-var fixed? formals body)
                   (walk body (union formals bound) found))
                ((call rator rands)
@@ -81,10 +79,7 @@ This is done by constructing the fixed points manually.
 
 
       (define (lambda? exp env)
-         (or
-            (eq? (ref exp 1) 'lambda)     ;; old, to be new
-            (eq? (ref exp 1) 'lambda-var) ;; new
-            ))
+            (eq? (ref exp 1) 'lambda-var)) ;; new
 
       (define (set-deps node deps) (set node 3 deps))
       (define deps-of (C ref 3))
@@ -165,10 +160,6 @@ This is done by constructing the fixed points manually.
                      (tuple 'call
                         (walk rator)
                         (map walk rands))))
-               ((lambda formals body)
-                  (if (memq name formals)
-                     exp
-                     (tuple 'lambda-var #t formals (walk body))))
                ((lambda-var fixed? formals body)
                   (if fixed?
                      (if (memq name formals)
@@ -215,10 +206,6 @@ This is done by constructing the fixed points manually.
                   (else
                      (mkcall (carry-bindings rator env)
                         (map (C carry-bindings env) rands)))))
-            ((lambda formals body)
-               (tuple 'lambda-var #t formals
-                  (carry-bindings body
-                     (env-bind env formals))))
             ((lambda-var fixed? formals body)
                (tuple
                   'lambda-var fixed?
@@ -261,13 +248,11 @@ This is done by constructing the fixed points manually.
 
       (define (lambda-formals exp)
          (tuple-case exp
-            ((lambda-var fixed? formals body) formals)
-            ((lambda formals body) formals)))
+            ((lambda-var fixed? formals body) formals)))
 
       (define (lambda-body exp)
          (tuple-case exp
-            ((lambda-var fixed? formals body) body)
-            ((lambda formals body) body)))
+            ((lambda-var fixed? formals body) body)))
 
       (define (handle-recursion nodes env)
          ; convert the lambda and carry bindings in the body
@@ -445,9 +430,6 @@ This is done by constructing the fixed points manually.
                (tuple 'call
                   (unletrec rator env)
                   (unletrec-list rands)))
-            ((lambda formals body)
-               (tuple 'lambda-var #t formals
-                  (unletrec body (env-bind env formals))))
             ((lambda-var fixed? formals body)
                (tuple 'lambda-var fixed? formals
                   (unletrec body (env-bind env formals))))
