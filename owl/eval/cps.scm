@@ -30,7 +30,7 @@
             ((cont-sym free (fresh free))
              (body free (cps body env (mkvar cont-sym) free)))
             (values
-               (if fixed?  ;; <- fixme, merge with node having fixedness later
+               (if fixed?
                   (tuple 'lambda-var #t (cons cont-sym formals) body)
                   (mkvarlambda (cons cont-sym formals) body))
                free)))
@@ -129,7 +129,7 @@
                   ((enlist-improper-args formals rands) => ;; downgrade to a regular lambda converting arguments
                      (λ (rands)
                         (cps-call cps
-                           (tuple 'lambda formals body)
+                           (tuple 'lambda-var #t formals body)
                            rands env cont free)))
                   (else
                      (error "Bad head lambda arguments:" (list 'args formals 'rands rands)))))
@@ -238,7 +238,8 @@
                      (if (and
                            (call? exp)
                            (val-eq? (ref exp 2) '_sans_cps)
-                           (= (length (ref exp 3)) 1))
+                           ; (= (length (ref exp 3)) 1)
+                           )
                         (ok
                            (tuple 'lambda-var #t (list cont-sym)
                               (mkcall (mkvar cont-sym)

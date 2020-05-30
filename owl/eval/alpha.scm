@@ -20,6 +20,7 @@ avoid having to track variable shadowing.
       (owl math)
       (owl list)
       (owl list-extra)
+      (owl io)
       (only (owl syscall) error)
       (owl lcd ff))
 
@@ -51,18 +52,7 @@ avoid having to track variable shadowing.
                    (rands free (alpha-list alpha rands env free)))
                   (values (mkcall rator rands) free)))
             ((lambda formals body)
-               (lets
-                  ((new-formals free (gensyms free (length formals)))
-                   (body free
-                     (alpha body
-                        (fold
-                           (λ (env node)
-                              (put env (car node) (cdr node)))
-                            env (zip cons formals new-formals))
-                        free)))
-                  (values (mklambda new-formals body) free))
-               ; (alpha (tuple 'lambda-var #t exp env free) env free)
-               )
+               (alpha (tuple 'lambda-var #t formals body) env free))
             ((lambda-var fixed? formals body) ;; <- mostly clone branch to be merged later
                (lets
                   ((new-formals free (gensyms free (length formals)))

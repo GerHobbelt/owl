@@ -20,6 +20,7 @@ with checked structure to avoid having to constantly check S-expression structur
       (scheme cxr))
 
    (begin
+
       (define (ok exp env) (tuple 'ok exp env))
       (define (fail reason) (tuple 'fail reason))
 
@@ -31,7 +32,7 @@ with checked structure to avoid having to constantly check S-expression structur
          (tuple 'value val))
 
       (define (mklambda formals body)
-         (tuple 'lambda formals body))
+         (tuple 'lambda-var #t formals body))
 
       ;; formals is a list as usual, but last one will be bound to an arg list
       ;; having an extra var? field because the fixed one could be merged to this later
@@ -90,19 +91,11 @@ with checked structure to avoid having to constantly check S-expression structur
                                     ((not formals) ;; non-symbols, duplicate variables, etc
                                        (fail (list "Bad lambda: " exp)))
                                     (fixed?
-                                       (mklambda formals
+                                       (tuple 'lambda-var #t formals
                                           (translate body (env-bind env formals) fail)))
                                     (else
                                        (mkvarlambda formals
                                           (translate body (env-bind env formals) fail))))))
-                           ((> len 3)
-                              ;; recurse via translate
-                              (let
-                                 ((formals (cadr exp))
-                                  (body (cddr exp)))
-                                 (translate
-                                    (list 'lambda formals
-                                       (cons 'begin body)) env fail)))
                            (else
                               (fail (list "Bad lambda: " exp))))))
                   ((rlambda) ;;; (rlambda formals definitions body)
@@ -142,7 +135,6 @@ with checked structure to avoid having to constantly check S-expression structur
                      (tuple 'receive
                         (translate (list-ref exp 1) env fail)
                         (translate (list-ref exp 2) env fail)))
-                  ;; FIXME pattern
                   ((values)
                      (tuple 'values
                         (map (λ (arg) (translate arg env fail)) (cdr exp))))
@@ -156,16 +148,10 @@ with checked structure to avoid having to constantly check S-expression structur
                   (map
                      (λ (x) (translate x env fail))
                      (cdr exp))))
-            ;; both now handled by apply-env
-            ;((undefined)
-            ;   (fail (list "i do not know this function" exp)))
-            ; left here to handle primops temporarily
             ((defined value)
                (mkcall value
                   (map (λ (x) (translate x env fail)) (cdr exp))))
             (else
-               ; could be useful for (eval (list + 1 2) env)
-               ; so just warn for now
                (fail
                   (list
                      "Unknown value type in ast conversion: "
