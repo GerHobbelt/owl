@@ -348,9 +348,11 @@ Compile AST to a code instruction tree suitable for assembly
 
       (define (known-arity obj type)
          (let ((op (ref obj 0)))
-            (if (eq? op 2) ;; fixed arity
-               (tuple type (ref op 1))
-               #false))) ;; not handling variable arity or other kinds of code
+            (if (eq? op 60) ;; fixed arity, new instruction
+               (tuple type (ref obj 1))
+               (begin
+                  ; (print "no " op)
+                  (tuple type #false)))))
 
       ;; value-to-be-called → #(<functype> <arity>) | #false = don't know, just call and see what happens at runtime
       (define (fn-type obj)
@@ -369,18 +371,33 @@ Compile AST to a code instruction tree suitable for assembly
          ; #false
          )
 
-      (define bad-arity "Bad arity: ")
+      (define (arity-fail op wanted would-get)
+         (error "Would be an error: " (list op 'wants wanted 'but 'would 'get would-get 'arguments)))
 
       ; rator nargs → better call opcode | #false = no better known option, just call | throw error if bad function or arity
+      ;; currently only checks arity, since goto-* are no currently missing from vm
       (define (rtl-pick-call regs rator nargs)
          (tuple-case rator
             ((value rator)
                (tuple-case (fn-type rator) ;; <- fixme, can be enabled again
-                  ((code n) 'goto-code)
-                  ((proc n) 'goto-proc)
-                  ((clos n) 'goto-clos)
+                  ((code n)
+                     (if (or (not n) (eq? n nargs))
+                        ;'goto-code
+                        #false
+                        (arity-fail rator n nargs)))
+                  ((proc n)
+                     (if (or (not n) (eq? n nargs))
+                        ; 'goto-proc
+                        #false
+                        (arity-fail rator n nargs)))
+                  ((clos n)
+                     (if (or (not n) (eq? n nargs))
+                        ; 'goto-clos
+                        #false
+                        (arity-fail rator n nargs)))
                   (else
                      ;; operator type not known at compile time
+                     (error "bad operator: " rator)
                      #false)))
             (else
                ; (print "non value call " rator)
