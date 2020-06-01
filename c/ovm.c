@@ -59,6 +59,9 @@
 #ifndef O_RSYNC
 #define O_RSYNC 0
 #endif
+#ifndef O_DSYNC
+#define O_DSYNC 0
+#endif
 #ifndef O_SEARCH
 #define O_SEARCH 0
 #endif
