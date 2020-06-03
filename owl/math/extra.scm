@@ -237,39 +237,26 @@
 
       (define add +)
 
-      (define +
-         (case-lambda
-            ((a b) (add a b))
-            ((a) a)
-            (() 0)
-            ((a b c) (add a (add b c)))
-            (xs (fold add 0 xs))))
+      (define (variate op)
+         (lambda (a b . cs)
+            (if (eq? cs null)
+               (op a b)
+               (fold op (op a b) cs))))
+
+      (define + (variate add))
 
       (define sub -)
 
-      (define -
-         (case-lambda
-            ((a b) (sub a b))
-            ((a) (sub 0 a))
-            ((a b . xs)
-               (sub a (fold add b xs)))))
+      (define - (variate sub))
 
       (define mul *)
 
-      (define *
-         (case-lambda
-            ((a b) (mul a b))
-            ((a b . xs) (mul a (fold mul b xs)))
-            ((a) a)
-            (() 1)))
+      (define * (variate mul))
 
       (define div /)
 
-      (define /
-         (case-lambda
-            ((a b) (div a b))
-            ((a) (div 1 a))
-            ((a . bs) (div a (product bs)))))
+      (define / (variate div)) ;; could also do (/ a (product (cons b cs)))
+
 
       ;; fold but stop on first false
       ;; fixme: does not belong here
@@ -282,10 +269,11 @@
 
       ;; the rest are redefined against the old binary ones
 
-      (define (vararg-predicate op) ;; turn into a macro
-         (case-lambda
-            ((a b) (op a b))
-            ((a . bs) (each op a bs))))
+      (define (vararg-predicate op)
+         (lambda (a b . cs)
+            (if (eq? cs null)
+               (op a b)
+               (each op a (cons b cs)))))
 
       ;; todo: move variable arity ones to corresponding (scheme *)
 
@@ -296,18 +284,16 @@
       (define <= (vararg-predicate <=))
       (define >= (vararg-predicate >=))
 
-      ;; ditto for foldables
-      (define (vararg-fold op zero)
-         (case-lambda
-            ((a b) (op a b))
-            ((a) a)
-            ((a . bs) (fold op a bs))
-            (() (or zero (error "No arguments for " op)))))
+      (define (vararg-fold op)
+         (lambda (a b . cs)
+            (if (eq? cs null)
+               (op a b)
+               (fold op (op a b) cs))))
 
-      (define min (vararg-fold min #false))
-      (define max (vararg-fold max #false))
-      (define gcd (vararg-fold gcd 0))
-      (define lcm (vararg-fold lcm 1))
+      (define min (vararg-fold min))
+      (define max (vararg-fold max))
+      (define gcd (vararg-fold gcd))
+      (define lcm (vararg-fold lcm))
 
       (define remainder irem)
       (define modulo imod)
