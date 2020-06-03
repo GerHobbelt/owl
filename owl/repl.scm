@@ -23,6 +23,7 @@
       ;(owl terminal)
       (owl io)
       (owl port)
+      (owl time)
       (owl list-extra)
       (owl render)
       (owl string)
@@ -203,6 +204,36 @@
                      (list path (string-append (env-get env '*owl* "") path))
                      "for loading.")))))
 
+
+      (define (decimal-pad n)
+         (cond
+            ((< n 10) (str "00" n))
+            ((< n 100) (str "0" n))
+            (else (str n))))
+
+      (define (format-time ns)         ;; 30 light centimeters
+         (lets
+            ((µs  (quotient ns 1000))
+             (ns  (remainder ns 1000))
+             (ms  (quotient µs 1000))
+             (µs  (remainder µs 1000))
+             (s   (quotient ms 1000))
+             (ms  (remainder ms 1000)))
+            (cond
+               ((> s 0)
+                  (str s "." (decimal-pad ms) "s"))
+               ((> ms 0)
+                  (str ms "." (decimal-pad µs) "ms"))
+               (else
+                  (str µs "." (decimal-pad ns) "µs")))))
+
+      (define (repl-time thunk)
+         (lets
+            ((now (time-ns))
+             (val (thunk)) ;; <- assumes just one returned value for now
+             (elapsed (- (time-ns) now)))
+            (print "elapsed " (format-time elapsed))))
+
       ;; regex-fn | string | symbol → regex-fn | #false
       (define (thing->rex thing)
          (cond
@@ -301,6 +332,18 @@
                      (print ";; " exp))
                   (prompt env (repl-message))
                   (repl env in)))
+            ((time)
+               (lets ((exp in (uncons in #false))
+                      (exp (list 'lambda '() exp))) ;; thunk it
+                  (tuple-case (evaluate exp env)
+                     ((ok val envp)
+                        (repl-time val)
+                        (prompt env (repl-message))
+                        (repl env in))
+                     (else ;; <- actually goes boom. repl-time should run in a thread.
+                        (print ";; failed to evaluate expression")
+                        (prompt env (repl-message))
+                        (repl env in)))))
             ((quit)
                ; this goes to repl-trampoline
                (tuple 'ok 'quitter env))
