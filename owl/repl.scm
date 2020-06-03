@@ -28,6 +28,7 @@
       (owl render)
       (owl string)
       (owl sexp)
+      (only (owl sys) get-heap-bytes-written) ;; <- could be moved to some profiling
       (only (owl readline) port->readline-byte-stream)
       (only (owl parse) fd->exp-stream byte-stream->exp-stream file->exp-stream resuming-syntax-fail silent-syntax-fail try-parse)
       (prefix (only (owl parse) plus) get-kleene-)
@@ -35,6 +36,7 @@
       (scheme base)
       (owl lazy)
       (owl macro)
+      (only (owl thread) try-thunk)
       (only (owl regex) string->regex)
       (scheme cxr)
       (scheme write))
@@ -204,35 +206,36 @@
                      (list path (string-append (env-get env '*owl* "") path))
                      "for loading.")))))
 
-
       (define (decimal-pad n)
          (cond
             ((< n 10) (str "00" n))
             ((< n 100) (str "0" n))
             (else (str n))))
 
-      (define (format-time ns)         ;; 30 light centimeters
-         (lets
-            ((µs  (quotient ns 1000))
-             (ns  (remainder ns 1000))
-             (ms  (quotient µs 1000))
-             (µs  (remainder µs 1000))
-             (s   (quotient ms 1000))
-             (ms  (remainder ms 1000)))
-            (cond
-               ((> s 0)
-                  (str s "." (decimal-pad ms) "s"))
-               ((> ms 0)
-                  (str ms "." (decimal-pad µs) "ms"))
-               (else
-                  (str µs "." (decimal-pad ns) "µs")))))
+      (define (metric-format n sub units)
+         (if (or (null? (cdr units)) (< n 1000))
+            (str n "." (decimal-pad sub) (car units))
+            (metric-format (quotient n 1000) (remainder n 1000) (cdr units))))
+
+      (define (format-time ns)
+         (metric-format ns 0 '("ns" "µs" "ms" "s")))
+
+      (define (format-number ns)
+         (metric-format ns 0 '("" "k" "M" "G" "T" "P")))
 
       (define (repl-time thunk)
-         (lets
-            ((now (time-ns))
-             (val (thunk)) ;; <- assumes just one returned value for now
-             (elapsed (- (time-ns) now)))
-            (print "elapsed " (format-time elapsed))))
+         (try-thunk
+            (lambda ()
+               (lets
+                  ((now (time-ns))
+                   (alloc-pre (get-heap-bytes-written))
+                   (val (thunk)) ;; <- assumes just one returned value for now
+                   (elapsed-ns (- (time-ns) now))
+                   (alloc-post (get-heap-bytes-written)))
+                  (print ";; heap " (format-number (- alloc-post alloc-pre)))
+                  (print ";; time " (format-time elapsed-ns))))
+            (lambda (error)
+               (print ";; evaluation failed"))))
 
       ;; regex-fn | string | symbol → regex-fn | #false
       (define (thing->rex thing)
