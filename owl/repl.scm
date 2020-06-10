@@ -643,6 +643,19 @@
             (put (env-get env meta-tag empty) value
                `(defined in ,(env-get env current-library-key 'repl)))))
 
+      ;; env exps -> env' | #f
+      (define (repl-exps env exps eval-repl repl)
+         (fold
+            (lambda (env exp)
+               (and env
+                  (tuple-case (eval-repl exp env repl)
+                     ((ok result env)
+                        env)
+                     (else
+                        (print "evaluation of " exp " failed.")
+                        #false))))
+            env exps))
+
       (define (eval-repl exp env repl)
          (lets/cc ret
             ((abort (λ (why) (ret (fail (list "Macro expansion of " exp " failed: " why)))))
@@ -694,6 +707,14 @@
                ((export? exp)
                   (lets ((module (build-export (cdr exp) env self))) ; <- to be removed soon, dummy fail cont
                      (ok module env)))
+               ((headed? '__repl_begin exp)
+                  ;; multiple expressions, likely containing definitions
+                  ;; could convert multi define to this
+                  (let ((envp (repl-exps env (cadr (cadr exp)) eval-repl repl)))
+                     (if envp
+                        (ok "done" envp)
+                        (fail
+                           "Evaluation of multiple expressions failed"))))
                ((library-definition? exp)
                   ;; evaluate libraries in a blank *owl-kernel* env (only primops, specials and define-syntax)
                   ;; include just loaded *libraries* and *include-paths* from the current one to share them
@@ -736,6 +757,7 @@
                   (evaluate exp env)))))
 
       ; (repl env in) -> #(ok value env) | #(error reason env remaining-input|#f)
+
 
       (define (repl env in)
          (let loop ((env env) (in in) (last 'blank))
