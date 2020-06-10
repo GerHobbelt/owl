@@ -1,39 +1,34 @@
 (define-library (owl sum)
 
    (import
-      (owl core)
-      (only (owl math) +)
-      (only (owl io) print))
+      (owl core))
 
-   (export
-      eval)
+   (export define-sum-type)
 
    (begin
 
-      (define (val x)
-         (λ (vc sc) (vc x)))
+      (define-syntax define-sum-type
+         (syntax-rules (__repl_begin __options __walk __names define-syntax syntax-rules)
+            ((define-sum-type name
+               __walk ()
+               __options ((body option . args) ...)
+               __names names)
+             (__repl_begin
+                (quote
+                   ((define (option . args)
+                         (lambda names (option . args)))
+                    ...
+                    (define-syntax name
+                         (syntax-rules names
+                            ((name value ((option . args) . body) ...)
+                               (value
+                                  (lambda args . body) ...))))))))
 
-      (define (sum a b)
-         (λ (vc sc) (sc a b)))
+            ((define-sum-type name __walk ((option . args) . rest) __options (o ...)  __names (n ...))
+               (define-sum-type name
+                  __walk rest
+                  __options (o ... (body option . args))
+                  __names (n ... option)))
 
-      (define-syntax sum-case
-         (syntax-rules (val sum)
-            ((sum-case x ((val a) val-exp) ((sum a b) sum-exp))
-               (x (λ (a) val-exp) (λ (a b) sum-exp)))
-            ((sum-case x ((sum a b) sum-exp) ((val a) val-exp))
-               (x (λ (a) val-exp) (λ (a b) sum-exp)))))
-
-      (define (eval exp)
-         (sum-case exp
-            ((val a) a)
-            ((sum a b) (+ (eval a) (eval b)))))
-
-      (print
-         (eval
-            (lets ((a (sum (val 1) (val 1)))
-                   (a (sum a a))
-                   (a (sum a a))
-                   (a (sum a a))
-                   (a (sum a a))
-                   (a (sum a a))) ; 64
-                  a)))))
+            ((define-sum-type name . options)
+               (define-sum-type name __walk options __options () __names ()))))))
