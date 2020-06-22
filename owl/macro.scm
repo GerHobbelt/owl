@@ -406,8 +406,15 @@ This library implements hygienic macro expansion.
                         ((bound)          (expand-list exp env free))
                         ((defined value)  (expand-list exp env free))
                         ((undefined)
-                           ;; can be a literal
-                           (values exp free))
+                           ;; Library definitions should be handled before macros. Current approach
+                           ;; allows macros to expand to libraries, but this seems in retrospect useless
+                           ;; and requires macro expander to worry about structure of libraries.
+                           (cond
+                              ((memq (car exp) '(import export)) ;; library definitions
+                                 (values exp free))
+                              ;((memq (car exp) '(_define-macro)) ;; definition
+                              ;   ())
+                              (else (expand-list exp env free))))
                         ((macro transformer)
                            (let ((result (transformer exp free)))
                               (if result
@@ -420,8 +427,8 @@ This library implements hygienic macro expansion.
                      (expand-list exp env free))))
             ((symbol? exp)
                (tuple-case (lookup env exp)
-                  ((macro transformer)
-                     (abort (list "Macro being used as a value: " exp)))
+                  ;((macro transformer)
+                  ;   (abort (list "Macro being used as a value: " exp)))
                   ((undefined)
                      ;; this can still be a literal used by a macro
                      (values exp free))
@@ -434,7 +441,7 @@ This library implements hygienic macro expansion.
 
       (define (post-macro-expand exp env fail)
          (cond
-            ((toplevel-macro-definition? exp)
+            ((toplevel-macro-definition? exp) ;; <- to be removed in favor of simpler and more extensible _define-macro
                (lets
                   ((rules (list-ref exp 4))
                    (keyword (list-ref rules 0))
@@ -446,8 +453,13 @@ This library implements hygienic macro expansion.
                         (λ (sym) (not (env-get-raw env sym #f)))))
                    (transformer
                      (make-transformer literals rules env)))
-                  (let ((env (env-set-macro env keyword transformer)))
-                     (values env (list 'quote keyword)))))
+                  (let
+                     ((env env))
+                     ; ((env (env-set-macro env keyword transformer)))
+                     (values env
+                        ;(list 'quote keyword)
+                        (list '_define-macro keyword transformer)
+                        ))))
             (else
                (values env exp))))
 

@@ -69,6 +69,9 @@
       (define definition?
          (H match (list '_define symbol? ?)))
 
+      (define macro-definition?
+         (H match (list '_define-macro symbol? ?)))
+
       (define multi-definition?
          (H match (list '_define list? ?)))
 
@@ -410,7 +413,7 @@
       ;; used to get definiton of *toplevel*, mainly for use with eval
       (define (bind-toplevel env)
          (env-set env '*toplevel*
-            (env-del env '*toplevel)))
+            (env-del env '*toplevel*)))
 
       ;; list starting with val?
       (define (headed? val exp)
@@ -687,6 +690,18 @@
                      ((fail reason)
                         (fail
                            (list "Definition of" (cadr exp) "failed because" reason)))))
+               ((macro-definition? exp)
+                  (tuple-case (evaluate (caddr exp) env)
+                     ((ok value env2)
+                        (lets
+                           ((env (env-set-macro env (cadr exp) value)))
+                           (ok
+                              (repl-message
+                                 (bytes->string (render ";; Defined macro " (render (cadr exp) #n))))
+                              (bind-toplevel env))))
+                     ((fail reason)
+                        (fail
+                           (list "Definition of macro" (cadr exp) "failed because" reason)))))
                ((multi-definition? exp)
                   (tuple-case (evaluate (caddr exp) env)
                      ((ok value env2)
@@ -731,7 +746,9 @@
                         (fold
                            (λ (lib-env key) (env-set lib-env key (env-get env key #n)))
                            *owl-kernel* library-exports))
-                      (lib-env (env-set lib-env current-library-key name)))
+                      (lib-env 
+                         (bind-toplevel
+                            (env-set lib-env current-library-key name))))
                      (tuple-case (repl-library exps lib-env repl fail) ;; anything else must be incuded explicitly
                         ((ok library lib-env)
                            ;; get new function names and metadata from lib-env (later to be handled differently)

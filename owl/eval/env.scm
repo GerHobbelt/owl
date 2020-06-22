@@ -30,6 +30,10 @@
       (owl math)
       (owl io)
       (owl port)
+      (only (owl syntax-rules)
+         define-syntax-transformer
+         syntax-transformer
+         ) ;; <- for define-syntax-ng (transitional)
       (scheme base)
       (scheme cxr)
       (owl primop))
@@ -258,16 +262,21 @@
       ;; only special forms supported by the compiler, no primops etc
       ;; fixme: should use distinct identifiers like #:foo for these, since these can unintentionally clash with formals
       (define *tabula-rasa*
-         (list->ff
-            (list
-               ;; special forms.
-               (cons 'lambda  (tuple 'special 'lambda)) ;; fixme: should be a macro generating _lambda instead
-               (cons 'quote   (tuple 'special 'quote))
-               (cons 'rlambda (tuple 'special 'rlambda))
-               (cons 'receive (tuple 'special 'receive))
-               (cons '_branch (tuple 'special '_branch))
-               (cons '_define (tuple 'special '_define))
-               (cons 'values   (tuple 'special 'values)))))
+         (->
+            (list->ff
+               (list
+                  ;; special forms.
+                  (cons 'lambda  (tuple 'special 'lambda)) ;; fixme: should be a macro generating _lambda instead
+                  (cons 'quote   (tuple 'special 'quote))
+                  (cons 'rlambda (tuple 'special 'rlambda))
+                  (cons 'receive (tuple 'special 'receive))
+                  (cons '_branch (tuple 'special '_branch))
+                  (cons '_define (tuple 'special '_define))
+                  (cons 'values   (tuple 'special 'values))
+                  ))
+            (env-set-macro 'define-syntax-ng define-syntax-transformer)
+            (env-set 'syntax-transformer syntax-transformer)
+            ))
 
       ;; take a subset of env
       ;; fixme - misleading name
