@@ -260,22 +260,21 @@
             (else #false)))
 
       ;; only special forms supported by the compiler, no primops etc
-      ;; fixme: should use distinct identifiers like #:foo for these, since these can unintentionally clash with formals
       (define *tabula-rasa*
          (->
             (list->ff
                (list
                   ;; special forms.
-                  (cons 'lambda  (tuple 'special 'lambda)) ;; fixme: should be a macro generating _lambda instead
+                  (cons 'lambda  (tuple 'special 'lambda))
                   (cons 'quote   (tuple 'special 'quote))
-                  (cons 'rlambda (tuple 'special 'rlambda))
-                  (cons 'receive (tuple 'special 'receive))
-                  (cons '_branch (tuple 'special '_branch))
-                  (cons '_define (tuple 'special '_define))
-                  (cons 'values   (tuple 'special 'values))
+                  (cons 'rlambda (tuple 'special 'rlambda)) ;; letrec etc, removed in compilation
+                  (cons 'receive (tuple 'special 'receive)) ;; generate continuation to receive multiple values during compilation
+                  (cons '_branch (tuple 'special '_branch)) ;; if
+                  (cons '_define (tuple 'special '_define)) ;; handled by repl
+                  (cons 'values   (tuple 'special 'values)) ;; ends up as as regular call to continuation during compilation
                   ))
             ; (env-set-macro 'define-syntax-ng define-syntax-transformer)
-            (env-set 'syntax-transformer syntax-transformer)
+            ; (env-set 'syntax-transformer syntax-transformer)
             ))
 
       ;; take a subset of env
