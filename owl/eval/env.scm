@@ -30,10 +30,10 @@
       (owl math)
       (owl io)
       (owl port)
-      (only (owl syntax-rules)
-         define-syntax-transformer
-         syntax-transformer
-         ) ;; <- for define-syntax-ng (transitional)
+      ;(only (owl syntax-rules)
+      ;   define-syntax-transformer
+      ;   syntax-transformer
+      ;   ) ;; <- for define-syntax-ng (transitional)
       (scheme base)
       (scheme cxr)
       (owl primop))
@@ -274,7 +274,7 @@
                   (cons '_define (tuple 'special '_define))
                   (cons 'values   (tuple 'special 'values))
                   ))
-            (env-set-macro 'define-syntax-ng define-syntax-transformer)
+            ; (env-set-macro 'define-syntax-ng define-syntax-transformer)
             (env-set 'syntax-transformer syntax-transformer)
             ))
 
