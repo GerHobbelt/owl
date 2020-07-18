@@ -1,14 +1,15 @@
 (define-library (owl sum)
 
    (import
-      (owl core))
+      (owl core)
+      (owl syntax-rules))
 
    (export define-sum-type)
 
    (begin
 
-      (define-syntax define-sum-type
-         (syntax-rules (__repl_begin __options __walk __names define-syntax syntax-rules)
+      (define-syntax-ng define-sum-type
+         (syntax-rules (__repl_begin __options __walk __names define define-syntax syntax-rules)
             ((define-sum-type name
                __walk ()
                __options ((body option . args) ...)

@@ -1,3 +1,5 @@
+;; remove loads after next fasl update
+,load "owl/syntax-rules.scm"
 ,load "owl/sum.scm"
 
 (import (owl sum))
@@ -30,4 +32,19 @@
 (print (kfold + 0 (kiota 0 1 100)))
 
 (print (fold  + 0 (iota  0 1 100)))
+
+;; example that did not work in previous macro expander
+
+(define-sum-type arith
+   (sum a b)
+   (sub a b)
+   (val a))
+
+(define (eval e)
+   (arith e
+      ((sum a b) (+ (eval a) (eval b)))
+      ((sub a b) (- (eval a) (eval b)))
+      ((val a) a)))
+
+(print (eval (sum (val 40) (sub (val 3) (val 1)))))
 

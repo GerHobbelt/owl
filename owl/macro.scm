@@ -337,10 +337,9 @@ This library implements hygienic macro expansion.
       ; expand all macros top to bottom
       ; exp env free -> #(exp' free')
 
+      ;; note: this will handle all macro expansion in the future
 
       (define (expand exp env free abort)
-
-         ; (print "expand: " exp)
 
          (define (expand-list exps env free)
             (if (null? exps)
