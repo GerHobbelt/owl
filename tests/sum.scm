@@ -1,6 +1,3 @@
-;; remove loads after next fasl update
-,load "owl/syntax-rules.scm"
-,load "owl/sum.scm"
 
 (import (owl sum))
 
