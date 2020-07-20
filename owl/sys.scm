@@ -604,7 +604,7 @@ This library defines various system calls and wrappers for calling them.
                #false)))
 
       (define (leading-dash? s)
-         (not (eq? #\/ (car* (string->list s)))))
+         (eq? #\/ (car* (string->list s))))
 
       (define (colon-cut s)
          (map list->string
