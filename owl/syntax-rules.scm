@@ -12,8 +12,7 @@
       (owl math)
       (only (owl render) str)       ;; temp
       (only (owl syscall) error)
-      (only (owl eval env) env-get)      ;;
-      (owl io) ;; temp
+      ; (only (owl eval env) env-get)      ;; now handled via an abstraction violation
       (owl proof))
 
    (export
@@ -21,6 +20,20 @@
       )
 
    (begin
+
+      ;; copied from (owl env) to avoid a circular dependency for now
+      (define lookup ;; <- to be replaced with env-get
+         (let ((undefined (tuple 'undefined)))
+            (λ (env key)
+               (get env key undefined))))
+
+      (define (env-get env key def)
+         (tuple-case (lookup env key)
+            ((defined val)
+               (tuple-case val
+                  ((value v) v)
+                  (else def)))
+            (else def)))
 
       (define empty-env
          (put empty 'syntax 'env))
@@ -166,7 +179,7 @@
                      ;      (cons (car val)
                      ;         (new-ellipsis (cdr val) (- depth 1)))))
                      (else
-                        (print "new-ellipsis-vars: failed to make " var " at depth " depth " vs " val)
+                        ; (print "new-ellipsis-vars: failed to make " var " at depth " depth " vs " val)
                         #f))))
              env vars))
 
@@ -212,7 +225,7 @@
                      ((and (pair? val) (equal? depth (car val)))
                         (ok (env-store env pattern depth exp) fail))
                      (else
-                        (print "Unknown match to " val)
+                        ; (print "Unknown match to " val)
                         (fail)
                         ))))
             ((eq? pattern exp)
@@ -261,7 +274,7 @@
                (pick-ellipsis-value env path ok fail)
                (begin
                   ;; maybe allow later
-                  (print "pick-ellipsis: mismatching depth: path " path ", depth " depth)
+                 ;  (print "pick-ellipsis: mismatching depth: path " path ", depth " depth)
                   (fail)))))
 
 
