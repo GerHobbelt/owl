@@ -20,7 +20,7 @@
       (owl lcd ff)
       (owl sort)
       (owl eval env)
-      ;(owl terminal)
+      (owl eval data)
       (owl io)
       (owl port)
       (owl time)
@@ -44,6 +44,7 @@
    (begin
 
       (define (ok? x) (eq? (ref x 1) 'ok))
+      ;; override the new ones internally
       (define (ok exp env) (tuple 'ok exp env))
       (define (fail reason) (tuple 'fail reason))
 
@@ -341,12 +342,12 @@
             ((time)
                (lets ((exp in (uncons in #false))
                       (exp (list 'lambda '() exp))) ;; thunk it
-                  (tuple-case (evaluate exp env)
+                  (success (evaluate exp env)
                      ((ok val envp)
                         (repl-time val)
                         (prompt env (repl-message))
                         (repl env in))
-                     (else ;; <- actually goes boom. repl-time should run in a thread.
+                     ((fail why) ;; <- actually goes boom. repl-time should run in a thread.
                         (print ";; failed to evaluate expression")
                         (prompt env (repl-message))
                         (repl env in)))))
@@ -676,7 +677,7 @@
                                     (cons ";; Imported " (cdr exp)))))
                            envp))))
                ((definition? exp)
-                  (tuple-case (evaluate (caddr exp) env)
+                  (success (evaluate (caddr exp) env)
                      ((ok value env2)
                         (lets
                            ((env (env-set env (cadr exp) value))
@@ -691,7 +692,7 @@
                         (fail
                            (list "Definition of" (cadr exp) "failed because" reason)))))
                ((macro-definition? exp)
-                  (tuple-case (evaluate (caddr exp) env)
+                  (success (evaluate (caddr exp) env)
                      ((ok value env2)
                         (lets
                            ((env (env-set-macro env (cadr exp) value)))
@@ -703,7 +704,7 @@
                         (fail
                            (list "Definition of macro" (cadr exp) "failed because" reason)))))
                ((multi-definition? exp)
-                  (tuple-case (evaluate (caddr exp) env)
+                  (success (evaluate (caddr exp) env)
                      ((ok value env2)
                         (let ((names (cadr exp)))
                            (if (and (list? value)
@@ -746,7 +747,7 @@
                         (fold
                            (λ (lib-env key) (env-set lib-env key (env-get env key #n)))
                            *owl-kernel* library-exports))
-                      (lib-env 
+                      (lib-env
                          (bind-toplevel
                             (env-set lib-env current-library-key name))))
                      (tuple-case (repl-library exps lib-env repl fail) ;; anything else must be incuded explicitly
@@ -771,7 +772,10 @@
                            (fail
                               (list "Library" name "failed to load because" reason))))))
                (else
-                  (evaluate exp env)))))
+                  ;; convert new success to old
+                  (success (evaluate exp env)
+                     ((ok val env) (ok val env))
+                     ((fail why) (fail why)))))))
 
       ; (repl env in) -> #(ok value env) | #(error reason env remaining-input|#f)
 

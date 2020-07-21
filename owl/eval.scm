@@ -41,8 +41,8 @@ environment.
 
       ;; these are to be deprecated
       (define (ok? x) (eq? (ref x 1) 'ok))
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail why) (tuple 'fail why))
+      ;(define (ok exp env) (tuple 'ok exp env))
+      ;(define (fail why) (tuple 'fail why))
 
       (define (execute exp env)
          (receive (exp)
@@ -85,20 +85,20 @@ environment.
                                     ((ok exp env)
                                        (next exp env))
                                     ((fail why)
-                                       (exit (tuple 'fail why))))))) ; <- convert later
+                                       (exit (fail why))))))) ; <- convert later
                         (ok exp env)
                         compiler-passes))))
             fail-val))
 
       (define (evaluate exp env)
          (try-evaluate exp env
-            (tuple 'fail "an error occurred")))
+            (fail "an error occurred")))
 
       (define (exported-eval exp env)
          (lets/cc fail
             ((abort (λ (why) (fail #f)))
              (env exp (macro-expand exp env abort)))
-            (tuple-case (evaluate exp env)
+            (success (evaluate exp env)
                ((ok value env) value)
                ((fail why) #f))))
 
