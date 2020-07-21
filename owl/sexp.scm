@@ -388,10 +388,6 @@
                   (get-byte-if eof-object?))))
             val))
 
-      (define (ok? x) (eq? (ref x 1) 'ok))
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
-
       (define sexp-parser
          ;; do not read trailing white-space to avoid blocking, when parsing a stream
          (get-parses ((sexp (get-sexp)))

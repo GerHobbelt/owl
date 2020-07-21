@@ -12,13 +12,12 @@
       (owl io)
       (only (owl syscall) error)
       (only (owl eval env) primop? primop-of)
+      (owl eval data)
       (owl primop))
 
    (begin
       ;; fixme: information about cps-special primops could be stored elsewhere
 
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define (cps-literal exp env cont free)
          (values

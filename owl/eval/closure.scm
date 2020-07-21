@@ -17,12 +17,10 @@ Convert lambdas to closures where necessary
       (owl tuple)
       (owl list-extra)
       (owl eval env)
+      (owl eval data)
       (owl eval assemble))
 
    (begin
-
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define (value-primop val)
          (and (tuple? val)

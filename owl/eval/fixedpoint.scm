@@ -26,7 +26,8 @@ This is done by constructing the fixed points manually.
       (owl list-extra)
       (only (owl syscall) error)
       (owl io)
-      (owl eval env))
+      (owl eval env)
+      (owl eval data))
 
    (begin
 
@@ -459,5 +460,5 @@ This is done by constructing the fixed points manually.
          ;(print "fixed point " exp)
          (let ((result (unletrec exp env)))
             ;(print "fixed pooint done " result)
-            (tuple 'ok result env)))
+            (ok result env)))
 ))

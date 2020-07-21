@@ -23,16 +23,14 @@ Compile AST to a code instruction tree suitable for assembly
       (owl io)
       (only (owl eval env) primop-of)
       (owl eval assemble)
+      (owl eval data)
       (owl eval closure))
 
    (begin
 
       (define try-n-perms 1000) ;; how many load permutations to try before evicting more registers
 
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
-
-      ; regs = (node ...), biggest id first
+       ; regs = (node ...), biggest id first
       ; node = #(var <sym> id)
       ;      = #(val <value> id)
       ;      = #(env <regs> id)
