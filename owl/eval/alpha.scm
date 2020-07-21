@@ -21,12 +21,11 @@ avoid having to track variable shadowing.
       (owl list)
       (owl list-extra)
       (owl io)
+      (owl eval data)
       (only (owl syscall) error)
       (owl lcd ff))
 
    (begin
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define (gensyms free n)
          (if (= n 0)

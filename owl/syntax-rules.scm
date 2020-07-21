@@ -85,6 +85,9 @@
                         (put env gensym-key (gensym first))
                         first))))))
 
+      (define (inherit-gensym env envp)
+         (put env gensym-key
+            (get envp gensym-key)))
 
 
       ;;;
@@ -209,6 +212,8 @@
                         (match (cdr exp) (cdr pattern) env depth ok fail))
                      fail)
                   (fail)))
+            ((eq? pattern '_)
+               (ok env fail))
             ((symbol? pattern)
                (let ((val (get env pattern)))
                   (cond
@@ -294,15 +299,14 @@
                         ;; but copy gensym
                         ; (print "Pattern " (car pattern) " + path "  (append path (list nth)) " = " done)
                         (loop (+ nth 1)
-                           ; loop-env
-                           (put env gensym-key (get loop-env gensym-key))
+                           (inherit-gensym env loop-env)
                            (cons done vals))
                      )
                      (lambda ()
                         (rewrite (cddr pattern) env path
                            (lambda (env tail)
                               (ok
-                                 (put env gensym-key (get loop-env gensym-key 'gensym)) ;; inherit only gensym
+                                 (inherit-gensym env loop-env)
                                  (append (reverse vals) tail))
                                  )
                            fail)))))

@@ -2,6 +2,10 @@
 This library implements hygienic macro expansion.
 |#
 
+;; todo: drop the syntax-rules code from here once all code has migrated to syntax-rules-ng.
+;; the intention is to have this module only do top down expansion of macros, whatever they are,
+;; and the macro expander(s) can be implemented as libraries.
+
 (define-library (owl macro)
 
    (export
@@ -45,7 +49,7 @@ This library implements hygienic macro expansion.
 
       ;;;
       ;;; Basic pattern matching for matching the rule pattern against sexp
-
+      ;;;
 
       (define (? x) #true)
 
@@ -337,6 +341,12 @@ This library implements hygienic macro expansion.
       ; expand all macros top to bottom
       ; exp env free -> #(exp' free')
 
+      (define (syntax-error? exp)
+         (and
+            (pair? exp)
+            (eq? (car exp) 'syntax-error)
+            (list? exp)))
+
       ;; note: this will handle all macro expansion in the future
 
       (define (expand exp env free abort)
@@ -415,10 +425,15 @@ This library implements hygienic macro expansion.
                               ;   ())
                               (else (expand-list exp env free))))
                         ((macro transformer)
+                           ;; this is where the actual macro expansion takes place
                            (let ((result (transformer exp free)))
-                              (if result
-                                 (expand (ref result 1) env (ref result 2) abort)
-                                 (abort exp))))
+                              (cond
+                                 ((not result)
+                                    (abort exp))
+                                 ((syntax-error? result)
+                                    (abort (list 'syntax-error exp result)))
+                                 (else
+                                    (expand (ref result 1) env (ref result 2) abort)))))
                         (else is node
                            ; usually bad module exports, since those are not checked atm
                            (abort (list "expand: rator maps to unknown value " (car exp))))))

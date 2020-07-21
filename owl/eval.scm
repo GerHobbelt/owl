@@ -25,20 +25,24 @@ environment.
       (only (owl primop) lets/cc)
       (only (owl primop) call/cc)
       (only (owl syscall) error)
+      (owl eval data)
       (owl eval env)
       (owl eval ast)
       (owl eval fixedpoint)
       (owl eval alpha)
       (owl eval cps)
+      (only (owl tuple) tuple?) ;; temp
       (owl eval closure)
-      (owl eval compile))
+      (owl eval compile)
+      (only (owl io) print)
+      )
 
    (begin
 
       ;; these are to be deprecated
       (define (ok? x) (eq? (ref x 1) 'ok))
       (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
+      (define (fail why) (tuple 'fail why))
 
       (define (execute exp env)
          (receive (exp)
@@ -50,7 +54,7 @@ environment.
                      (else (cons 'values vals)))
                   env))))
 
-      ; (op exp env) -> #(ok exp' env') | #(fail info)
+      ; (op exp env) -> #(ok exp' env') | #(fail info) | success
       (define compiler-passes
          (list
                             ;; macros have already been expanded
@@ -63,16 +67,25 @@ environment.
             compile         ;; translate and flatten to bytecode
             execute))       ;; call the resulting code
 
+      ;; -> old-success, internal ones can return a new one
       (define (try-evaluate exp env fail-val)
-         (try
+         (try ;; return fail-val in case of error
             (λ ()
                (call/cc
                   (λ (exit)
                      (fold
                         (λ (state next)
-                           (if (ok? state)
-                              (next (ref state 2) (ref state 3))
-                              (exit state)))
+                           (cond
+                              ((tuple? state)
+                                 (if (ok? state)
+                                    (next (ref state 2) (ref state 3))
+                                    (exit state)))
+                              (else
+                                 (success state
+                                    ((ok exp env)
+                                       (next exp env))
+                                    ((fail why)
+                                       (exit (tuple 'fail why))))))) ; <- convert later
                         (ok exp env)
                         compiler-passes))))
             fail-val))

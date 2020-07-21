@@ -9,27 +9,33 @@
    (begin
 
       (define-syntax-ng define-sum-type
-         (syntax-rules (__repl_begin __options __walk __names define define-syntax syntax-rules)
+         (syntax-rules (__repl_begin __options __names __expected define define-syntax syntax-rules syntax-error)
             ((define-sum-type name
-               __walk ()
-               __options ((body option . args) ...)
-               __names names)
+               __options ((body option (arg fresh) ...) ...)
+               __names names
+               __expected what)
              (__repl_begin
                 (quote
-                   ((define (option . args)
-                         (lambda names (option . args)))
+                   ((define (option fresh ...)
+                         (lambda names (option fresh ...)))
                     ...
                     (define-syntax name
-                         (syntax-rules names
-                            ((name value ((option . args) . body) ...)
+                         (syntax-rules (arg ... . names) ;; <- not allowed yet, arg ellipsis lifting
+                            ;; valid case
+                            ((name value ((option fresh ...) . body) ...)
                                (value
-                                  (lambda args . body) ...))))))))
+                                  (lambda (fresh ...) . body) ...))
+                            ((name . rest)
+                               (syntax-error name "expects" (option ...)))
+                            ))))))
 
-            ((define-sum-type name __walk ((option . args) . rest) __options (o ...)  __names (n ...))
+            ((define-sum-type name (option arg ...) ...)
                (define-sum-type name
-                  __walk rest
-                  __options (o ... (body option . args))
-                  __names (n ... option)))
+                  __options ((body-var option (arg fresh) ...) ...)
+                  __names (option ...)
+                  __expected ((option arg ...) ...)))
 
-            ((define-sum-type name . options)
-               (define-sum-type name __walk options __options () __names ()))))))
+            ))))
+
+
+

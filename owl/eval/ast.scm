@@ -17,12 +17,10 @@ with checked structure to avoid having to constantly check S-expression structur
       (owl core)
       (owl equal)
       (owl eval env)
+      (owl eval data)
       (scheme cxr))
 
    (begin
-
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define (call? thing) (eq? (ref thing 1) 'call))
       (define (var? thing) (eq? (ref thing 1) 'var))
@@ -188,12 +186,10 @@ with checked structure to avoid having to constantly check S-expression structur
                            (lookup env exp))))))
             (else (mkval exp))))
 
-      ; -> #(ok exp' env) | #(fail reason)
-
       (define (sexp->ast exp env)
          (call/cc
             (λ (drop)
-               (tuple 'ok
+               (ok
                   (translate exp env (B drop fail))
                   env))))
 ))

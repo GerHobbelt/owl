@@ -30,6 +30,7 @@
       (owl math)
       (owl io)
       (owl port)
+      (owl eval data)
       ;(only (owl syntax-rules)
       ;   define-syntax-transformer
       ;   syntax-transformer
@@ -114,9 +115,6 @@
       ; (((lambda (name ..) exp) value)), but the compiler currently
       ; handles values occurring in the sexp itself a bit more efficiently
 
-      (define (ok env exp) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
-
       (define (value-exp val)
          ; represent the literal value val safely as an s-exp
          (if (or (pair? val) (symbol? val))
@@ -194,8 +192,10 @@
       (define (apply-env exp env)
          (call/cc
             (λ (ret)
-               (ok env
-                  ((walker env (B ret fail)) exp)))))
+               (ok 
+                  ((walker env (B ret fail)) exp)
+                  env
+                  ))))
 
       (define (env-fold o s ff)
          (ff-fold o s ff))

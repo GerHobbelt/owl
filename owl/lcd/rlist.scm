@@ -137,10 +137,10 @@ Threfore we have a total complexity of O(log n) for access and update.
          (rl-case as
             ((snd a bs)
                (fst a bs))
-            ((fst a bs)
-               (fst (car a)
-                  (snd (cdr a)
-                     (drop bs))))
+            ((fst ab cs)
+               (fst (car ab)
+                  (snd (cdr ab)
+                     (drop cs))))
             ((nil)
                rnull)))
 
