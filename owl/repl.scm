@@ -45,8 +45,8 @@
 
       (define (ok? x) (eq? (ref x 1) 'ok))
       ;; override the new ones internally
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
+      (define (old-ok exp env) (tuple 'ok exp env))
+      (define (old-fail reason) (tuple 'fail reason))
 
       ;; library (just the value of) containing only special forms, primops and
       (define *owl-kernel*
@@ -200,7 +200,7 @@
                    (outcome (repl load-env exps)))
                   (tuple-case outcome
                      ((ok val env)
-                        (ok val (env-set env '*interactive* current-prompt)))
+                        (old-ok val (env-set env '*interactive* current-prompt)))
                      ((error reason partial-env inputp)
                         ; FIXME: check that the fd is closed!
                         (repl-fail env #f (list "Could not load" path "because" reason)))))
@@ -553,7 +553,7 @@
       ;; temporary toplevel import doing what library-import does within libraries
       (define (toplevel-library-import env exps repl)
          (lets/cc ret
-            ((fail (λ (x) (ret (cons "Import failed because" x)))))
+            ((fail (λ (x) (ret (fail (cons "Import failed because" x))))))
             (library-import env exps fail repl)))
 
       (define (match-feature req feats libs fail)
@@ -586,6 +586,7 @@
                (fail (list "Funny cond-expand node: " bs)))))
 
 
+      ;; -> success, fail is a cont to a regular fail
       (define (repl-library exp env repl fail)
          (cond
             ((null? exp) (fail "no export?"))
@@ -652,10 +653,10 @@
          (fold
             (lambda (env exp)
                (and env
-                  (tuple-case (eval-repl exp env repl)
+                  (success (eval-repl exp env repl)
                      ((ok result env)
                         env)
-                     (else
+                     ((fail why)
                         (print "evaluation of " exp " failed.")
                         #false))))
             env exps))
@@ -750,7 +751,7 @@
                       (lib-env
                          (bind-toplevel
                             (env-set lib-env current-library-key name))))
-                     (tuple-case (repl-library exps lib-env repl fail) ;; anything else must be incuded explicitly
+                     (success (repl-library exps lib-env repl fail) ;; anything else must be incuded explicitly
                         ((ok library lib-env)
                            ;; get new function names and metadata from lib-env (later to be handled differently)
                            (lets
@@ -767,18 +768,17 @@
                                     (cons (cons name library)
                                        (remove ;; drop the loading tag for this library
                                           (B (C equal? name) car)
-                                          (env-get lib-env library-key #n))))))) ; <- lib-env may also have just loaded dependency libs
-                        ((error reason not-env in)
+                                          (env-get lib-env library-key #n))))))) ; <- lib-env may also have just loaded dependency libs                              
+                        ((fail why)
                            (fail
-                              (list "Library" name "failed to load because" reason))))))
+                              (list "Library" name "failed to load because" why))))))
                (else
-                  ;; convert new success to old
                   (success (evaluate exp env)
                      ((ok val env) (ok val env))
-                     ((fail why) (fail why)))))))
+                     ((fail why) 
+                        (fail (list "Failed to evaluate " exp " because " why))))))))
 
       ; (repl env in) -> #(ok value env) | #(error reason env remaining-input|#f)
-
 
       (define (repl env in)
          (let loop ((env env) (in in) (last 'blank))
@@ -795,7 +795,7 @@
                         ((repl-op? this)
                            (repl-op repl (cadr this) in env))
                         (else
-                           (tuple-case (eval-repl this env repl)
+                           (success (eval-repl this env repl)
                               ((ok result env)
                                  (prompt env result)
                                  (loop env in result))
@@ -848,9 +848,14 @@
                (repl-port env fd)
                (tuple 'error "cannot open file" env))))
 
+      ;; -> success
       (define (repl-string env str)
          (lets ((exps (try-parse (get-kleene-plus sexp-parser) (str-iter str) #false syntax-fail #false)))
             (if exps
-               (repl env exps)
-               (tuple 'error "not parseable" env))))
+               (tuple-case (repl env exps)
+                  ((ok exp env)
+                     (ok exp env))
+                  ((error reason env input)
+                     (fail reason)))
+               (fail "not parseable"))))
 ))

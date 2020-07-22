@@ -1,3 +1,5 @@
+;; shared data structures used within the compiler
+
 (define-library (owl eval data)
 
    (import
@@ -11,7 +13,7 @@
       )
    
    (begin
-   
+
       (define-sum-type success
          (ok exp env)
          (fail why))

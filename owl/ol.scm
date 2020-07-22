@@ -52,6 +52,7 @@
    (only (owl dump) make-compiler load-fasl)
    (only (owl primop) bind mkt)
    (owl eval)
+   (owl eval data)
    (owl repl)
    (owl base)
    (owl variable))
@@ -216,27 +217,23 @@ Check out https://haltp.org/posts/owl.html for more information.")
 
 ;; -> vm exit with 0 on success, n>0 on error
 (define (try-repl-string env str)
-   (tuple-case (repl-string env str)
+   (success (repl-string env str)
       ((ok val env)
          (exit-owl
             (if (print val) 0 126)))
-      ((error reason partial-env input)
+      ((fail why)
          (print-repl-error
-            (list "An error occurred while evaluating:" str reason))
-         (exit-owl 1))
-      (else
-         (exit-owl 2))))
+            (list "An error occurred while evaluating:" str ": " why))
+         (exit-owl 1))))
 
 ;; exit with 0 if value is non-false, 1 if it's false, 126 if error
 (define (try-test-string env str)
-   (tuple-case (repl-string env str)
+   (success (repl-string env str)
       ((ok val env)
          (exit-owl (if val 0 1)))
-      ((error reason partial-env input)
+      ((fail why)
          (print-repl-error
-            (list "An error occurred while evaluating:" str reason))
-         (exit-owl 126))
-      (else
+            (list "An error occurred while evaluating:" str ": " why))
          (exit-owl 126))))
 
 (define owl-ohai "You see a prompt.")
