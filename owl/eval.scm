@@ -39,11 +39,6 @@ environment.
 
    (begin
 
-      ;; these are to be deprecated
-      (define (ok? x) (eq? (ref x 1) 'ok))
-      ;(define (ok exp env) (tuple 'ok exp env))
-      ;(define (fail why) (tuple 'fail why))
-
       (define (execute exp env)
          (receive (exp)
             (λ vals
@@ -75,17 +70,11 @@ environment.
                   (λ (exit)
                      (fold
                         (λ (state next)
-                           (cond
-                              ((tuple? state)
-                                 (if (ok? state)
-                                    (next (ref state 2) (ref state 3))
-                                    (exit state)))
-                              (else
-                                 (success state
-                                    ((ok exp env)
-                                       (next exp env))
-                                    ((fail why)
-                                       (exit (fail why))))))) ; <- convert later
+                           (success state
+                              ((ok exp env)
+                                 (next exp env))
+                              ((fail why)
+                                 (exit (fail why)))))
                         (ok exp env)
                         compiler-passes))))
             fail-val))
