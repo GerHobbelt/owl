@@ -20,18 +20,17 @@ Compile AST to a code instruction tree suitable for assembly
       (owl lazy)
       (owl sort)
       (owl primop)
+      (owl io)
       (only (owl eval env) primop-of)
       (owl eval assemble)
+      (owl eval data)
       (owl eval closure))
 
    (begin
 
       (define try-n-perms 1000) ;; how many load permutations to try before evicting more registers
 
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
-
-      ; regs = (node ...), biggest id first
+       ; regs = (node ...), biggest id first
       ; node = #(var <sym> id)
       ;      = #(val <value> id)
       ;      = #(env <regs> id)
@@ -138,14 +137,14 @@ Compile AST to a code instruction tree suitable for assembly
                ((null? lit)
                   ;; the function will be of the form
                   ;; #(closure-header <code> e0 ... en)
-                  (tuple 'clos-code (find-literals regs) lit-offset env this
+                  (tuple 'cons-close #false (find-literals regs) lit-offset env this
                      (cont
                         (cons (tuple 'val (list 'a-closure) this) regs)
                         this)))
                (else
                   ;; the function will be of the form
                   ;; #(clos-header #(proc-header <code> l0 .. ln) e0 .. em)
-                  (tuple 'clos-proc (find-literals regs) lit-offset env this
+                  (tuple 'cons-close #true (find-literals regs) lit-offset env this
                      (cont
                         (cons (tuple 'val (list 'a-closure) this) regs)
                         this))))))
@@ -345,45 +344,63 @@ Compile AST to a code instruction tree suitable for assembly
                   (tuple 'move rator (car free)
                      (rtl-jump (car free) rands (cdr free) inst))))))
 
+      (define (known-arity obj type)
+         (let ((op (ref obj 0)))
+            (if (eq? op 60) ;; fixed arity, new instruction
+               (tuple type (ref obj 1))
+               (begin
+                  ; (print "no " op)
+                  (tuple type #false)))))
+
       ;; value-to-be-called → #(<functype> <arity>) | #false = don't know, just call and see what happens at runtime
       (define (fn-type obj)
          ;; known call check doesn't work as such anymore (arity check can fail in other branches and most common case is not handled) so disabled for now
          ;; resulting in all calls going via a regular call instruction
-         ;(let ((t (type obj)))
-         ;   (cond
-         ;      ((eq? type-bytecode t) ;; raw bytecode
-         ;         (let ((op (ref obj 0)))
-         ;            (if (eq? op 61)
-         ;               (tuple 'code (ref obj 1))
-         ;               #false)))
-         ;      ((eq? t type-proc)
-         ;         (tuple 'proc (ref (ref obj 1) 0)))
-         ;      ((eq? t type-clos)
-         ;         (tuple 'clos (ref (ref (ref obj 1) 1) 0)))
-         ;      (else
-         ;         (tuple 'bad-fn 0))))
-         #false)
+         (let ((t (type obj)))
+            (cond
+               ((eq? type-bytecode t) ;; raw bytecode
+                  (known-arity obj 'code))
+               ((eq? t type-proc)
+                  (known-arity (ref obj 1) 'proc))
+               ((eq? t type-clos)
+                  (known-arity (ref (ref obj 1) 1) 'clos))
+               (else
+                  (tuple 'bad-fn 0))))
+         ; #false
+         )
 
-      (define bad-arity "Bad arity: ")
+      (define (arity-fail op wanted would-get)
+         (error "Would be an error: " (list op 'wants wanted 'but 'would 'get would-get 'arguments)))
 
       ; rator nargs → better call opcode | #false = no better known option, just call | throw error if bad function or arity
+      ;; currently only checks arity, since goto-* are no currently missing from vm
       (define (rtl-pick-call regs rator nargs)
          (tuple-case rator
             ((value rator)
-               (tuple-case (fn-type rator)
-                  ((code n) 'goto-code)
-                  ((proc n) 'goto-proc)
-                  ((clos n) 'goto-clos)
+               (tuple-case (fn-type rator) ;; <- fixme, can be enabled again
+                  ((code n)
+                     (if (or (not n) (eq? n nargs))
+                        ;'goto-code
+                        #false
+                        (arity-fail rator n nargs)))
+                  ((proc n)
+                     (if (or (not n) (eq? n nargs))
+                        ; 'goto-proc
+                        #false
+                        (arity-fail rator n nargs)))
+                  ((clos n)
+                     (if (or (not n) (eq? n nargs))
+                        ; 'goto-clos
+                        #false
+                        (arity-fail rator n nargs)))
                   (else
-                     ;(if (or (not rator) (ff? rator)) ;; finite functions are also applicable
-                     ;   #false
-                     ;   (error "Bad operator: " rator))
-                     #false ;; <- can't remember why we're not failing here. changed while adding variable arity?
-                     )))
+                     ;; operator type not known at compile time
+                     (error "bad operator: " rator)
+                     #false)))
             (else
-               ;(print "XXXXXXXXXXXXXXXXXXXXXXX non value call " rator)
-               ;(print "ENV:")
-               ;(for-each (λ (x) (print " - " x)) regs)
+               ; (print "non value call " rator)
+               ; (print "ENV:")
+               ; (for-each (λ (x) (print " - " x)) regs)
                #false)))
 
       (define (rtl-call regs rator rands)
@@ -410,22 +427,6 @@ Compile AST to a code instruction tree suitable for assembly
             ((value val) val)
             (else #false)))
 
-      ;; fixme: ??? O(n) search for opcode->primop. what the...
-      (define (opcode->primop op)
-         (let
-            ((node
-               (any
-                  (λ (x) (if (eq? (ref x 2) op) x #false))
-                  primops)))
-            (if node node (error "Unknown primop: " op))))
-
-      (define (opcode-arity-ok? op n)
-         (bind (opcode->primop op)
-            (λ (name op in out fn)
-               (cond
-                  ((eq? in n) #true)
-                  ((eq? in 'any) #true)
-                  (else #false)))))
 
       ;; compile any AST node node to RTL
       (define (rtl-any regs exp)
@@ -450,26 +451,6 @@ Compile AST to a code instruction tree suitable for assembly
                                           ((then (rtl-any regs then))
                                            (else (rtl-any regs else)))
                                           (tuple 'jeq ap bp then else))))))))))
-                  ;; NOT IN USE YET -- typed binding
-                  ((eq? kind 4)   ; (branch-4 name type (λ (f0 .. fn) B) Else)
-                     ; FIXME check object size here (via meta)
-                     (let ((b (extract-value b)))
-                        (if (and (fixnum? b) (<= 0 b 255))
-                           (rtl-simple regs a
-                              (λ (regs ap)
-                                 (tuple-case then
-                                    ((lambda formals body)
-                                       (bind (rtl-bind regs formals)
-                                          (λ (selected then-regs)
-                                             (let
-                                                ((then-body (rtl-any then-regs body))
-                                                 (else (rtl-any regs else)))
-                                                (tuple 'jab ap b
-                                                   (tuple 'lambda selected then-body)
-                                                   else)))))
-                                    (else
-                                       (error "rtl-any: bad jab then branch: " then)))))
-                           (error "rtl-any: bad alloc binding branch type: " b))))
                   (else
                      (error "rtl-any: unknown branch type: " kind))))
             ((call rator rands)
@@ -477,8 +458,8 @@ Compile AST to a code instruction tree suitable for assembly
                (let ((op (and (eq? (ref rator 1) 'value) (primop-of (ref rator 2)))))
                   (if op
                      (tuple-case (car rands)
-                        ((lambda formals body)
-                           (if (opcode-arity-ok? op (length (cdr rands)))
+                        ((lambda-var fixed? formals body)
+                           (if (and fixed? (opcode-arity-ok? op (length (cdr rands))))
                               (rtl-primitive regs op formals (cdr rands)
                                  (C rtl-any body))
                               ;; fixme: should be a way to show just parts of AST nodes, which may look odd
@@ -487,14 +468,16 @@ Compile AST to a code instruction tree suitable for assembly
                         (else
                            (error "bad primitive args: " rands)))
                      (tuple-case rator
-                        ((lambda formals body)
+                        ((lambda-var fixed? formals body)
                            ;; ((lambda (args) ...) ...) => add new aliases for values
-                           (rtl-args regs rands
-                              (λ (regs args)
-                                 ;;; note that this is an alias thing...
-                                 (if (= (length formals) (length args))
-                                    (rtl-any (create-aliases regs formals args) body)
-                                    (error "Bad argument count in lambda call: " (list 'args args 'formals formals))))))
+                           (if fixed?
+                              (rtl-args regs rands
+                                 (λ (regs args)
+                                    ;;; note that this is an alias thing...
+                                    (if (= (length formals) (length args))
+                                       (rtl-any (create-aliases regs formals args) body)
+                                       (error "Bad argument count in lambda call: " (list 'args args 'formals formals)))))
+                              (rtl-call regs rator rands)))
                         (else
                            (rtl-call regs rator rands))))))
             (else
@@ -548,10 +531,6 @@ Compile AST to a code instruction tree suitable for assembly
                   (if (null? literals)
                      exec ; #<bytecode>
                      (list->proc (cons exec literals)))))
-            ((lambda formals body) ;; to be deprecated
-               (rtl-plain-lambda rtl
-                  (tuple 'lambda-var #true formals body)
-                  clos literals tail))
             (else
                (error "rtl-plain-lambda: bad node " exp))))
 
@@ -566,47 +545,22 @@ Compile AST to a code instruction tree suitable for assembly
             (else
                (error "bytecode->list: " thing))))
 
-      (define (rtl-case-lambda rtl exp clos literals)
-         (tuple-case exp
-            ((lambda-var fixed? formals body)
-               (rtl-plain-lambda rtl exp clos literals #n))
-            ((lambda formals body) ;; soon to be deprecated
-               (rtl-case-lambda rtl
-                  (tuple 'lambda-var #true formals body)
-                  clos literals))
-            ((case-lambda func else)
-               (rtl-plain-lambda rtl func clos literals
-                  (bytecode->list
-                     (rtl-case-lambda rtl else clos literals))))
-            (else
-               (error "rtl-case-lambda: bad node " exp))))
-
-      ;; todo: separate closure nodes from lambdas now that the arity may vary
       ;; todo: control flow analysis time - if we can see what the arguments are here, the info could be used to make most continuation returns direct via known call opcodes, which could remove an important branch prediction killer
       ;;; proc = #(procedure-header <code-ptr> l0 ... ln)
       ; env node → env' owl-func
       (define (rtl-procedure node)
          (tuple-case node
-            ((closure formals body clos literals)
-               (rtl-plain-lambda rtl-procedure
-                  (tuple 'lambda-var #true formals body)
-                  clos (rtl-literals rtl-procedure literals) #n))
             ((closure-var fixed? formals body clos literals)
                (rtl-plain-lambda rtl-procedure
                   (tuple 'lambda-var fixed? formals body)
                   clos (rtl-literals rtl-procedure literals) #n))
-            ((closure-case body clos literals)
-               (lets
-                  ((lits (rtl-literals rtl-procedure literals))
-                   (body (rtl-case-lambda rtl-procedure body clos lits)))
-                  body))
             (else
                (error "rtl-procedure: bad input: " node))))
 
       ; exp → exp'
       (define (rtl-exp exp)
          (tuple-case exp
-            ((closure formals body clos literals)
+            ((closure-var fixed? formals body clos literals)
                (if (null? clos)
                   (rtl-procedure exp)
                   (error "rtl-exp: free variables in entry closure: " clos)))

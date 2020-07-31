@@ -2,6 +2,10 @@
 This library implements hygienic macro expansion.
 |#
 
+;; todo: drop the syntax-rules code from here once all code has migrated to syntax-rules-ng.
+;; the intention is to have this module only do top down expansion of macros, whatever they are,
+;; and the macro expander(s) can be implemented as libraries.
+
 (define-library (owl macro)
 
    (export
@@ -45,7 +49,7 @@ This library implements hygienic macro expansion.
 
       ;;;
       ;;; Basic pattern matching for matching the rule pattern against sexp
-
+      ;;;
 
       (define (? x) #true)
 
@@ -337,10 +341,15 @@ This library implements hygienic macro expansion.
       ; expand all macros top to bottom
       ; exp env free -> #(exp' free')
 
+      (define (syntax-error? exp)
+         (and
+            (pair? exp)
+            (eq? (car exp) 'syntax-error)
+            (list? exp)))
+
+      ;; note: this will handle all macro expansion in the future
 
       (define (expand exp env free abort)
-
-         ; (print "expand: " exp)
 
          (define (expand-list exps env free)
             (if (null? exps)
@@ -381,13 +390,6 @@ This library implements hygienic macro expansion.
                                         (body free
                                           (expand body (env-bind env formals) free abort)))
                                        (values (list 'lambda formals body) free))))
-                              ((_case-lambda)
-                                 (if (or (null? (cdr exp)) (null? (cddr exp))) ;; (_case-lambda <lambda> <(case-)lambda>)
-                                    (abort (list "Bad _case-lambda: " exp))
-                                    (lets
-                                       ((first free (expand (cadr exp)  env free abort))
-                                        (rest  free (expand (caddr exp) env free abort)))
-                                       (values (list '_case-lambda first rest) free))))
                               ((rlambda)
                                  (lets
                                     ((formals (list-ref exp 1))
@@ -413,13 +415,25 @@ This library implements hygienic macro expansion.
                         ((bound)          (expand-list exp env free))
                         ((defined value)  (expand-list exp env free))
                         ((undefined)
-                           ;; can be a literal
-                           (values exp free))
+                           ;; Library definitions should be handled before macros. Current approach
+                           ;; allows macros to expand to libraries, but this seems in retrospect useless
+                           ;; and requires macro expander to worry about structure of libraries.
+                           (cond
+                              ((memq (car exp) '(import export)) ;; library definitions
+                                 (values exp free))
+                              ;((memq (car exp) '(_define-macro)) ;; definition
+                              ;   ())
+                              (else (expand-list exp env free))))
                         ((macro transformer)
+                           ;; this is where the actual macro expansion takes place
                            (let ((result (transformer exp free)))
-                              (if result
-                                 (expand (ref result 1) env (ref result 2) abort)
-                                 (abort exp))))
+                              (cond
+                                 ((not result)
+                                    (abort exp))
+                                 ((syntax-error? result)
+                                    (abort (list 'syntax-error exp result)))
+                                 (else
+                                    (expand (ref result 1) env (ref result 2) abort)))))
                         (else is node
                            ; usually bad module exports, since those are not checked atm
                            (abort (list "expand: rator maps to unknown value " (car exp))))))
@@ -427,8 +441,8 @@ This library implements hygienic macro expansion.
                      (expand-list exp env free))))
             ((symbol? exp)
                (tuple-case (lookup env exp)
-                  ((macro transformer)
-                     (abort (list "Macro being used as a value: " exp)))
+                  ;((macro transformer)
+                  ;   (abort (list "Macro being used as a value: " exp)))
                   ((undefined)
                      ;; this can still be a literal used by a macro
                      (values exp free))
@@ -441,7 +455,7 @@ This library implements hygienic macro expansion.
 
       (define (post-macro-expand exp env fail)
          (cond
-            ((toplevel-macro-definition? exp)
+            ((toplevel-macro-definition? exp) ;; <- to be removed in favor of simpler and more extensible _define-macro
                (lets
                   ((rules (list-ref exp 4))
                    (keyword (list-ref rules 0))
@@ -453,8 +467,13 @@ This library implements hygienic macro expansion.
                         (λ (sym) (not (env-get-raw env sym #f)))))
                    (transformer
                      (make-transformer literals rules env)))
-                  (let ((env (env-set-macro env keyword transformer)))
-                     (values env (list 'quote keyword)))))
+                  (let
+                     ((env env))
+                     ; ((env (env-set-macro env keyword transformer)))
+                     (values env
+                        ;(list 'quote keyword)
+                        (list '_define-macro keyword transformer)
+                        ))))
             (else
                (values env exp))))
 

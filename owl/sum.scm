@@ -2,38 +2,40 @@
 
    (import
       (owl core)
-      (only (owl math) +)
-      (only (owl io) print))
+      (owl syntax-rules))
 
-   (export
-      eval)
+   (export define-sum-type)
 
    (begin
 
-      (define (val x)
-         (λ (vc sc) (vc x)))
+      (define-syntax-ng define-sum-type
+         (syntax-rules (__repl_begin __options __names __expected define define-syntax syntax-rules syntax-error)
+            ((define-sum-type name
+               __options ((body option (arg fresh) ...) ...)
+               __names names
+               __expected what)
+             (__repl_begin
+                (quote
+                   ((define (option fresh ...)
+                         (lambda names (option fresh ...)))
+                    ...
+                    (define-syntax name
+                         (syntax-rules (arg ... . names) ;; <- not allowed yet, arg ellipsis lifting
+                            ;; valid case
+                            ((name value ((option fresh ...) . body) ...)
+                               (value
+                                  (lambda (fresh ...) . body) ...))
+                            ((name . rest)
+                               (syntax-error name "expects" (option ...)))
+                            ))))))
 
-      (define (sum a b)
-         (λ (vc sc) (sc a b)))
+            ((define-sum-type name (option arg ...) ...)
+               (define-sum-type name
+                  __options ((body-var option (arg fresh) ...) ...)
+                  __names (option ...)
+                  __expected ((option arg ...) ...)))
 
-      (define-syntax sum-case
-         (syntax-rules (val sum)
-            ((sum-case x ((val a) val-exp) ((sum a b) sum-exp))
-               (x (λ (a) val-exp) (λ (a b) sum-exp)))
-            ((sum-case x ((sum a b) sum-exp) ((val a) val-exp))
-               (x (λ (a) val-exp) (λ (a b) sum-exp)))))
+            ))))
 
-      (define (eval exp)
-         (sum-case exp
-            ((val a) a)
-            ((sum a b) (+ (eval a) (eval b)))))
 
-      (print
-         (eval
-            (lets ((a (sum (val 1) (val 1)))
-                   (a (sum a a))
-                   (a (sum a a))
-                   (a (sum a a))
-                   (a (sum a a))
-                   (a (sum a a))) ; 64
-                  a)))))
+

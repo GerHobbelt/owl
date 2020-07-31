@@ -30,6 +30,11 @@
       (owl math)
       (owl io)
       (owl port)
+      (owl eval data)
+      ;(only (owl syntax-rules)
+      ;   define-syntax-transformer
+      ;   syntax-transformer
+      ;   ) ;; <- for define-syntax-ng (transitional)
       (scheme base)
       (scheme cxr)
       (owl primop))
@@ -110,9 +115,6 @@
       ; (((lambda (name ..) exp) value)), but the compiler currently
       ; handles values occurring in the sexp itself a bit more efficiently
 
-      (define (ok env exp) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
-
       (define (value-exp val)
          ; represent the literal value val safely as an s-exp
          (if (or (pair? val) (symbol? val))
@@ -168,8 +170,6 @@
                                  (map walk (caddr exp))
                                  (walk (car (cdddr exp)))))
                            (fail (list "funny rlambda: " (list exp 'len (length exp) 'forms (formals-cool? exp))))))
-                     ((_case-lambda)
-                        (cons (car exp) (map walk (cdr exp))))
                      ((values receive _branch)
                         (cons (car exp)
                            (map walk (cdr exp))))
@@ -192,8 +192,10 @@
       (define (apply-env exp env)
          (call/cc
             (λ (ret)
-               (ok env
-                  ((walker env (B ret fail)) exp)))))
+               (ok 
+                  ((walker env (B ret fail)) exp)
+                  env
+                  ))))
 
       (define (env-fold o s ff)
          (ff-fold o s ff))
@@ -249,31 +251,31 @@
             empty primops))
 
       ;; later check type, get first opcode and compare to primop wrapper
+      ;; move elsewhere
       (define (primop-of val)
          (cond
             ((get prim-opcodes val #false) => self)
-            ;((equal? val mkt) 23)
             ((eq? val '__mkt__) 23) ;; temp hack to work around changing bytecode
-            ;((equal? val bind) 32)
             ((eq? val '__bind__) 32) ;; ditto
-            ;((equal? val ff-bind) 49)
-            ((eq? val '__ff-bind__) 49) ;; ditto
             (else #false)))
 
       ;; only special forms supported by the compiler, no primops etc
-      ;; fixme: should use distinct identifiers like #:foo for these, since these can unintentionally clash with formals
       (define *tabula-rasa*
-         (list->ff
-            (list
-               ;; special forms.
-               (cons 'lambda  (tuple 'special 'lambda)) ;; fixme: should be a macro generating _lambda instead
-               (cons 'quote   (tuple 'special 'quote))
-               (cons 'rlambda (tuple 'special 'rlambda))
-               (cons 'receive (tuple 'special 'receive))
-               (cons '_branch (tuple 'special '_branch))
-               (cons '_define (tuple 'special '_define))
-               (cons '_case-lambda (tuple 'special '_case-lambda))
-               (cons 'values   (tuple 'special 'values)))))
+         (->
+            (list->ff
+               (list
+                  ;; special forms.
+                  (cons 'lambda  (tuple 'special 'lambda))
+                  (cons 'quote   (tuple 'special 'quote))
+                  (cons 'rlambda (tuple 'special 'rlambda)) ;; letrec etc, removed in compilation
+                  (cons 'receive (tuple 'special 'receive)) ;; generate continuation to receive multiple values during compilation
+                  (cons '_branch (tuple 'special '_branch)) ;; if
+                  (cons '_define (tuple 'special '_define)) ;; handled by repl
+                  (cons 'values   (tuple 'special 'values)) ;; ends up as as regular call to continuation during compilation
+                  ))
+            ; (env-set-macro 'define-syntax-ng define-syntax-transformer)
+            ; (env-set 'syntax-transformer syntax-transformer)
+            ))
 
       ;; take a subset of env
       ;; fixme - misleading name

@@ -26,6 +26,7 @@ in the usual way.
       (owl list)
       (owl string)
       (owl equal)
+      (owl regex)
       (owl lcd ff)
       (scheme cxr)
       (scheme write))
@@ -45,9 +46,11 @@ in the usual way.
                   this
                   (select-rule string (cdr rules))))))
 
+      (define explodable? (string->regex "m/^-[^-]{2,}/"))
+
       ;; "-foo" → ("-f" "-o" "-o") | #false
       (define (explode str)
-         (if (m/^-[^-]{2,}/ str)
+         (if (explodable? str)
             (map
                (λ (char) (runes->string (list 45 char)))
                (cdr (string->bytes str)))

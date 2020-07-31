@@ -17,11 +17,10 @@ Convert lambdas to closures where necessary
       (owl tuple)
       (owl list-extra)
       (owl eval env)
+      (owl eval data)
       (owl eval assemble))
 
    (begin
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define (value-primop val)
          (and (tuple? val)
@@ -42,19 +41,21 @@ Convert lambdas to closures where necessary
                (begin
                   ;(print " no clos for " rator)
                   (tuple-case (car rands)
-                     ((lambda formals body)
-                        (lets
-                           ((cont used (closurize (car rands) used #false))
-                            (rands used (closurize-list closurize (cdr rands) used)))
-                           (values (mkcall rator (cons cont rands)) used)))
+                     ((lambda-var fixed? formals body)
+                        (if fixed?
+                           (lets
+                              ((cont used (closurize (car rands) used #false))
+                               (rands used (closurize-list closurize (cdr rands) used)))
+                              (values (mkcall rator (cons cont rands)) used))
+                           (error "variable arity receiver lambda: " (car rands))))
                      ((var name)
                         (let
                            ((dummy-cont
                               ;;; FIXME, should check arity & gensym
                               ;;; used only once and called immediately
-                              (mklambda (list '_foo)
-                                 (mkcall (mkvar name)
-                                    (list (mkvar '_foo))))))
+                              (mklambda
+                                 (list '_foo)
+                                 (mkcall (mkvar name) (list (mkvar '_foo))))))
                            (closurize-call closurize rator
                               (cons dummy-cont (cdr rands))
                               used)))
@@ -65,6 +66,7 @@ Convert lambdas to closures where necessary
                    (rands used (closurize-list closurize rands used)))
                   (values (mkcall rator rands) used)))))
 
+      ;; todo: could close? be removed now?
       (define (closurize exp used close?)
          (tuple-case exp
             ((value val)
@@ -83,15 +85,6 @@ Convert lambdas to closures where necessary
                      used)))
             ((call rator rands)
                (closurize-call closurize rator rands used))
-            ((lambda formals body)
-               (lets
-                  ((body bused (closurize body #n #t))
-                   (clos (diff bused formals)))
-                  (values
-                     (if close?
-                        (tuple 'closure formals body clos)
-                        (tuple 'lambda formals body))
-                     (union used clos))))
             ((lambda-var fixed? formals body)
                (lets
                   ((body bused (closurize body #n #t))
@@ -101,25 +94,6 @@ Convert lambdas to closures where necessary
                         (tuple 'closure-var fixed? formals body clos)
                         (tuple 'lambda-var fixed? formals body))
                      (union used clos))))
-            ((case-lambda func else)
-               ;; fixme: operator position handling of resulting unclosurized case-lambdas is missing
-               (if close?
-                  ;; a normal value requiring a closure, and first node only
-                  (lets
-                     ((func this-used (closurize func #n #f)) ;; no used, don't close
-                      (else this-used (closurize else this-used #false))) ;; same used, dont' close rest
-                     (values
-                        (tuple 'closure-case (tuple 'case-lambda func else) this-used)  ;; used the ones in here
-                        (union used this-used)))                   ;; needed others and the ones in closure
-                  ;; operator position case-lambda, which can (but isn't yet) be dispatche at compile
-                  ;; time, or a subsequent case-lambda node (above case requests no closurization)
-                  ;; which doesn't need to be closurized
-                  (lets
-                     ((func used (closurize func used #false)) ;; don't closurize codes
-                      (else used (closurize else used #false))) ;; ditto for the rest of the tail
-                     (values
-                        (tuple 'case-lambda func else)
-                        used))))
             (else
                (error "closurize: unknown exp type: " exp))))
 
@@ -165,45 +139,20 @@ Convert lambdas to closures where necessary
                      used)))
             ((call rator rands)
                (literalize-call literalize rator rands used))
-            ((lambda formals body)
-               (lets ((body used (literalize body used)))
-                  (values (tuple 'lambda formals body) used)))
             ((lambda-var fixed? formals body)
                (lets ((body used (literalize body used)))
                   (values (tuple 'lambda-var fixed? formals body) used)))
-            ((closure formals body clos)
+            ((closure-var fixed? formals body clos) ;; clone branch, merge later
                ;; note, the same closure exp (as in eq?) is stored to both literals
                ;; and code. the one in code will be used to make instructions
                ;; for closing it and the one in literals will be the executable
                ;; part to close against.
                (lets
                   ((body bused (literalize body #n))
-                   (closure-exp (tuple 'closure formals body clos bused))
-                   (used (append used (list (cons closure-tag closure-exp)))))
-                  (values
-                     ;;; literals will be #(header <code> l0 ... ln)
-                     (tuple 'make-closure (+ 1 (length used)) clos bused)
-                     ;; also literals are passed, since the closure type
-                     ;; and calling protocol are different depending on
-                     ;; whether there are literals
-                     used)))
-            ((closure-var fixed? formals body clos) ;; clone branch, merge later
-               (lets
-                  ((body bused (literalize body #n))
                    (closure-exp (tuple 'closure-var fixed? formals body clos bused))
                    (used (append used (list (cons closure-tag closure-exp)))))
-                  (values (tuple 'make-closure (+ 1 (length used)) clos bused) used)))
-            ((closure-case body clos) ;; clone branch, merge later
-               (lets
-                  ((body bused (literalize body #n))
-                   (closure-exp (tuple 'closure-case body clos bused))
-                   (used (append used (list (cons closure-tag closure-exp)))))
-                  (values (tuple 'make-closure (+ 1 (length used)) clos bused) used)))
-            ((case-lambda func else)
-               (lets
-                  ((func used (literalize func used))
-                   (else used (literalize else used)))
-                  (values (tuple 'case-lambda func else) used)))
+                  (values (tuple 'make-closure (+ 1 (length used)) clos bused) used))
+                  )
             (else
                (error "literalize: unknown exp type: " exp))))
 

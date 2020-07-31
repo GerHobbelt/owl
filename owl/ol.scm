@@ -41,7 +41,7 @@
 (define *interactive* #false)  ;; be silent
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
 ;(define *owl-names* #empty) ;; default is empty, so safe to remove jh
-(define *owl-version* "0.1.22")
+(define *owl-version* "0.1.23")
 
 (import
    (owl intern)
@@ -52,6 +52,7 @@
    (only (owl dump) make-compiler load-fasl)
    (only (owl primop) bind mkt)
    (owl eval)
+   (owl eval data)
    (owl repl)
    (owl base)
    (owl variable))
@@ -113,12 +114,14 @@
 
 (define error-usage-text "ol -h helps.")
 
+(define with-c-suffix
+   (string->regex "s/\\.[a-zA-Z0-0]+$/.c/"))
+
 (define (c-source-name path)
-   (cond
-      ((m/\.[a-z]+$/ path) ;; .scm, .lisp, .owl etc
-         (s/\.[a-z]+$/.c/ path))
-      (else
-         (string-append path ".c"))))
+   (let ((new (with-c-suffix path)))
+      (if (string=? path new)
+         (string-append path ".c")
+         new)))
 
 (define (owl-run outcome args path)
    (if outcome
@@ -136,7 +139,7 @@
 (define about-owl
 "Owl Lisp -- a functional scheme
 Copyright (c) Aki Helin
-Check out https://gitlab.com/owl-lisp/owl for more information.")
+Check out https://haltp.org/posts/owl.html for more information.")
 
 
 
@@ -214,27 +217,23 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
 
 ;; -> vm exit with 0 on success, n>0 on error
 (define (try-repl-string env str)
-   (tuple-case (repl-string env str)
+   (success (repl-string env str)
       ((ok val env)
          (exit-owl
             (if (print val) 0 126)))
-      ((error reason partial-env input)
+      ((fail why)
          (print-repl-error
-            (list "An error occurred while evaluating:" str reason))
-         (exit-owl 1))
-      (else
-         (exit-owl 2))))
+            (list "An error occurred while evaluating:" str ": " why))
+         (exit-owl 1))))
 
 ;; exit with 0 if value is non-false, 1 if it's false, 126 if error
 (define (try-test-string env str)
-   (tuple-case (repl-string env str)
+   (success (repl-string env str)
       ((ok val env)
          (exit-owl (if val 0 1)))
-      ((error reason partial-env input)
+      ((fail why)
          (print-repl-error
-            (list "An error occurred while evaluating:" str reason))
-         (exit-owl 126))
-      (else
+            (list "An error occurred while evaluating:" str ": " why))
          (exit-owl 126))))
 
 (define owl-ohai "You see a prompt.")
@@ -294,7 +293,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                   ((null? others)
                      (greeting env)
                      (repl-trampoline repl
-                        (env-set env '*readline* 
+                        (env-set env '*readline*
                            (if (get dict 'no-readline)
                               #false
                               (sys-isatty stdin)))))

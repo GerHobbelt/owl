@@ -13,6 +13,7 @@ Functions for handling symbols.
 
    (import
       (owl core)
+      (owl list)
       (only (owl list) every)
       (owl string)
       (only (owl syscall) error interact))
@@ -37,6 +38,7 @@ Functions for handling symbols.
          (let ((str (ref sym 1)))
             (cond
                ((string=? str "") (ilist #\| #\| tl))
-               ((m/ / str) (cons #\| (render-string str (cons #\| tl))))
+               ((memq #\space (string->list str)) 
+                  (cons #\| (render-string str (cons #\| tl))))
                (else (render-string str tl)))))
 ))

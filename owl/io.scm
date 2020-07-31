@@ -626,6 +626,7 @@ Simple direct blocking IO (replaces the old thread-based one)
                (port->byte-stream fd)
                #false)))
 
+      ;; resolve dependency otherwise
       (define (fasl-save obj path)
          (vector->file
             (list->vector (fasl-encode obj))

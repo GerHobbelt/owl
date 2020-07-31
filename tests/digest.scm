@@ -1,7 +1,7 @@
 (import (owl digest))
 
-(define (shorten x)
-   (s/(....).....*(....)/\1...\2/ x))
+(define shorten
+   (string->regex "s/(....).....*(....)/\\1...\\2/"))
 
 (define (test name digest input wanted)
    (let ((res (digest input)))

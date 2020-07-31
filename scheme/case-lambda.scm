@@ -7,5 +7,6 @@
       case-lambda)
 
    (begin
-      ;; defined in (owl defmac)
+
+      ;; defined in (owl core)
       42))

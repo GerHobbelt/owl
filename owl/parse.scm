@@ -8,6 +8,7 @@ owl cfg parsing combinators and macros
       parses
       byte
       imm
+      input-ready?              ;; parser, receives fd
       seq
       epsilon ε
       byte-if
@@ -65,6 +66,19 @@ owl cfg parsing combinators and macros
                (if (eq? (type hd) type-fix+)
                   (backtrack (cdr l) (cons hd r) p why)
                   (hd (cdr l) r p why)))))
+
+      (define (input-ready? port)
+         (λ (l r p ok)
+            ;; already read tell what happened
+            ;; uncomputed = unread, check if port is ready for reading (without blocking)
+            ;;   - note: may also be readable but will give eof
+            (ok l r p
+               (cond
+                  ((null? r) #false)
+                  ((pair? r) #true)
+                  ((eq? 'timeout (interact 'iomux (tuple 'read-timeout port 100)))
+                     #false)
+                  (else #true)))))
 
       (define eof-error "end of input")
 
@@ -275,18 +289,21 @@ owl cfg parsing combinators and macros
             (byte-if (C lesser? 128))
             (parses
                ((a (byte-between 127 224))
-                (verify (not (eq? a #b11000000)) "blank leading 2-byte char") ;; would be non-minimal
-                (b extension-byte))
+                (b extension-byte)
+                (verify (not (< (two-byte-point a b) min-2byte)) "invalid 2-byte utf-8"))
                (two-byte-point a b))
             (parses
                ((a (byte-between 223 240))
-                (verify (not (eq? a #b11100000)) "blank leading 3-byte char") ;; would be non-minimal
-                (b extension-byte) (c extension-byte))
+                (b extension-byte) 
+                (c extension-byte)
+                (verify (not (< (three-byte-point a b c) min-3byte)) "invalid 3-byte utf-8"))
                (three-byte-point a b c))
             (parses
                ((a (byte-between 239 280))
-                (verify (not (eq? a #b11110000)) "blank leading 4-byte char") ;; would be non-minimal
-                (b extension-byte) (c extension-byte) (d extension-byte))
+                (b extension-byte) 
+                (c extension-byte) 
+                (d extension-byte)
+                (verify (not (< (four-byte-point a b c d) min-3byte)) "invalid 4-byte utf-8"))
                (four-byte-point a b c d))))
 
       (define (rune-if pred)

@@ -235,12 +235,10 @@ which makes it possible to build balanced trees by comparison.
                      (else (self r key def self)))))
             def))
 
-      (define get
-         (case-lambda
-            ((ff key)
-               (ff-get ff key #f ff-get))
-            ((ff key def)
-               (ff-get ff key def ff-get))))
+      (define (get ff key . def)
+         (if (eq? def #null)
+            (ff-get ff key #f ff-get)
+            (ff-get ff key (car def) ff-get)))
 
       (define (ff-has? ff key)
          (if ff

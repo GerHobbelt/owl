@@ -149,35 +149,18 @@ This library implements bytecode assembly.
                         (fail (list "Bad opcode arity: " (list op (length args) (length to))))))
                   (else
                      (fail (list "bad case of primop in assemble: " op)))))
-            ;; fixme: closures should have just one RTL node instead of separate ones for clos-proc and clos-code
-            ((clos-proc lpos offset env to more)
-               ;; make a 2-level closure
+            ((cons-close closure? lpos offset env to more)
+
+               ;; closure = clos -> proc -> code
                (if (= lpos 1)
-                  (cons (inst->op 'clos1)
+                  (cons (inst->op (if closure? 'clos1 'cloc1))
                      (cons (+ 2 (length env))
                         ;; size of object (hdr code e0 ... en)
                         (cons offset
                            (append env
                               (cons to
                                  (assemble more fail))))))
-                  (cons (inst->op 'clos)
-                     (cons (+ 2 (length env))
-                        ;; size of object (hdr code e0 ... en)
-                        (cons lpos
-                           (cons offset
-                              (append env
-                                 (cons to
-                                    (assemble more fail)))))))))
-            ((clos-code lpos offset env to more)      ;; make a 1-level closure
-               (if (= lpos 1)
-                  (cons (inst->op 'cloc1)
-                     (cons (+ 2 (length env))
-                        ;; size of object (hdr code e0 ... en)
-                        (cons offset
-                           (append env
-                              (cons to
-                                 (assemble more fail))))))
-                  (cons (inst->op 'cloc)
+                  (cons (inst->op (if closure? 'clos 'cloc))
                      (cons (+ 2 (length env))
                         ;; size of object (hdr code e0 ... en)
                         (cons lpos
@@ -229,8 +212,6 @@ This library implements bytecode assembly.
          (interact 'intern (raw bytes type-bytecode)))
 
       ; code rtl object -> executable code
-      ;; todo: exit via fail cont
-      ;; todo: pass tail here or have case-lambda nodes be handled internally with a foldr
       (define (assemble-code obj tail)
          (tuple-case obj
             ((code arity insts)
@@ -245,16 +226,12 @@ This library implements bytecode assembly.
                          (len (length bytes)))
                         (if (> len #xffff)
                            (error "too much bytecode: " len))
+                        ;; drop instructions 2 and 25 after conversion
                         (bytes->bytecode
-                           (ilist
-                              (if fixed? 2 25)
-                              (if fixed? arity (- arity 1)) ;; last is the optional one
-                              (>> len 8)       ;; jump hi
-                              (fxand len #xff) ;; jump lo
-                              (append bytes
-                                 (if (null? tail)
-                                    (list 61) ;; force error
-                                    tail))))))))
+                           (if fixed?
+                              (ilist 60 arity (append bytes tail))
+                              (ilist 57 (- arity 1) ;; last is the optinal one
+                                 (append bytes tail))))))))
             (else
                (error "assemble-code: unknown AST node " obj))))
 ))

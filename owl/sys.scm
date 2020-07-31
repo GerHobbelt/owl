@@ -112,16 +112,18 @@ This library defines various system calls and wrappers for calling them.
             (else x)))
 
       ;; call fixed arity prim-sys instruction with converted arguments
-      (define sys
-         (case-lambda
-            ((op)
-               (sys-prim op #f #f #f))
-            ((op a)
-               (sys-prim op (sys-arg a) #f #f))
-            ((op a b)
-               (sys-prim op (sys-arg a) (sys-arg b) #f))
-            ((op a b c)
-               (sys-prim op (sys-arg a) (sys-arg b) (sys-arg c)))))
+      (define (sys op . args)
+         (if (null? args)
+            (sys-prim op #f #f #f)
+            (let ((a (sys-arg (car args)))
+                  (args (cdr args)))
+               (if (null? args)
+                  (sys-prim op a #f #f)
+                  (let ((b (sys-arg (car args)))
+                        (args (cdr args)))
+                     (if (null? args)
+                        (sys-prim op a b #f)
+                        (sys-prim op a b (sys-arg (car args)))))))))
 
       (define (n-byte-machine)
          (sys 8 1))
@@ -601,8 +603,17 @@ This library defines various system calls and wrappers for calling them.
                full
                #false)))
 
+      (define (leading-dash? s)
+         (eq? #\/ (car* (string->list s))))
+
+      (define (colon-cut s)
+         (map list->string
+            (split
+               (lambda (x) (eq? x #\:))
+               (string->list s))))
+
       (define (resolve-program p)
-         (if (m/^\// p)
+         (if (leading-dash? p)
             p ;; absolute path
             (fold
                (λ (res option)
@@ -610,7 +621,7 @@ This library defines various system calls and wrappers for calling them.
                      (check-file option p)))
                #false
                (cons (getcwd)
-                  (c/:/ (or (getenv "PATH") ""))))))
+                  (colon-cut (or (getenv "PATH") ""))))))
 
       (define (execvp args)
          (let ((cmd (resolve-program (car args))))

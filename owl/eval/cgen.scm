@@ -8,7 +8,6 @@ to special instructions in a custom VM when compiling them. This
 makes programs run much faster at the expense of making the resulting
 executables larger.
 
-todo: support variable arity functions
 todo: keep all fixnum variables in registers unboxed with a special type, and add guards to saves and calls to tag them lazily. this would remove a lot of payload shifting from math code.
 |#
 
@@ -49,6 +48,9 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
       (define (unknown bs regs fail)
          ;(print " - cgen does not grok opcode " (car bs) " " (if (> (car bs) 63) (list 'low (band (car bs) 63)) ""))
          (fail))
+
+      (define (get1 l) ; (a . tl)
+         (values (car l) (cdr l)))
 
       (define (get2 l) ; (a b . tl)
          (let ((tl (cdr l)))
@@ -370,6 +372,19 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                         (values
                            (list "R["to"]=cons(R["a"],R["b"]);\n")
                            bs (put regs to 'pair)))))
+               (cons 57 ;; variable arity
+                  (lambda (bs regs fail)
+                     (lets ((arity bs (get1 (cdr bs))))
+                        (values
+                           (list "if(acc==" arity "){R[acc+3]=INULL;}else if(acc>" arity "){word t;for(t=INULL;acc>" arity ";--acc)t=cons(R[acc+2],t);R[acc+3]=t;}else{error(57,ob,INULL);}\n")
+                           bs (put regs 'to 'list)))))
+               (cons 60 ;; arity n
+                  (λ (bs regs fail)
+                     (lets
+                        ((arity bs (get1 (cdr bs))))
+                        (values
+                           (list "if(acc!=" arity "){error(60,ob,INULL);}\n")
+                           bs regs))))
                (cons 105 ;; car ob to <- use this to test whether the compiler type handling
                   (λ (bs regs fail)
                      (lets

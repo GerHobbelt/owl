@@ -11,6 +11,9 @@ UTF-8 encoding and decoding.
       ;utf8-normalize         ;; ll -> list
       utf8-decoder            ;; byte-ll fail → cp-ll | (cp ... . (fail self line data))
       encode-point
+      min-2byte
+      min-3byte
+      min-4byte
       two-byte-point
       three-byte-point
       four-byte-point
