@@ -79,7 +79,7 @@ manual.man: manual.md
 	pandoc $? -s -t man >$@
 
 manual.pdf: manual.md
-	pandoc --latex-engine xelatex -o $@ $?
+	pandoc --pdf-engine xelatex -o $@ $?
 
 
 ### Tests
