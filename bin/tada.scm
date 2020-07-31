@@ -121,9 +121,13 @@ output: pdf_document
 
 ;;; Embedded documentation in comments
 
+(define initial-doc? (string->regex "m/^#\\| doc\\n/"))
+
+(define initial-doc (string->regex "s/^#\\| doc\\n(.*?)\\|#.*/\\1/"))
+
 (define (find-initial-documentation bs)
-   (if (m/^#\| doc\n/ bs)
-      (s/^#\| doc\n(.*?)\|#.*/\1/ bs)
+   (if (initial-doc? bs)
+      (initial-doc bs)
       #false))
 
 
@@ -168,22 +172,22 @@ output: pdf_document
    (str " - `" (car example) "` → `" (caddr example) "`\n"))
 
 (define (render-documentation doc)
-   (print "Documentation examples are " (doc 'examples #f))
+   (print "Documentation examples are " (get doc 'examples #f))
    (str
-      "\n## " (doc 'name (doc 'path)) "\n"
-      (doc 'initial-doc "\n")
+      "\n## " (get doc 'name (get doc 'path)) "\n"
+      (get doc 'initial-doc "\n")
       "\n"
       "Exported values:\n\n"
       (foldr
          (λ (x tl) (str "- `" x "`\n" tl))
-         "" (doc 'exports #null))
+         "" (get doc 'exports #null))
       "\n"
-      (if (doc 'examples #f)
+      (if (get doc 'examples #f)
          (str
             "### Examples\n\n"
             (foldr str ""
                (map render-example
-                  (doc 'examples))))
+                  (get doc 'examples))))
          "")
    ))
 
