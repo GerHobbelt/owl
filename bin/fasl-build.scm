@@ -1,3 +1,4 @@
+
 (import (owl sys))
 
 (define (build-stat args)
@@ -11,15 +12,17 @@
 
 (define (fixed-point args)
    (and
-      ; check that the compiling image passes tests
-      (system '("sh" "tests/run" "all" "bin/vm" "fasl/boot.fasl"))
-      ; compile fasl
+      ; compile bootp.fasl
       (build-stat args)
       (if (system '("cmp" "-s" "fasl/boot.fasl" "fasl/bootp.fasl"))
-         ; move the new image to ol.fasl, if it is a fixed point
-         (rename "fasl/bootp.fasl" "fasl/ol.fasl")
-         ; otherwise recompile
-         (and (rename "fasl/bootp.fasl" "fasl/boot.fasl") (fixed-point args)))))
+         (begin
+            (print "fasl fixed point reached")
+            (rename "fasl/bootp.fasl" "fasl/ol.fasl"))
+         (and
+            ; check that the compiling image passes tests
+            (system '("sh" "tests/run" "all" "bin/vm" "fasl/bootp.fasl"))
+            (rename "fasl/bootp.fasl" "fasl/boot.fasl")
+            (fixed-point args)))))
 
 (λ (args)
    (let ((args (cdr args)))
