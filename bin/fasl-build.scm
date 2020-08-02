@@ -1,4 +1,8 @@
 
+;; remove these after next fasl update
+   ,load "owl/io.scm" ;; temporarily for copy-file
+   (import (owl io))
+
 (import (owl sys))
 
 (define (build-stat args)
@@ -11,6 +15,15 @@
       ret))
 
 (define (fixed-point args)
+   (if (not (file? "fasl/boot.fasl"))
+      ;; use supplied init.fasl from repository as starting point
+      (if (copy-file "fasl/init.fasl" "fasl/boot.fasl")
+         (begin
+            (print "Using init.fasl as the initial step")
+            (fixed-point args))
+         (begin
+            (print "Failed to copy fasl/init.fasl -> fasl/boot.fasl")
+            #false)))
    (and
       ; compile bootp.fasl
       (build-stat args)

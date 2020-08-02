@@ -33,12 +33,7 @@ c/vm.c: c/_vm.c
 
 ## bytecode image (fixedpoint)
 
-fasl/boot.fasl: fasl/init.fasl
-	# start bootstrapping with the bundled init.fasl image
-	make bin/vm
-	bin/vm fasl/init.fasl -r bin/fasl-build.scm bin/vm fasl/init.fasl -r owl/ol.scm -o $@
-
-fasl/ol.fasl: fasl/boot.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
+fasl/ol.fasl: fasl/init.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
 	# selfcompile boot.fasl until a fixed point is reached
 	make bin/vm
 	bin/vm fasl/init.fasl -r bin/fasl-build.scm -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
