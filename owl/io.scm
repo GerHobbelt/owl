@@ -47,7 +47,8 @@ Simple direct blocking IO (replaces the old thread-based one)
       byte-stream->port       ;; bs fd → bool
       port->block-stream      ;; fd → (bvec ...)
       block-stream->port      ;; (bvec ...) fd → bool
-
+      copy-port               ;; from-fd to-fd
+      copy-file               ;; from-path to-path
       display-to        ;; port val → bool
       print-to          ;; port val → bool
       print
@@ -265,6 +266,29 @@ Simple direct blocking IO (replaces the old thread-based one)
          (sys-prim 29 #f #f socket-type-udp))
 
       (define close-port sys-close)
+
+      (define (copy-port in out)
+         (let ((data (try-get-block in #x8000 #t)))
+            (cond
+               ((not data) ;; read error
+                  #false)
+               ((eof-object? data)
+                  #true)
+               ((write-really data out)
+                  (copy-port in out))
+               (else
+                  #false))))
+
+      (define (copy-file from to)
+         (lets
+            ((in (open-input-file from))
+             (out (open-output-file to)))
+            (if (and in out)
+               (let ((result (copy-port in out)))
+                  (close-port in)
+                  (close-port out)
+                  result)
+               #false)))
 
 
       ;;;
