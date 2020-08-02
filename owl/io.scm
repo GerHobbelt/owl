@@ -1,5 +1,25 @@
 #| doc
-Simple direct blocking IO (replaces the old thread-based one)
+
+Input and Output
+
+Owl is is by default a multitasking system. Multiple threads can be working on
+tasks and waiting for input or output at the same time, so we cannot simply
+define input and output (I/O) as lisp functions calling the corresponding
+operating system code via the VM.
+
+There are a few ways how I/O could work in a multithreaded setting. Having a
+lot of I/O code in the thread scheduler is convenient to use, but results in an
+ugly thread scheduler. Having separate threads for each file descriptor and
+using only message passing for I/O is elegant, but turned out to be somewhat
+cumbersome to use. The current version is something in between. One thread,
+called iomux, handles port blocking and timers. Threads attempt to do I/O
+directly when calling e.g. print or read, but if the operation would require
+waiting for input or output, then the thread sends a synchronous message to
+iomux and gets a response when the task can be completed without blocking.
+
+Notice that the I/O defined in this library cannot in general be used unless
+iomux is running. This may happen when working with code that has not called
+(start-muxer), and when trying to debug the thread scheduler.
 |#
 
 (define-library (owl io)

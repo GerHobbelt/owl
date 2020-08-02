@@ -506,19 +506,21 @@ which makes it possible to build balanced trees by comparison.
                (color-black ff)
                ff)))
 
-      (let ((ff (list->ff '((a . 1) (b . 2) (c . 3)))))
-         (example
-            (ff->list empty) = ()
-            (ff->list (put empty 'a 42)) = '((a . 42))
-            (ff->list (put ff 'a 42)) = '((a . 42) (b . 2) (c . 3))
-            (ff->list (put ff 'd 42)) = '((a . 1) (b . 2) (c . 3) (d . 42))
-            (ff->list (del ff 'a)) = '((b . 2) (c . 3))
-            (ff->list (del ff 'x)) = '((a . 1) (b . 2) (c . 3))
-            (ff-fold (λ (out k v) (cons v out)) #n ff) = '(3 2 1)
-            (ff-foldr (λ (out k v) (cons v out)) #n ff) = '(1 2 3)
-            (keys ff) = '(a b c)
-            (get ff 'a 0) = 1
-            (get ff 'x 0) = 0))
+      (example
+
+         let ff = (list->ff '((a . 1) (b . 2) (c . 3)))
+
+         (ff->list empty) = ()
+         (ff->list (put empty 'a 42)) = '((a . 42))
+         (ff->list (put ff 'a 42)) = '((a . 42) (b . 2) (c . 3))
+         (ff->list (put ff 'd 42)) = '((a . 1) (b . 2) (c . 3) (d . 42))
+         (ff->list (del ff 'a)) = '((b . 2) (c . 3))
+         (ff->list (del ff 'x)) = '((a . 1) (b . 2) (c . 3))
+         (ff-fold (λ (out k v) (cons v out)) #n ff) = '(3 2 1)
+         (ff-foldr (λ (out k v) (cons v out)) #n ff) = '(1 2 3)
+         (keys ff) = '(a b c)
+         (get ff 'a 0) = 1
+         (get ff 'x 0) = 0)
 
 ))
 

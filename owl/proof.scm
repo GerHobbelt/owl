@@ -76,7 +76,10 @@
 
       ;; equal has to be defined in the context where example is used
       (define-syntax example
-         (syntax-rules (theorem-equal? = receive)
+         (syntax-rules (theorem-equal? = receive let)
+            ((example let a = b . rest)
+               (let ((a b))
+                  (example . rest)))
             ((example term-a = term-b . rest)
                (let ((eva (λ () term-a))
                      (evb (λ () term-b)))
