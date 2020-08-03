@@ -36,6 +36,7 @@
       (scheme base)
       (owl lazy)
       (owl macro)
+      (only (owl metric) format-time format-number)
       (only (owl thread) try-thunk)
       (only (owl regex) string->regex)
       (scheme cxr)
@@ -209,23 +210,6 @@
                   (list "Could not find any of"
                      (list path (string-append (env-get env '*owl* "") path))
                      "for loading.")))))
-
-      (define (decimal-pad n)
-         (cond
-            ((< n 10) (str "00" n))
-            ((< n 100) (str "0" n))
-            (else (str n))))
-
-      (define (metric-format n sub units)
-         (if (or (null? (cdr units)) (< n 1000))
-            (str n "." (decimal-pad sub) (car units))
-            (metric-format (quotient n 1000) (remainder n 1000) (cdr units))))
-
-      (define (format-time ns)
-         (metric-format ns 0 '("ns" "µs" "ms" "s")))
-
-      (define (format-number ns)
-         (metric-format ns 0 '("" "k" "M" "G" "T" "P")))
 
       (define (repl-time thunk)
          (try-thunk
