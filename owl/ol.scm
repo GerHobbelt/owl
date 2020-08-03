@@ -391,8 +391,8 @@ Check out https://haltp.org/posts/owl.html for more information.")
       ((equal? str "all") all)
       (else (print "Bad native selection: " str))))
 
-(print-to stderr "writes: " (>> (sys-get-heap-bytes-written) 20) "MWords")
-(print-to stderr "max live: " (>> (sys-get-heap-max-live) 10) "KB")
+; (print-to stderr "writes: " (>> (sys-get-heap-bytes-written) 20) "MWords")
+; (print-to stderr "max live: " (>> (sys-get-heap-max-live) 10) "KB")
 
 (λ (args)
    (process-arguments (cdr args) command-line-rules "you lose"
