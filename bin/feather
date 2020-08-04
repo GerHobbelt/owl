@@ -10,7 +10,7 @@
 
 (define (make-markdown-prelude title)
    (lets ((d m y H M S (date (time))))
-(str
+'(str
 "---
 title: \"" title "\"
 date: " y "-" m "-" d "
@@ -18,46 +18,9 @@ geometry: \"left=3cm,right=3cm,top=2cm,bottom=2cm\"
 output: pdf_document
 ---
 
-")))
-;;; File system
-
-(define (dir->list-recursive path)
-   (define (walk path out)
-      (if (directory? path)
-         (fold
-            (λ (out sub)
-               (walk (str path "/" sub) out))
-            out (dir->list path))
-         (cons path out)))
-   (walk path #null))
-
-(define (dirs->list-recursive paths)
-   (fold
-      (λ (out thing)
-         (append (dir->list-recursive thing) out))
-      #null paths))
-
-
-;;; HTML
-
-(define safe-chars
-   (fold
-      (lambda (ff x) (put ff x x))
-      empty
-      (list #\space #\- #\_ #\: #\( #\) #\?)))
-
-(define (html-safe s)
-   (list->string
-      (foldr
-         (lambda (char tl)
-            (cond
-               ((<= #\a char #\z) (cons char tl))
-               ((<= #\0 char #\9) (cons char tl))
-               ((<= #\A char #\Z) (cons char tl))
-               ((get safe-chars char) (cons char tl))
-               (else (render (str "&#" char ";") tl))))
-         #n
-         (string->list s))))
+")
+      (str "# " title "\n\n")   
+   ))
 
 ;;; sexp query
 
@@ -167,11 +130,10 @@ output: pdf_document
                       
                 (doc-title doc-content 
                    (process-initial-doc initial-doc)) 
+                (doc-title (or doc-title path))
                 (examples
                    (map cdr
                      (sselect-all sexps '(define-library begin example)))))
-            (if examples
-               (print path " has examples " examples))
             (if (or initial-doc lib-name)
                (cons
                   (-> empty
@@ -198,7 +160,7 @@ output: pdf_document
 
 ;;; Rendering
 
-(define* (render-example example)
+(define (render-example example)
    (cond
       ((null? example)
          "")
@@ -217,7 +179,7 @@ output: pdf_document
    (if (get doc 'markdown)
       (bytes->string (get doc 'markdown))
       (str
-         "\n## " (get doc 'title) " " (get doc 'name (get doc 'path)) "\n"
+         "\n## " (get doc 'name (get doc 'path)) ": " (get doc 'title) "\n"
          (get doc 'initial-doc "\n")
          "\n"
          "Exported values:\n\n"

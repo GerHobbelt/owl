@@ -67,8 +67,8 @@ doc/ovm.1.gz: doc/ovm.1
 
 ## other documentation
 
-manual.md: doc/manual.md owl/*.scm owl/*/*.scm scheme/*.scm
-	bin/ol -r bin/tada.scm -d owl -d scheme -o manual.md
+manual.md: bin/ol bin/feather doc/* owl/*.scm owl/*/*.scm scheme/*.scm
+	bin/ol -r bin/feather -o manual.md doc/intro.md doc/libraries.md owl/base.scm doc/faq.md 
 
 manual.man: manual.md
 	pandoc $? -s -t man >$@
