@@ -67,8 +67,8 @@ doc/ovm.1.gz: doc/ovm.1
 
 ## other documentation
 
-manual.md: bin/ol bin/feather doc/* owl/*.scm owl/*/*.scm scheme/*.scm
-	bin/ol -r bin/feather -o manual.md doc/intro.md doc/libraries.md owl/base.scm doc/faq.md 
+manual.md: Makefile bin/ol bin/feather doc/* owl/*.scm owl/*/*.scm scheme/*.scm
+	bin/ol -r bin/feather -o manual.md doc/intro.md doc/libraries.md owl/args.scm owl/bytevector.scm owl/codec.scm owl/date.scm owl/digest.scm owl/dump.scm owl/eval.scm owl/fasl.scm owl/gensym.scm owl/lcd/ff.scm owl/io.scm owl/lazy.scm owl/rlist.scm owl/list.scm owl/list-extra.scm owl/math.scm owl/math/extra.scm owl/metric.scm owl/parse.scm owl/proof.scm owl/queue.scm owl/random.scm owl/readline.scm owl/regex.scm owl/render.scm owl/sort.scm owl/string.scm owl/sum.scm owl/syscall.scm owl/sys.scm owl/terminal.scm owl/thread.scm owl/time.scm owl/unicode.scm owl/variable.scm owl/vector.scm doc/faq.md 
 
 manual.man: manual.md
 	pandoc $? -s -t man >$@
