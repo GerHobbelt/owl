@@ -1,4 +1,6 @@
 #| doc
+Rationals Numbers
+
 This library defines arbitrary precision rational arithmetic operations.
 A rational number p/q is a typed pair of arbitrary precision integers. A
 valid rational number has q != 0, q != 1, and gcd(p, q) = 1.

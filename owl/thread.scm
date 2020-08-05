@@ -1,7 +1,23 @@
 #| doc
+Thread Scheduler
+
 This library defines the thread controller. It handles activation, suspension
-and requested external actions of continuation-based threads.  It is much like
-a very small kernel.
+and requested external actions of continuation-based threads. It is much like a
+very small kernel.
+
+A thread is simply a function. Owl programs have two continuations, one for the
+regular one and one for the thread scheduler under which the function is
+running. Every function eventually calls its own final continuation, which
+results in the thread being removed from the thread scheduler. It can also call
+the second continuation and request operations from this thread scheduler.
+
+The task of the thread scheduler is to run each running thread for a while,
+suspend and activate them, and handle message passing.
+
+Threads have a primitive only for asynchronous message passing, but they can
+voluntarily wait for a specific kind of response, resulting in synchronous
+operation where desired.
+
 |#
 
 (define-library (owl thread)

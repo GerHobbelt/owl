@@ -1,13 +1,11 @@
 #| doc
+Evaluation
+
 This library exports some read-eval-print-loop functions, such as evaluate.
 It is typically called through eval. The `*toplevel*` variable is updated
 after each definition, so it can be used to evaluate a term in the corresponding
 environment.
 
-```
-  (eval (list '+ 1 2) *toplevel*) → 3
-  (eval '(/ 1 0) *toplevel*) → #false
-```
 |#
 
 
@@ -35,6 +33,7 @@ environment.
       (owl eval closure)
       (owl eval compile)
       (only (owl io) print)
+      (owl proof)
       )
 
    (begin
@@ -89,6 +88,12 @@ environment.
              (env exp (macro-expand exp env abort)))
             (success (evaluate exp env)
                ((ok value env) value)
-               ((fail why) #f))))
+               ((fail why) 
+                  (print why)
+                  #f))))
+
+      (example
+         (exported-eval '(car '(11 . 22)) *toplevel*) = 11
+      )   
 
 ))

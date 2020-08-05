@@ -1,4 +1,6 @@
 #| doc
+Default Math
+
 This library exports the usual arbitrary precision bignum arithmetic functions.
 You can also use specific (owl math X) libraries if necessary.
 |#

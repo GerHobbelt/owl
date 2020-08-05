@@ -1,5 +1,7 @@
 #| doc
-Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting to become more like a compiler entry point
+Program Serialization
+
+This library is used to serialize programs to FASL format.
 |#
 
 (define-library (owl dump)

@@ -1,4 +1,6 @@
 #| doc
+Complex Numbers
+
 This library defines complex arbitrary precision math functions.
 |#
 

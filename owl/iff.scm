@@ -1,4 +1,6 @@
 #| doc
+Number Indexed Stores
+
 Number stores (radix trees with a ff at each node)
 |#
 

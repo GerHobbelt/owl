@@ -1,4 +1,6 @@
 #| doc
+Fresh Symbols
+
 It is sometimes useful to get symbols, which do not occur elsewhere.
 This is typically needed in the compiler, but it may also be needed
 elsewhere. Gensyms in Owl are just regular symbols, which do not
@@ -8,11 +10,6 @@ cases when gensyms are needed, they work in a way that ensures that
 the gensym of the gensym of an expression also does not occur in the
 original expression.
 
-```
-  (gensym '(lambda (x) x)) → g1
-  (gensym 'g1) → g2
-  (gensym 'g100000) → 'g100001
-```
 |#
 
 (define-library (owl gensym)
@@ -29,6 +26,7 @@ original expression.
       (owl list)
       (owl tuple)
       (owl render)
+      (owl proof)
       (owl math))
 
    (begin
@@ -101,7 +99,10 @@ original expression.
       (define (fresh free)
          (values free (gensym free)))
 
-      ;(gensym 1)
-      ;(gensym '(1 2 3))
-      ;(gensym '(g1 (g2 g9999) . g10000000000000))
-))
+      (example
+         (gensym 'x) = 'g1
+         (gensym 'g1) = 'g2
+         (gensym '(lambda (x) x)) = 'g1
+         (gensym '(lambda (g10) g11)) = 'g12))
+
+)

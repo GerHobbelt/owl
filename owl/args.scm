@@ -1,4 +1,6 @@
 #| doc
+Command Line Arguments
+
 This library makes it easy to write tools which use command line arguments
 in the usual way.
 |#

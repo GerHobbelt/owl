@@ -1,3 +1,8 @@
+#| doc
+Functional Data Types
+
+This library allows defining algebraic data types as functions.
+|#
 (define-library (owl sum)
 
    (import

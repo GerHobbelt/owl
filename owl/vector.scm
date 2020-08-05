@@ -1,4 +1,7 @@
 #| doc
+
+Vectors
+
 Vectors are one-dimensional data structures indexable by natural numbers,
 having O(n log_256 n) access and memory use (effectively O(1)). They are
 mainly intended to be used for static data requiring efficient (modulo
@@ -23,24 +26,22 @@ have the size as part of the normal owl object header.
 
 Order example using binary trees:
 
-```
-           (0 1)                 bits 0 and 1, only 1 can have children
-              |                  dispatch the top bit
-            (2 3)                bits from top, 10 11, numbers ending here 2 and 3
-            /   \                dispatch top and second bit
-           /     \
-       (4 5)     (6 7)           bits from top, (100 101) (110 111)
-       /  |       |  \
-      /   |       |   \
- (9 8) (10 11) (12 13) (14 15)   etc
-```
+             (0 1)                 bits 0 and 1, only 1 can have children
+                |                  dispatch the top bit
+              (2 3)                bits from top, 10 11, numbers ending here 2 and 3
+              /   \                dispatch top and second bit
+             /     \
+         (4 5)     (6 7)           bits from top, (100 101) (110 111)
+         /  |       |  \
+        /   |       |   \
+   (9 8) (10 11) (12 13) (14 15)   etc
 
 Vectors use the same order, but with 256-ary trees.
 |#
 
 (define-library (owl vector)
 
-   (export
+  (export
       vector              ; v0, .., vn → vector
       vector?             ; x → bool
       vector-length       ; v → n

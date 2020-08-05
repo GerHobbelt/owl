@@ -1,4 +1,5 @@
 #| doc
+Finite Functions
 
 This library defines finite functions. They are commonly used in Owl to
 construct efficient key-value mappings. A finite function is much like
@@ -12,7 +13,6 @@ finite function, a key to be fetched and optionally a default value to
 return if the key is not mapped. `put` can be used to extend a ff and
 `del` removes a mapping.
 
-```
   > (define f (put (put empty 'foo 100) 'bar 42))
   > f
   #<function>
@@ -22,7 +22,6 @@ return if the key is not mapped. `put` can be used to extend a ff and
   #f
   > (get (del f 'foo) 'foo #f)
   #f
-```
 This data structure is made possible by the fact, that Owl has an 
 order-preserving garbage collector. Therefore we have a total order on objects,
 which makes it possible to build balanced trees by comparison.

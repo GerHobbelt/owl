@@ -1,3 +1,9 @@
+#| doc
+Interactive Input
+
+This library is used by by the REPL to read input similarly to what the 
+traditional readline library does.
+|#
 (define-library (owl readline)
 
    (export

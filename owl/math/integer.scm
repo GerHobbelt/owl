@@ -1,4 +1,6 @@
 #| doc
+Bignums
+
 This library defines arbitrary precision integer arithmetic. Some of the
 functions are only defined for integers, whereas others are typically
 extended to handle also more complex kinds of numbers.

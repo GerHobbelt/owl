@@ -3,7 +3,6 @@ Tuples are an early simple data structure for holding multiple values.
 Values are indexed from 1 and there is little error detection
    apart from range checks.
 
-```
   > (define x (list->tuple '(a b c)))
   > (ref x 1)
   'a
@@ -11,7 +10,6 @@ Values are indexed from 1 and there is little error detection
   3
   > (equal? x (tuple 'a 'b 'c))
   #true
-```
 |#
 
 (define-library (owl tuple)

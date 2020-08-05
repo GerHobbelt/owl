@@ -7,7 +7,7 @@ get all the features right. *lots* of non-constant-factor
 optimizations are missing.
 
 spec: http://pubs.opengroup.org/onlinepubs/007908799/xbd/re.html
-syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/pregexp/index-Z-H-3.html#node_sec_3
+syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/pregexp/index-Z-H-3.html
 |#
 
 (define-library (owl regex)

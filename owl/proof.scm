@@ -1,3 +1,17 @@
+#| doc
+Automatic Tests & Documentation
+
+The goal of this library is to make writing software tests and documenting functionality 
+as simple as possible. The operation is as follows:
+ - Tests run automatically when a program or library is loaded. Failure aborts the load via an error.
+ - Tests can be collected from code automatically for documentation.
+ - To add tests, import (owl proof) and write an example.
+ 
+    > (import (owl proof))
+    > (example
+         (+ 1 2) = (+ 2 1)
+         (car (cons 1 2)) = 1)
+|#
 (define-library (owl proof)
 
    (export

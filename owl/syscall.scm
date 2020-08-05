@@ -1,3 +1,25 @@
+#| doc
+Owl System Calls
+
+Typical Scheme programs have a continuation underlying in the execution of a program. 
+Depending on the implementation strategy, this continuation may be an actual variable 
+and a function, as is done in Owl, or it is simulated on a more traditional stack-based 
+system.
+
+Owl has in fact two continuations. One is the normal one you can capture with call-with-current-continuation, but the other
+one is threaded even through that operation. The other continuation is that of the 
+thread scheduler. It is also a regular program. The main difference in it is that it is 
+expected to be called initially when the program starts and the second continuation is 
+blank. Calling the blank continuation is what eventually terminates the whole program.
+
+Normal progams can only access the second continuation via a primop. When this happens, 
+the continuation of the running program is captured as usual, and the second thread 
+scheduler continuation is called with the information provided in the call along with 
+the continuation allowing resuming execution of the program from the corresponding state.
+
+Wrappers for calling the thread scheduler are defined in this library.
+
+|#
 (define-library (owl syscall)
 
    (export

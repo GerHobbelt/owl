@@ -1,4 +1,5 @@
 #| doc
+Extra Math Functions
 |#
 
 (define-library (owl math extra)

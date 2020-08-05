@@ -1,13 +1,8 @@
 #| doc
+Simple Encodings
+
 The codec library contains some simple content encoding transformations.
 
-```
-  (hex-encode "slartibartfast") → "736c617274696261727466617374"
-  (hex-decode "736c617274696261727466617374") → "slartibartfast"
-  (hex-decode "7") → #false
-  (hex-encode "λx.x") → "cebb782e78"
-  (hex-decode "cebb782e78") → "λx.x"
-```
 |#
 
 (define-library (owl codec)
@@ -93,6 +88,11 @@ The codec library contains some simple content encoding transformations.
          (hex-decode-list str)))
 
    (example
+      (hex-encode "slartibartfast") = "736c617274696261727466617374"
+      (hex-decode "736c617274696261727466617374") = "slartibartfast"
+      (hex-decode "7") = #false
+      (hex-encode "λx.x") = "cebb782e78"
+      (hex-decode "cebb782e78") = "λx.x"
       (hex-decode (hex-encode "")) = ""
       (hex-decode (hex-encode "foo")) = "foo"
       (hex-decode (hex-encode "λä.ä")) = "λä.ä")

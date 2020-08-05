@@ -1,5 +1,9 @@
 #| doc
-This library defines various system calls and wrappers for calling them.
+System Interface
+
+This library defined various system calls and wrappers for calling them. 
+The calls available are mainly frequently needed ones defined in the POSIX 
+standard, or otherwise portable enough to be available in most systems these days.
 |#
 
 (define-library (owl sys)

@@ -1,5 +1,9 @@
 #| doc
-owl cfg parsing combinators and macros
+Parsing DSL
+
+This library implements a simple DSL for constructing parsing functions. The
+operation is traditional top down backtracking parsing.
+
 |#
 
 (define-library (owl parse)
