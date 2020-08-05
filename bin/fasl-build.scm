@@ -24,9 +24,9 @@
           (oms (get info 'initial-boot-ms)))
       (print "Build round " (get info 'round))
       (print " - heap " (format-number-base2 bs) "B (delta to initial "
-         (format-number-base2 (- obs bs)) "B)")
+         (format-number-base2 (- bs obs)) "B)")
       (if ms
-         (print " - time " (format-time ms) " (delta to first " (format-time (- oms ms)) ")")
+         (print " - time " (format-time ms) " (delta to first " (format-time (- ms oms)) ")")
          (print " - time " (format-time oms) " (first boot)")
          )))
 
