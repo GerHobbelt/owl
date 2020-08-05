@@ -1,5 +1,23 @@
 #| doc
-making printable representations
+Rendering Values
+
+There are two ways to serialize values to sequences of bytes: S-expressions and the
+FASL encoding. S-expressions represent trees of certain values and can thus only
+be used to accurately represent a subset of all possible values. FASL encoding can
+represent all values, apart from from their external semantics such as open network
+connections.
+
+This library implements the S-expression part. There are further two
+flavors of rendering: the one intended to be printed out of programs and the one
+which results in expressions that can be read back in. The first one is usually seen
+as the output of print, whereas the other one is typically written with write.
+
+Some R7RS Scheme extensions to represent shared structure in S-expressions is also
+implemented.
+
+Str and str* are used to translate values to strings, whereas render and render* are
+typically used in a fold to construct lists of bytes to be later converted to strings
+or other formats.
 |#
 
 (define-library (owl render)
@@ -16,6 +34,7 @@ making printable representations
       (owl function)
       (owl syscall)
       (owl lazy)
+      (owl proof)
       (owl math)
       (owl port)
       (only (owl symbol) render-symbol symbol?)
@@ -29,7 +48,9 @@ making printable representations
       ;serialize         ;; obj tl        → (byte ... . tl), eager, always shared
       ;serialize-lazy    ;; obj tl share? → (byte ... . tl), lazy, optional sharing
       render             ;; obj tl        → (byte ... . tl) -- deprecated
+      render*            ;;   as above, as in write
       str                ;; renderable ... → string
+      str*               ;;   as above, as in write
       )
 
    (begin
@@ -49,16 +70,21 @@ making printable representations
                   (render-string obj tl))
 
                ((pair? obj)
-                  (cons #\(
-                     (cdr
-                        (let loop ((obj obj) (tl (cons #\) tl)))
-                           (cond
-                              ((null? obj) tl)
-                              ((pair? obj)
-                                 (cons #\space
-                                    (render (car obj) (loop (cdr obj) tl))))
-                              (else
-                                 (ilist #\space #\. #\space (render obj tl))))))))
+                  (if (and (eq? (car obj) 'quote)
+                           (pair? (cdr obj))
+                           (null? (cddr obj)))
+                     (cons #\'
+                        (render (cadr obj) tl))
+                     (cons #\(
+                        (cdr
+                           (let loop ((obj obj) (tl (cons #\) tl)))
+                              (cond
+                                 ((null? obj) tl)
+                                 ((pair? obj)
+                                    (cons #\space
+                                       (render (car obj) (loop (cdr obj) tl))))
+                                 (else
+                                    (ilist #\space #\. #\space (render obj tl)))))))))
 
                ((boolean? obj)
                   (append (string->list (if obj "#true" "#false")) tl))
@@ -147,39 +173,44 @@ making printable representations
                         (pair #\" (k sh)))))
 
                ((pair? obj)
-                  (cons 40
-                     (let loop ((sh sh) (obj obj))
-                        (cond
-                           ((null? obj)
-                              ;; run of the mill list end
-                              (pair 41 (k sh)))
-                           ((get sh obj #f) =>
-                              (λ (id)
-                                 (ilist #\. #\space #\#
-                                    (render (abs id)
-                                       (cons #\#
-                                          (if (< id 0)
-                                             (pair 41 (k sh))
-                                             (pair #\=
-                                                (ser (del sh obj) obj
-                                                   (λ (sh)
-                                                      (pair 41
-                                                         (k
-                                                            (put sh obj
-                                                               (- 0 id)))))))))))))
-                           ((pair? obj)
-                              ;; render car, then cdr
-                              (ser sh (car obj)
-                                 (λ (sh)
-                                    (delay
-                                       (if (null? (cdr obj))
-                                          (loop sh (cdr obj))
-                                          (cons #\space (loop sh (cdr obj))))))))
-                           (else
-                              ;; improper list
-                              (ilist #\. #\space
-                                 (ser sh obj
-                                    (λ (sh) (pair 41 (k sh))))))))))
+                  (if (and (eq? (car obj) 'quote)
+                           (pair? (cdr obj))
+                           (null? (cddr obj)))
+                     (cons #\'
+                        (ser sh (cadr obj) k))
+                     (cons 40
+                        (let loop ((sh sh) (obj obj))
+                           (cond
+                              ((null? obj)
+                                 ;; run of the mill list end
+                                 (pair 41 (k sh)))
+                              ((get sh obj #f) =>
+                                 (λ (id)
+                                    (ilist #\. #\space #\#
+                                       (render (abs id)
+                                          (cons #\#
+                                             (if (< id 0)
+                                                (pair 41 (k sh))
+                                                (pair #\=
+                                                   (ser (del sh obj) obj
+                                                      (λ (sh)
+                                                         (pair 41
+                                                            (k
+                                                               (put sh obj
+                                                                  (- 0 id)))))))))))))
+                              ((pair? obj)
+                                 ;; render car, then cdr
+                                 (ser sh (car obj)
+                                    (λ (sh)
+                                       (delay
+                                          (if (null? (cdr obj))
+                                             (loop sh (cdr obj))
+                                             (cons #\space (loop sh (cdr obj))))))))
+                              (else
+                                 ;; improper list
+                                 (ilist #\. #\space
+                                    (ser sh obj
+                                       (λ (sh) (pair 41 (k sh)))))))))))
 
                ((boolean? obj)
                   (append
@@ -275,7 +306,18 @@ making printable representations
                (force-ll
                   (serialize-lazy val tl #true)))))
 
+      (define render*
+         (make-serializer empty))
+
       (define (str . args)
          (bytes->string
             (foldr render #n args)))
+
+      (define (str* . args)
+         (bytes->string
+            (foldr render* #n args)))
+
+      (example
+         (render  "foo" null) = (string->list "foo")
+         (render* "foo" null) = (string->list "\"foo\""))
 ))
