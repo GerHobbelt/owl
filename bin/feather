@@ -10,16 +10,7 @@
 
 (define (make-markdown-prelude title)
    (lets ((d m y H M S (date (time))))
-'(str
-"---
-title: \"" title "\"
-date: " y "-" m "-" d "
-geometry: \"left=3cm,right=3cm,top=2cm,bottom=2cm\"
-output: pdf_document
----
-
-")
-      (str "# " title "\n\n")   
+      (str "# " title "\n\n")
    ))
 
 ;;; sexp query
@@ -106,7 +97,7 @@ output: pdf_document
    (if (and (pair? lst) (eq? (car lst) #\newline))
       (drop-newlines (cdr lst))
       lst))
-      
+
 (define (process-initial-doc bp)
    (if bp
       (lets
@@ -116,7 +107,18 @@ output: pdf_document
             (bytes->string pre)
             (bytes->string post)))
       (values #f #f)))
-      
+
+;; txt -> txt in which there should be no accidental markdown formatting
+
+(define quote-hashes
+   (string->regex "s/#/##/g"))
+
+(define (passive-doc-content txt)
+   (print "passivating " txt)
+   (if (string? txt)
+      (quote-hashes txt)
+      (quote-hashes (str txt))))
+
 (define (gather-documentation path others)
    (cond
       ((scheme-file? path)
@@ -127,10 +129,12 @@ output: pdf_document
                 (exports (maybe cdr (sselect sexps '(define-library export))))
                 (initial-doc
                       (find-initial-documentation content))
-                      
-                (doc-title doc-content 
-                   (process-initial-doc initial-doc)) 
+
+                (doc-title doc-content
+                   (process-initial-doc initial-doc))
                 (doc-title (or doc-title path))
+                (doc-content
+                   (passive-doc-content doc-content)) ;; avoid accidental formatting
                 (examples
                    (map cdr
                      (sselect-all sexps '(define-library begin example)))))
@@ -151,14 +155,21 @@ output: pdf_document
                others)))
       ((markdown-file? path)
          (print "Adding " path " (markdown)")
-         (cons 
+         (cons
             (put empty 'markdown (file->list path))
             others))
       (else
          (print-to stderr (str "What should I do with " path "?"))
-         others))) 
+         others)))
 
 ;;; Rendering
+
+(define (render-unquoted val)
+   (let ((bytes (render* val null)))
+      (bytes->string
+         (if (eq? (car bytes) #\')
+            (cdr bytes)
+            bytes))))
 
 (define (render-example example)
    (cond
@@ -166,14 +177,14 @@ output: pdf_document
          "")
       ((equal? (car example) 'let)
          (let ((example (cdr example)))
-            (str " - let `" (car example) "` = `" (caddr example) "`\n"
+            (str " - let #{" (render-unquoted (car example)) "} = #{" (render-unquoted (caddr example)) "}\n"
                (render-example (cdddr example)))))
-      ((equal? (cadr example) '=)         
-            (str " - `" (car example) "` = `" (caddr example) "`\n"
+      ((equal? (cadr example) '=)
+            (str " - #{" (render-unquoted (car example)) "} = #{" (render-unquoted (caddr example)) "}\n"
                (render-example (cdddr example))))
       (else
          (error "weird example: " (list (car example) " in " example)))))
-               
+
 
 (define (render-documentation doc)
    (if (get doc 'markdown)
@@ -184,7 +195,7 @@ output: pdf_document
          "\n"
          "Exported values:\n\n"
          (foldr
-            (λ (x tl) (str "- `" x "`\n" tl))
+            (λ (x tl) (str " - #{" x "}\n" tl))
             "" (get doc 'exports #null))
          "\n"
          (if (get doc 'examples #f)
