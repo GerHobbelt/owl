@@ -28,6 +28,7 @@
       (owl render)
       (owl string)
       (owl sexp)
+      (owl syntax-rules)
       (only (owl sys) get-heap-bytes-written) ;; <- could be moved to some profiling
       (only (owl readline) port->readline-byte-stream)
       (only (owl parse) fd->exp-stream byte-stream->exp-stream file->exp-stream resuming-syntax-fail silent-syntax-fail try-parse)
@@ -55,9 +56,12 @@
             (λ (env op)
                (env-set env (ref op 1) (ref op 5)))
             (env-set-macro
-               *tabula-rasa* ;; from (owl env), env with only special form tags, no primops
-               'define-syntax
-               define-syntax-transformer)
+               (env-set-macro
+                  *tabula-rasa* ;; from (owl env), env with only special form tags, no primops
+                  'define-syntax
+                  define-syntax-transformer)
+               'define-syntax-ng
+               new-define-syntax-transformer)
             primops))
 
       ;; toplevel variable to which loaded libraries are added
@@ -752,14 +756,14 @@
                                     (cons (cons name library)
                                        (remove ;; drop the loading tag for this library
                                           (B (C equal? name) car)
-                                          (env-get lib-env library-key #n))))))) ; <- lib-env may also have just loaded dependency libs                              
+                                          (env-get lib-env library-key #n))))))) ; <- lib-env may also have just loaded dependency libs
                         ((fail why)
                            (fail
                               (list "Library" name "failed to load because" why))))))
                (else
                   (success (evaluate exp env)
                      ((ok val env) (ok val env))
-                     ((fail why) 
+                     ((fail why)
                         (fail (list "Failed to evaluate " exp " because " why))))))))
 
       ; (repl env in) -> #(ok value env) | #(error reason env remaining-input|#f)

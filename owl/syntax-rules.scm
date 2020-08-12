@@ -468,11 +468,16 @@
                   (let loop ((pats pats) (targets targets))
                      (if (null? pats)
                         #f
-                        (match form (car pats) env 0
+                        (match
+                           (cdr form)               ;; do not match the first value, which is whatever the macro name happens
+                           (cdr (car pats))         ;; to be after renaming etc
+                           (env-bind env            ;; bind the name of the original macro to the actual matched value
+                              (caar pats)
+                              (car form))
+                            0
                            (lambda (env fail)
                               (rewrite (car targets) env '()
                                  (lambda (env result)
-                                    ; (print "TRANSFOMERS MADE: " result "\n" " -  out of " (car targets) "\n" " -  in " (ff->list env))
                                     (cons result (get env gensym-key)))
                                  fail))
                            (lambda ()
