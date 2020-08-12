@@ -12,12 +12,11 @@
       (owl math)
       (only (owl render) str)       ;; temp
       (only (owl syscall) error)
-      ; (only (owl eval env) env-get)      ;; now handled via an abstraction violation
       (owl proof))
 
    (export
       define-syntax-ng
-      )
+      new-define-syntax-transformer)
 
    (begin
 
@@ -26,6 +25,8 @@
          (let ((undefined (tuple 'undefined)))
             (λ (env key)
                (get env key undefined))))
+
+      (define env-get-raw get)
 
       (define (env-get env key def)
          (tuple-case (lookup env key)
@@ -43,13 +44,14 @@
       ;;;
 
       (define implicit-literals
-         '(lambda quote ...))
+         '(lambda quote if ...))
 
 
       ;; env = ff of symbol ->
       ;;          (literal . value)
       ;;          (bound . value)
       ;;          ([depth] . values)
+      ;;          (other . value)    ;; bound, but not value (macro, prim)
 
       ;; to be sum values later
       (define (literal? binding)
@@ -57,6 +59,9 @@
 
       (define (bound? binding)
          (and (pair? binding) (eq? (car binding) 'bound)))
+
+      (define (other? binding)
+         (and (pair? binding) (eq? (car binding) 'other)))
 
       (define (ellipsis? binding)
          (and (pair? binding)
@@ -330,6 +335,8 @@
                            fail))
                      ((bound? val)
                         (ok env (cdr val)))
+                     ((other? val)
+                        (ok env pattern))
                      ((not val) ;; unbound, gensym
                         (lets ((env val (get-gensym env)))
                            (ok
@@ -440,7 +447,11 @@
                ((undefined (list 'no))
                 (val (env-get toplevel key undefined)))
                (if (eq? val undefined)
-                  env
+                  (let ((val (env-get-raw toplevel key undefined)))
+                     (if (eq? val undefined)
+                        env
+                        (put env key
+                           (cons 'other val))))
                   (put env key
                      (cons 'bound (maybe-quote val)))))))
 
@@ -478,9 +489,7 @@
       (example
          (xlet ((foo 100)) foo) = 42)
 
-
-      ;; definer definition via macro api
-      (_define-macro define-syntax-ng
+      (define new-define-syntax-transformer
          (make-transformer
             '(define-syntax-ng syntax-rules
               _define-macro *toplevel*)
@@ -501,6 +510,9 @@
             ; empty
             *toplevel* ;; get make-transformer
             ))
+
+      ;; definer definition via macro api
+      (_define-macro define-syntax-ng new-define-syntax-transformer)
 
       (define-syntax-ng xlet
          (syntax-rules ()
