@@ -6,6 +6,7 @@ BINDIR  = /bin
 MANDIR  = /share/man
 INSTALL = install
 CFLAGS  = -Wall -O2
+
 CC      = gcc
 
 
@@ -80,9 +81,10 @@ doc/web-manual.md: Makefile bin/feather doc/intro.md doc/libraries.md owl/*.scm 
 		owl/readline.scm owl/regex.scm \
 		owl/io.scm owl/lazy.scm \
 		owl/render.scm owl/sort.scm owl/string.scm \
-		owl/sum.scm owl/syscall.scm owl/sys.scm \
+		owl/sum.scm owl/syscall.scm owl/sys.scm owl/syntax-rules.scm \
 		owl/terminal.scm owl/thread.scm owl/time.scm \
 		owl/unicode.scm owl/variable.scm owl/vector.scm \
+		doc/related.md \
 		doc/faq.md 
 
 
