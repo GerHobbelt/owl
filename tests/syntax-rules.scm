@@ -12,7 +12,7 @@
    
       (define value 42)
       
-      (define-syntax-ng foo
+      (define-syntax foo
          (syntax-rules ()
             ((foo a b)
                ;; environment reference to non-exported value

@@ -100,12 +100,12 @@ standard, or otherwise portable enough to be available in most systems these day
 
    (begin
 
-      (define-syntax sc
-         (syntax-rules (sys-const)
-            ((sc name index) (define name (sys-const index)))))
-
       (define (sys-const i)
          (λ () (sys-prim 8 i #f #f)))
+
+      (define-syntax sc
+         (syntax-rules (define)
+            ((sc name index) (define name (sys-const index)))))
 
       ;; owl value → value processable in vm (mainly string conversion)
       (define (sys-arg x)

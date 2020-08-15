@@ -53,7 +53,7 @@ lists do not cache their results.
       (define-syntax delay
          (syntax-rules ()
             ((delay (op . args))
-               (λ () (op . args)))
+               (lambda () (op . args)))
             ((delay value) value)))
 
       ;; force is effectively unnecessary in Owl, so might as well signal a

@@ -31,10 +31,6 @@
       (owl io)
       (owl port)
       (owl eval data)
-      ;(only (owl syntax-rules)
-      ;   define-syntax-transformer
-      ;   syntax-transformer
-      ;   ) ;; <- for define-syntax-ng (transitional)
       (scheme base)
       (scheme cxr)
       (owl primop))
@@ -273,7 +269,6 @@
                   (cons '_define (tuple 'special '_define)) ;; handled by repl
                   (cons 'values   (tuple 'special 'values)) ;; ends up as as regular call to continuation during compilation
                   ))
-            ; (env-set-macro 'define-syntax-ng define-syntax-transformer)
             ; (env-set 'syntax-transformer syntax-transformer)
             ))
 

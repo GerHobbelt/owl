@@ -91,7 +91,7 @@
 
       (define-syntax letrec*
          (syntax-rules ()
-            ((letrec () . body)
+            ((letrec* () . body)
                (begin . body))
             ((letrec* ((var val) . rest) . body)
                (letrec ((var val))
@@ -518,9 +518,9 @@
          (syntax-rules ()
             ((if-lets () then else)
                then)
-            ((if-lets ((k ... val) . rest) then else)
-               (lets ((k ... val))
-                  (if k
+            ((if-lets ((kp k ... val) . rest) then else)
+               (lets ((kp k ... val))
+                  (if kp
                      (if-lets rest then else)
                      else)))
             ((if-lets bindings then)

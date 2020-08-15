@@ -10,12 +10,13 @@
       (owl gensym)
       (owl list-extra)
       (owl math)
-      (only (owl render) str)       ;; temp
+      (only (owl render) str)
+      (only (owl primop) primops) ;; for names to be added as implicit literals
       (only (owl syscall) error)
       (owl proof))
 
    (export
-      define-syntax-ng
+      define-syntax
       new-define-syntax-transformer)
 
    (begin
@@ -44,7 +45,9 @@
       ;;;
 
       (define implicit-literals
-         '(lambda quote if ...))
+         (append
+            '(lambda quote if ...)
+            (map (lambda (x) (ref x 1)) primops)))
 
 
       ;; env = ff of symbol ->
@@ -496,10 +499,10 @@
 
       (define new-define-syntax-transformer
          (make-transformer
-            '(define-syntax-ng syntax-rules
+            '(define-syntax syntax-rules
               _define-macro *toplevel*)
             '(
-               (define-syntax-ng name
+               (define-syntax name
                   (syntax-rules literals
                      (pattern template)
                      ...))
@@ -517,9 +520,9 @@
             ))
 
       ;; definer definition via macro api
-      (_define-macro define-syntax-ng new-define-syntax-transformer)
+      (_define-macro define-syntax new-define-syntax-transformer)
 
-      (define-syntax-ng xlet
+      (define-syntax xlet
          (syntax-rules ()
             ((xlet ((var val) ...) . body)
                ((lambda (var ...) . body) val ...))))

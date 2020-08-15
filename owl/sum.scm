@@ -6,14 +6,13 @@ This library allows defining algebraic data types as functions.
 (define-library (owl sum)
 
    (import
-      (owl core)
-      (owl syntax-rules))
+      (owl core))
 
    (export define-sum-type)
 
    (begin
 
-      (define-syntax-ng define-sum-type
+      (define-syntax define-sum-type
          (syntax-rules (__repl_begin __options __names __expected define define-syntax syntax-rules syntax-error)
             ((define-sum-type name
                __options ((body option (arg fresh) ...) ...)

@@ -1,5 +1,8 @@
 #| doc
-This library defines the default toplevel.
+Default Toplevel
+
+Values exported in this library are available when starting owl interactively. The form
+(exports ...) allows exporting all values exported by another library.
 |#
 
 (define-library (owl base)
@@ -30,6 +33,9 @@ This library defines the default toplevel.
       (exports (owl math))
       (exports (owl tuple))
       (exports (owl digest))
+      (exports (owl syntax-rules))
+
+
       halt
       lets/cc
       read
@@ -67,6 +73,7 @@ This library defines the default toplevel.
       (owl syscall)
       (owl math)
       (owl digest)
+      (owl syntax-rules)
       (only (owl dump) suspend)
       (only (owl primop) halt lets/cc ref wait)
       (only (owl sexp) read read-ll)

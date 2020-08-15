@@ -32,7 +32,7 @@ valid rational number has q != 0, q != 1, and gcd(p, q) = 1.
    (begin
 
       (define-syntax rational
-         (syntax-rules ()
+         (syntax-rules (type-rational)
             ((rational a b) (mkt type-rational a b))))
 
       (define (< a b)

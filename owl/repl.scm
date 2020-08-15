@@ -56,11 +56,8 @@
             (λ (env op)
                (env-set env (ref op 1) (ref op 5)))
             (env-set-macro
-               (env-set-macro
-                  *tabula-rasa* ;; from (owl env), env with only special form tags, no primops
-                  'define-syntax
-                  define-syntax-transformer)
-               'define-syntax-ng
+               *tabula-rasa* ;; from (owl env), env with only special form tags, no primops
+               'define-syntax
                new-define-syntax-transformer)
             primops))
 
