@@ -1,3 +1,18 @@
+#| doc
+Hygienic Macros
+
+This library implements hygienic macro expansion. The role of this library is to construct the transformer
+functions out of the usual define-syntax definitions as specified in R7RS Scheme.
+
+A macro mainly consists of a set of patterns to be tried on code. If one of them matches, then the corresponding
+rewrite rule is used to transform the expression. A pattern may contain literals, which means symbols that must
+be the same as in the pattern, and rest are generally used as syntax variables. A syntax variable is matched to
+any expression in the input expression, and it can be used to place the expression somewhere in the rewrite rule.
+
+It is also possible to use the ellipsis pattern, denoted by suffixing a pattern ..., which means that the
+pattern may occur zero or more times. Suffixing a syntax variable bound within such pattern with ... in the
+rewrite rule causes all of the matches to be added.
+|#
 
 (define-library (owl syntax-rules)
 

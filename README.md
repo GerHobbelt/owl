@@ -86,4 +86,6 @@ functions. To make programs run faster, one can use for example:
 
 For further documentation and updates, see:
 
+  https://haltp.org/owl
   https://gitlab.com/owl-lisp/owl
+
