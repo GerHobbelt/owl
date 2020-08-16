@@ -16,8 +16,8 @@ shell the editor is running on top of, and the tools used to generate this web
 page. Some programs are available via package managers on various platforms.
 Efficiency of these actual programs is the main speed criteria. This makes
 features such as startup time and memory efficiency more relevant than
-synthetic benchmarks. There is room for optimization, for currently simplicity
-is a more relevant goal than speed.
+synthetic benchmarks. There is room for optimization, but currently emphasis
+is on simplicity and flexibility.
 
 #index
 
@@ -41,7 +41,7 @@ downloaded and used as follows:
    > ,quit
    bye bye _o/~
 
-This version takes very little time to compile with a C-compiler, because the 
+This version takes very little time to compile with a C-compiler, because the
 code is not optimized.
 
 Alternatively you can download all of the sources and make a traditional install.
@@ -53,10 +53,10 @@ Alternatively you can download all of the sources and make a traditional install
 
 ## Installation
 
-You can install owl and the manual pages with #{sudo make install} after building 
+You can install owl and the manual pages with #{sudo make install} after building
 the sources or a release tarball.
 
-Alternatively you can just build ol and copy it somewhere convenient. 
+Alternatively you can just build ol and copy it somewhere convenient.
 
 
 ## Testing Operation

@@ -3,26 +3,25 @@
 Vectors
 
 Vectors are one-dimensional data structures indexable by natural numbers,
-having O(n log_256 n) access and memory use (effectively O(1)). They are
-mainly intended to be used for static data requiring efficient (modulo
-owl) iteration and random access.
+having O(n log_256 n) access and memory use (effectively O(1)). They are mainly
+intended to be used for static data requiring relatively efficient iteration
+and random access.
 
-In owl, vectors are implemented as complete 256-ary trees. Small vectors
+Vectors are implemented as complete 256-ary trees. Small vectors
 fitting to one node of the tree are of raw or allocated type 11, meaning
 they usually take 8+4n or 4+n bytes of memory, depending on whether the
-values are normal descriptors or fixnums in the range 0-255.
+values are fixnums in the range 0-255 or other values.
 
-Large vectors are 256-ary trees. Each dispatch node in the tree handles
-one byte of an index, and nodes starting from root each dispatch the
-highest byte of an index. When only one byte is left, one reads the
-reached leaf node, or the leaf node stored to the dispatch node.
+Large vectors are trees. Each node in the tree handles one byte of an index,
+and nodes starting from root each dispatch the highest byte of an index. When
+only one byte is left, one reads the reached leaf node, or the leaf node stored
+to the dispatch node.
 
-Reading the vector in order corresponds to breadth-first walk
-of the tree. Notice that since no number > 0 has 0 as the highest
-byte, the first dispatch position of the root is always free. This
-position contains the size of the vector, so that it is accessable
-in O(1) without space overhead or special case handling. Leaf nodes
-have the size as part of the normal owl object header.
+Reading the vector in order corresponds to breadth-first walk of the tree. No
+nonzero number has 0 as the highest byte, so the first dispatch position of the
+root is always free. This position contains the size of the vector, so that it
+is accessable in O(1) without space overhead or special case handling. Leaf
+nodes have the size as part of the normal object header.
 
 Order example using binary trees:
 
@@ -36,7 +35,7 @@ Order example using binary trees:
         /   |       |   \
    (9 8) (10 11) (12 13) (14 15)   etc
 
-Vectors use the same order, but with 256-ary trees.
+Vectors use the same order, but with up to 256 links per node.
 |#
 
 (define-library (owl vector)
@@ -78,6 +77,7 @@ Vectors use the same order, but with 256-ary trees.
       (owl list)
       (owl list-extra)
       (owl tuple)
+      (owl proof)
       (only (owl syscall) error)
       (owl math))
 
@@ -264,15 +264,6 @@ Vectors use the same order, but with 256-ary trees.
                (if (null? l)
                   these
                   (merge-each these (merger l (* n n)))))))
-
-   ; start with power 1 and blank root
-   ; grab power nodes from list -> these others
-   ;   if others is null, return these
-   ;   otherwise recurse on others -> others
-   ;   for each of these
-   ;     grab a max of 256 things from others -> below others
-   ;     make a dispatch node for these and below
-   ;     loop and return the list of these
 
       (define (cut-at lst pos out)
          (cond
@@ -527,7 +518,13 @@ Vectors use the same order, but with 256-ary trees.
       ;;; Vector construction
       ;;;
 
-      ;; todo: start adding Vector-style constructors at some point
       (define (vector . lst)
          (list->vector lst))
+
+      (example
+         (vector-ref (make-vector 100 42) 99) = 42
+         (vector-map (lambda (x) (+ x 10)) (vector 1 2 3)) = (vector 11 12 13)
+         (vec-fold  - 0 (vector 1 2 3 4)) = (fold  - 0 (list 1 2 3 4))
+         (vec-foldr - 0 (vector 1 2 3 4)) = (foldr - 0 (list 1 2 3 4))
+       )                  
 ))

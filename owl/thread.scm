@@ -28,6 +28,7 @@ operation where desired.
       signal-handler/repl
       signal-handler/halt
       signal-handler/ignore
+      report-failure
       try-thunk try)
 
    (import
@@ -52,7 +53,7 @@ operation where desired.
          (system-println "mcp: got bad syscall")
          (values todo done state))
 
-      ; -> state x #false|waked-thread
+      ; -> state (#false | waked-thread)
       (define (deliver-mail state to envelope)
          (let ((st (get state to #false)))
             (cond
@@ -60,7 +61,7 @@ operation where desired.
                   (values
                      (fupd state to (qsnoc envelope st))
                      #false))
-               ((not st) ;; no current state, message to an inbox
+               ((not st) ;; no current state, message to a new inbox
                   (values
                      (put state to (qcons envelope qnull))
                      #false))
@@ -77,7 +78,8 @@ operation where desired.
                   (deliver-messages (cons waked todo) done state (cdr subs) msg tc)
                   (deliver-messages todo done state (cdr subs) msg tc)))))
 
-      (define eval-break-message (tuple 'repl-eval (tuple 'breaked)))
+      (define (eval-break-message from)
+          (tuple from (tuple 'breaked)))
 
       (define (subscribers-of state id)
          (get (get state link-tag empty) id #n))
@@ -103,7 +105,7 @@ operation where desired.
                (cons (car lst)
                   (drop-from-list (cdr lst) tid)))))
 
-      ; drop a possibly running thread and notify linked
+      ; drop a possibly running thread and notify linked ones with msg
       (define (drop-thread id todo done state msg tc) ; -> todo' x done' x state'
          (drop-delivering
             (drop-from-list todo id)
@@ -414,16 +416,15 @@ operation where desired.
          (thread-controller thread-controller threads
             #n (list->ff state-alist)))
 
-      (define (try-thunk thunk fail-fn)
-         (let ((id (list 'thread)))
-            (link id)
-            (thunk->thread id thunk)
-            (let ((outcome (ref (accept-mail (λ (env) (eq? (ref env 1) id))) 2)))
-               (if (eq? (ref outcome 1) 'finished)
-                  (ref outcome 2)
-                  (fail-fn outcome)))))
+      (define (try-thunk thunk fail-fn id)
+         (link id)
+         (thunk->thread id thunk)
+         (let ((outcome (ref (accept-mail (λ (env) (eq? (ref env 1) id))) 2)))
+            (if (eq? (ref outcome 1) 'finished)
+               (ref outcome 2)
+               (fail-fn outcome))))
 
-      (define (default-failure retval)
+      (define (report-failure retval)
          (λ (outcome)
             (tuple-case outcome
                ((crashed opcode a b)
@@ -435,25 +436,39 @@ operation where desired.
                      (list->string
                         (foldr render '(10) (list "error: " reason info))))
                   retval)
+               ((breaked)
+                  (print-to stderr ";; stopped by signal")
+                  retval)
                (else
                   (print-to stderr (list "bug: " outcome))
                   retval))))
 
       (define (try thunk retval)
-         (try-thunk thunk (default-failure retval)))
+         (try-thunk thunk (report-failure retval) (list 'try)))
+
+      ;; find a thread id that looks like one started via repl
+      (define (repl-eval-thread threads)
+         (fold
+            (lambda (found x)
+               (or found
+                  (if (and (pair? (ref x 1))
+                          (eq? (car (ref x 1)) 'repl-eval))
+                     (ref x 1)
+                     found)))
+            #f threads))
 
       ;; signal handler which kills the 'repl-eval thread if there, or repl
       ;; if not, meaning we are just at toplevel minding our own business.
       (define (signal-handler/repl signals threads state controller)
-         (system-println "[repl signal handler]")
-         (if (any (λ (x) (eq? (ref x 1) 'repl-eval)) threads)
-            ;; there is a thread evaling user input, linkely gone awry somehow
-            (drop-thread 'repl-eval threads #n state eval-break-message controller)
-            ;; nothing evaling atm, exit owl
-            (begin
-               (system-println "[no eval thread - stopping on signal]")
-               (signal-handler/halt signals threads state controller))))
-      
+         (let ((eval-thread (repl-eval-thread threads))) ;; warning: can be several
+            (if eval-thread
+               ;; there is a thread evaling user input, linkely gone awry somehow
+               (drop-thread eval-thread threads #n state (eval-break-message eval-thread) controller)
+               ;; nothing evaling atm, exit owl
+               (begin
+                  (system-println "[no eval thread - stopping on signal]")
+                  (signal-handler/halt signals threads state controller)))))
+
       (define (signal-handler/ignore signals threads state controller)
          (system-println "[ignoring signals]")
          (controller controller threads null state))

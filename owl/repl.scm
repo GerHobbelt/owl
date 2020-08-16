@@ -224,7 +224,8 @@
                   (print ";; heap " (format-number (- alloc-post alloc-pre)))
                   (print ";; time " (format-time elapsed-ns))))
             (lambda (error)
-               (print ";; evaluation failed"))))
+               (print ";; evaluation failed"))
+            (list 'repl-eval)))
 
       ;; regex-fn | string | symbol → regex-fn | #false
       (define (thing->rex thing)

@@ -61,9 +61,8 @@ environment.
             compile         ;; translate and flatten to bytecode
             execute))       ;; call the resulting code
 
-      ;; -> old-success, internal ones can return a new one
       (define (try-evaluate exp env fail-val)
-         (try ;; return fail-val in case of error
+         (try-thunk ;; return fail-val in case of error
             (λ ()
                (call/cc
                   (λ (exit)
@@ -76,7 +75,8 @@ environment.
                                  (exit (fail why)))))
                         (ok exp env)
                         compiler-passes))))
-            fail-val))
+            (report-failure fail-val)
+            (list 'repl-eval)))
 
       (define (evaluate exp env)
          (try-evaluate exp env
