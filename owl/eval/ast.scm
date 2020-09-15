@@ -1,6 +1,12 @@
 #| doc
-After macro expansion the S-expressions are translated to a tree of tuples
-with checked structure to avoid having to constantly check S-expression structure.
+AST transformation
+
+S-expressions could be used internally by the compiler at each step. Here we however
+construct a simple tree of tuples format out of the S-expression while checking its
+structure. This is done so that the subsequent compiler steps don't have to check
+S-expression structure.
+
+The AST format could switch to using sum types at some point.
 |#
 
 (define-library (owl eval ast)

@@ -68,22 +68,56 @@ doc/ovm.1.gz: doc/ovm.1
 
 ## other documentation
 
-doc/web-manual.md: Makefile bin/feather doc/intro.md doc/libraries.md owl/*.scm owl/*/*.scm scheme/*.scm
-	bin/ol -r bin/feather -o doc/web-manual.md \
+web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
+	bin/ol -r bin/feather -o web-manual.md \
 		doc/intro.md doc/libraries.md \
-		owl/args.scm owl/bytevector.scm owl/codec.scm \
-		owl/date.scm owl/digest.scm owl/dump.scm \
-		owl/eval.scm owl/fasl.scm owl/gensym.scm \
-		owl/lcd/rlist.scm owl/list.scm owl/list-extra.scm \
-		owl/math.scm owl/math/integer.scm owl/math/rational.scm owl/math/complex.scm owl/math/extra.scm \
+		"## Data Structures" \
+		owl/args.scm \
+		owl/bytevector.scm \
+		owl/boolean.scm \
+		owl/codec.scm \
+		owl/lazy.scm \
+		owl/queue.scm \
+		owl/string.scm \
+		owl/list.scm \
+		owl/vector.scm \
+		owl/list-extra.scm \
+		owl/lcd/rlist.scm \
+		"## Owl Things" \
+		owl/fasl.scm \
+		owl/sum.scm \
+		owl/dump.scm \
+		owl/gensym.scm \
+		owl/variable.scm \
+		owl/proof.scm \
+		owl/syntax-rules.scm \
+		owl/thread.scm \
+		"## Math" \
+		owl/math.scm \
+		owl/math/integer.scm \
+		owl/math/rational.scm \
+		owl/math/complex.scm \
+		owl/math/extra.scm \
+		"## Misc" \
 		owl/metric.scm \
-		owl/parse.scm owl/proof.scm owl/queue.scm \
-		owl/readline.scm owl/regex.scm \
-		owl/io.scm owl/lazy.scm \
-		owl/render.scm owl/sort.scm owl/string.scm \
-		owl/sum.scm owl/syscall.scm owl/sys.scm owl/syntax-rules.scm \
-		owl/terminal.scm owl/thread.scm owl/time.scm \
-		owl/unicode.scm owl/variable.scm owl/vector.scm \
+		owl/parse.scm \
+		owl/date.scm \
+		owl/digest.scm \
+		owl/readline.scm \
+		owl/regex.scm \
+		owl/random.scm \
+		owl/io.scm \
+		owl/render.scm \
+		owl/sort.scm \
+		owl/syscall.scm \
+		owl/sys.scm \
+		owl/terminal.scm \
+		owl/time.scm \
+		owl/unicode.scm \
+		doc/internals.md \
+		doc/vm.md \
+		"## Compiler" \
+		owl/eval.scm owl/eval/alpha.scm owl/eval/assemble.scm owl/eval/ast.scm owl/eval/cgen.scm owl/eval/closure.scm owl/eval/compile.scm owl/eval/cps.scm owl/eval/data.scm owl/eval/env.scm owl/eval/fixedpoint.scm owl/eval/register.scm \
 		doc/related.md \
 		doc/faq.md 
 

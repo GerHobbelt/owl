@@ -1,3 +1,25 @@
+#| doc
+Continuation Passing Style
+
+The continuation passing style, or CPS, transformation converts a lambda expression
+to another lambda expression, with some useful properties. The output is a function
+with one extra argument, which will be called with the result of the original function.
+
+There are three main reasons for using the conversion. For one, the resulting lambda
+expression can be evaluated without the need for a stack, because nested function
+calls are eliminated and replaced by tail calls. What would normally be stored on
+a stack now ends up being stored in a closure.
+
+The second reason is that Scheme allows capturing the added argument, which is called
+the continuation, to a variable. This requires no special support from the runtime,
+because the continuation is just a regular lambda.
+
+Thirdly the presence of continuations makes implementing multithreading easy. Owl
+has pre-emptive multithreading, meaning a thread does not need to voluntarily give
+up control for other threads to run. This is done by jumping from the thread-local
+continuation to thread-scheduler continuation whenever a thread switch occurs.
+|#
+
 (define-library (owl eval cps)
 
    (export cps)
@@ -29,7 +51,7 @@
             ((cont-sym free (fresh free))
              (body free (cps body env (mkvar cont-sym) free)))
             (values
-               (tuple 'lambda-var fixed? 
+               (tuple 'lambda-var fixed?
                   (cons cont-sym formals) body)
                free)))
 

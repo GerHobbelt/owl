@@ -1,3 +1,10 @@
+#| doc
+Formatting Numbers
+
+This library is for converting potentially large integers to more readable and
+less accurate form. Mainly used for formatting output of ,time repl command.
+|#
+
 (define-library (owl metric)
 
    (import
@@ -44,4 +51,8 @@
          (metric-format bytes 0
             '("" "K" "M" "G" "T" "P" "E" "Z" "Y") 1024))
 
+      (example
+         (format-time 123456789) = "123.45ms"
+         (format-number 4096)    = "4.09k"
+         (format-number-base2 4096) = "4.00K")
 ))

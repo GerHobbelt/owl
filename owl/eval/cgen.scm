@@ -1,14 +1,22 @@
 #| doc
-Bytecode->C translator
+C Translator
 
+This library is needed when compiling programs to C-programs. This
+library is also used to compile Owl itself.
 
-Each normal owl program (one not using something eval-like) contains
-a fixed set of bytecode sequences. Owl can optionally compile these
-to special instructions in a custom VM when compiling them. This
-makes programs run much faster at the expense of making the resulting
-executables larger.
+The simples way to build standalone C-programs out of owl programs is to write
+the virtual machine code and the FASL-encoded program to run to a file.
+This happens when owl is invoked without the -O flags. On the plus side the
+resulting program has very little C-code, so the C-compiler won't take
+much time when compiling it. This is how the small Owl version is built.
 
-todo: keep all fixnum variables in registers unboxed with a special type, and add guards to saves and calls to tag them lazily. this would remove a lot of payload shifting from math code.
+Typically the output is optimized. This is done by translating some of the
+bytecode sequences of the program to be compiled to corresponding C-code
+fragments, adding them as new instructions to the vanilla virtual machine, and
+replacing them from the program with calls to the new instructions. The
+resulting C-code is larger and may take quite a bit of memory to compile
+using some C-compilers, but the resulting binary will be faster. This
+is how the usual bin/ol interpreter is built.
 |#
 
 (define-library (owl eval cgen)
@@ -19,6 +27,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
    (import
       (owl core)
       (owl list)
+      ; (owl io)
       (owl list-extra)
       (owl bytevector)
       (owl math)
@@ -46,7 +55,7 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
             #false))
 
       (define (unknown bs regs fail)
-         ;(print " - cgen does not grok opcode " (car bs) " " (if (> (car bs) 63) (list 'low (band (car bs) 63)) ""))
+         ; (print " - cgen does not grok opcode " (car bs) " " (if (> (car bs) 63) (list 'low (band (car bs) 63)) ""))
          (fail))
 
       (define (get1 l) ; (a . tl)
@@ -299,8 +308,8 @@ todo: keep all fixnum variables in registers unboxed with a special type, and ad
                            (values (list "R["to1"]=R["from1"];R["to2"]=R["from2"];\n") bs regs))))
                (cons 134 (cify-closer "TCLOS"))
                (cons 6 (cify-closer "TPROC"))
-               (cons 198 (cify-closer-1 "TCLOS"))
-               (cons 70 (cify-closer-1 "TPROC"))
+               ;(cons 198 (cify-closer-1 "TCLOS"))
+               ;(cons 70 (cify-closer-1 "TPROC"))
                (cons 7 ;; eq? a b to
                   (λ (bs regs fail)
                      (lets ((a b to bs (get3 (cdr bs))))

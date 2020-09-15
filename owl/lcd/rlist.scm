@@ -1,5 +1,5 @@
 #| doc
-Randomness
+Random Access Lists
 
 Random access lists are a data structure similar to lists, but with very
 different efficiency characteristics. A regular list built out of cons cells is

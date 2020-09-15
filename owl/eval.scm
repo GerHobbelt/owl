@@ -1,11 +1,15 @@
 #| doc
+
 Evaluation
 
-This library exports some read-eval-print-loop functions, such as evaluate.
-It is typically called through eval. The `*toplevel*` variable is updated
-after each definition, so it can be used to evaluate a term in the corresponding
-environment.
+Evaluation ties together all the separate compiler passes. Each pass is a function of
+the environment in which the evaluation occurs and the current version of the expression
+to be evaluated, and returns either an error or next versions of the environment and
+expression. In the final step the expression has been converted to a thunk, meaning a
+function of zero arguments, which when called gives the value(s) of the expression.
 
+Evaluate returns the success/failure data structure used in the compiler. Exported-eval
+is the function typically found at toplevel as eval.
 |#
 
 
@@ -88,12 +92,13 @@ environment.
              (env exp (macro-expand exp env abort)))
             (success (evaluate exp env)
                ((ok value env) value)
-               ((fail why) 
+               ((fail why)
                   (print why)
                   #f))))
 
       (example
+         (evaluate '(car '(11 22)) *toplevel*) = (ok 11 *toplevel*)
          (exported-eval '(car '(11 . 22)) *toplevel*) = 11
-      )   
+      )
 
 ))

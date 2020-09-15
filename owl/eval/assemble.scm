@@ -1,5 +1,12 @@
 #| doc
-This library implements bytecode assembly.
+Bytecode Assembly
+
+This library converts the RTL expressions to bytecode executable by the VM.
+
+CPS conversion usually produces a lot of small functions with equal bytecode but potentially
+different bindings in the environment. In order to make programs smaller and improve cache
+friendliness the bytecode is interned, just like we do with symbols.
+
 |#
 
 (define-library (owl eval assemble)
@@ -15,6 +22,8 @@ This library implements bytecode assembly.
       (owl list)
       (owl math)
       (owl list-extra)
+      (owl eval data)
+      (only (owl eval data) rtl-case)
       (only (owl syscall) error interact)
       (only (owl eval register) allocate-registers n-registers)
       (owl primop))
@@ -101,7 +110,7 @@ This library implements bytecode assembly.
       ; rtl -> list of bytes
       ;; ast fail-cont → code' | (fail-cont <reason>)
       (define (assemble code fail)
-         (tuple-case code
+         (rtl-case code
             ((ret a)
                (list (inst->op 'ret) a))
             ((move a b more)
@@ -186,7 +195,6 @@ This library implements bytecode assembly.
                   (assemble more fail)))
             ((goto op nargs)
                (list (inst->op 'goto) op nargs))
-            ;; todo: all jumps could have parameterized lengths (0 = 1-byte, n>0 = 2-byte, being the max code length)
             ((jeqi i a then else)
                (lets
                   ((then (assemble then fail))
@@ -202,10 +210,7 @@ This library implements bytecode assembly.
                    (len (length else)))
                   (if (> len #xffff)
                      (fail (list "invalid jump offset: " len))
-                     (ilist (inst->op 'jeq) a b (fxand len #xff) (>> len 8) (append else then)))))
-            (else
-               ;(print "assemble: what is " code)
-               (fail (list "Unknown opcode " code)))))
+                     (ilist (inst->op 'jeq) a b (fxand len #xff) (>> len 8) (append else then)))))))
 
       ;; make bytecode and intern it (to improve sharing, not mandatory)
       (define (bytes->bytecode bytes)
@@ -214,14 +219,15 @@ This library implements bytecode assembly.
       ; code rtl object -> executable code
       (define (assemble-code obj tail)
          (tuple-case obj
-            ((code arity insts)
-               (assemble-code (tuple 'code-var #true arity insts) tail))
+            ;((code arity insts)
+            ;   (assemble-code (tuple 'code-var #true arity insts) tail))
             ((code-var fixed? arity insts)
                (lets ((insts (allocate-registers insts)))
                   (if (not insts)
                      (error "failed to allocate registers" "")
                      (lets/cc ret
                         ((fail (λ (why) (error "Error in bytecode assembly: " why) #false))
+                         ;(insts (update-rtl insts))
                          (bytes (assemble insts fail))
                          (len (length bytes)))
                         (if (> len #xffff)

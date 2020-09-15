@@ -1,5 +1,19 @@
 #| doc
-Compile AST to a code instruction tree suitable for assembly
+Register Transfer Language
+
+Lambdas can have any number of variables. The variables eventually end up
+representing virtual machine registers. There are only a fixed number of
+registers in the VM, and certain values should be in certain registers at
+certain points in evaluation. Therefore we need a transformation from the
+AST expression to something closer to bytecode operating on registers. This
+format uses a similar tuple structure and is called RTL, short for register
+transfer language.
+
+The task of this library is mainly to assign a VM register to each variable
+and convert references accordingly.
+
+This module is quite old. The register allocator could be updated at some point,
+after which the number of VM registers could be reduced.
 |#
 
 (define-library (owl eval compile)
@@ -21,14 +35,15 @@ Compile AST to a code instruction tree suitable for assembly
       (owl sort)
       (owl primop)
       (owl io)
+      (prefix (owl eval data) rtl-)
       (only (owl eval env) primop-of)
       (owl eval assemble)
-      (owl eval data)
+      ; (owl eval data)
       (owl eval closure))
 
    (begin
 
-      (define try-n-perms 1000) ;; how many load permutations to try before evicting more registers
+      (define try-n-perms 5000) ;; how many load permutations to try before evicting more registers
 
        ; regs = (node ...), biggest id first
       ; node = #(var <sym> id)
@@ -99,13 +114,13 @@ Compile AST to a code instruction tree suitable for assembly
                   (cont regs position))
                ((small-value? val)
                   (let ((reg (next-free-register regs)))
-                     (tuple 'ld val reg
+                     (rtl-ld val reg
                         (cont (cons (tuple 'val val reg) regs) reg))))
                ((not position)
                   (error "rtl-value: cannot make a load for a " val))
                ((fixnum? (cdr position))
                   (let ((this (next-free-register regs)))
-                     (tuple 'refi (car position) (cdr position) this
+                     (rtl-refi (car position) (cdr position) this
                         (cont (cons (tuple 'val val this) regs) this))))
                (else
                   (error "tried to use old chain load in " val)))))
@@ -119,7 +134,7 @@ Compile AST to a code instruction tree suitable for assembly
                   (error "rtl-variable: cannot find the variable " sym))
                ((fixnum? (cdr position))
                   (let ((this (next-free-register regs)))
-                     (tuple 'refi (car position) (cdr position) this
+                     (rtl-refi (car position) (cdr position) this
                         (cont (cons (tuple 'var sym this) regs) this))))
                (else
                   (error "no chain load: " position)))))
@@ -130,21 +145,21 @@ Compile AST to a code instruction tree suitable for assembly
             (cond
                ((null? env)
                   ;; no need to close, just refer the executable procedure
-                  (tuple 'refi (find-literals regs) lit-offset this
+                  (rtl-refi (find-literals regs) lit-offset this
                      (cont
                         (cons (tuple 'val (list 'a-closure) this) regs)
                         this)))
                ((null? lit)
                   ;; the function will be of the form
                   ;; #(closure-header <code> e0 ... en)
-                  (tuple 'cons-close #false (find-literals regs) lit-offset env this
+                  (rtl-cons-close #false (find-literals regs) lit-offset env this
                      (cont
                         (cons (tuple 'val (list 'a-closure) this) regs)
                         this)))
                (else
                   ;; the function will be of the form
                   ;; #(clos-header #(proc-header <code> l0 .. ln) e0 .. em)
-                  (tuple 'cons-close #true (find-literals regs) lit-offset env this
+                  (rtl-cons-close #true (find-literals regs) lit-offset env this
                      (cont
                         (cons (tuple 'val (list 'a-closure) this) regs)
                         this))))))
@@ -225,7 +240,7 @@ Compile AST to a code instruction tree suitable for assembly
                      ;; a run-of-the-mill a0 .. an → rval -primop
                      ((and (= (length formals) 1) (not (special-bind-primop? op)))
                         (let ((this (next-free-register regs)))
-                           (tuple 'prim op args this
+                           (rtl-prim op args this
                               (cont
                                  (cons
                                     (tuple 'var (car formals) this)
@@ -234,7 +249,7 @@ Compile AST to a code instruction tree suitable for assembly
                         ; bind or ff-bind, or arithmetic
                         (bind (rtl-bind regs formals)
                            (λ (selected regs)
-                              (tuple 'prim op args selected
+                              (rtl-prim op args selected
                                  (cont regs))))))))))
 
 
@@ -243,7 +258,7 @@ Compile AST to a code instruction tree suitable for assembly
             (λ (move rest)
                (if (eq? (car move) (cdr move))
                   rest
-                  (tuple 'move (car move) (cdr move) rest)))
+                  (rtl-move (car move) (cdr move) rest)))
             tail sequence))
 
       (define (rtl-moves-ok? moves)
@@ -280,7 +295,6 @@ Compile AST to a code instruction tree suitable for assembly
                   (let ((node (assq reg new)))
                      (if node (cdr node) reg)))
                call)))
-
 
       (define (rtl-check-moves perms n)
          (call/cc
@@ -323,85 +337,63 @@ Compile AST to a code instruction tree suitable for assembly
                   ; has never happened in practice
                   (error "failed to compile call: " call)))))
 
+      (define (maybe-arity obj)
+         (let ((op (ref obj 0)))
+            (if (eq? op 60) ;; fixed arity, new instruction
+               (ref obj 1)
+               #false)))    ;; variable or something else
+
+      (define (validate-arity obj incoming code)
+         (let ((arity (maybe-arity obj)))
+            (cond
+               ((not arity) 
+                  ;; it's like asking what are birds
+                  #false) 
+               ((eq? arity incoming)
+                  #true)
+               (else
+                  (error "invalid call" (list obj " would get " incoming " instead of " arity " arguments"))))))
+              
+      ;; fail if definitely error 
+      (define (check-arity rator n)
+         (tuple-case rator
+            ((value obj)
+               (let ((t (type obj)))
+                  (cond
+                     ((eq? type-bytecode t) ;; raw bytecode
+                        (validate-arity obj n obj)) 
+                     ((eq? t type-proc)
+                        (validate-arity obj n (ref obj 1))) 
+                     ((eq? t type-clos)
+                        (validate-arity obj n (ref (ref obj 1) 1))) 
+                     (else
+                        (error obj "would end up being called as a function.")))))
+            (else 
+               ;; insufficient time for a meaningful answer at compile time
+               #t)))
+
       (define (rtl-jump rator rands free inst)
          (let ((nargs (length rands)))
+            (check-arity rator nargs)
             (cond
                ;; cont is usually at 3, and usually there is
                ;; 1 return value -> special instruction
                ((and (eq? rator a0) (= nargs 1))
-                  (tuple 'ret (car rands)))
+                  (rtl-ret (car rands)))
                ;;; rator is itself in rands, and does not need rescuing
                ((memq rator rands)
                   (rtl-make-jump rands free
-                     (tuple (or inst 'goto) (index-of rator rands a0) nargs)))
+                     (inst (index-of rator rands a0) nargs)))
                ;;; rator is above rands, again no need to rescue
                ((> rator (+ 2 nargs))
                   (rtl-make-jump rands free
                      (if inst
-                        (tuple inst rator nargs)
-                        (tuple 'goto rator (length rands)))))
+                        (inst rator nargs)
+                        (rtl-goto rator (length rands)))))
                (else
-                  (tuple 'move rator (car free)
+                  (rtl-move rator (car free)
                      (rtl-jump (car free) rands (cdr free) inst))))))
 
-      (define (known-arity obj type)
-         (let ((op (ref obj 0)))
-            (if (eq? op 60) ;; fixed arity, new instruction
-               (tuple type (ref obj 1))
-               (begin
-                  ; (print "no " op)
-                  (tuple type #false)))))
-
-      ;; value-to-be-called → #(<functype> <arity>) | #false = don't know, just call and see what happens at runtime
-      (define (fn-type obj)
-         ;; known call check doesn't work as such anymore (arity check can fail in other branches and most common case is not handled) so disabled for now
-         ;; resulting in all calls going via a regular call instruction
-         (let ((t (type obj)))
-            (cond
-               ((eq? type-bytecode t) ;; raw bytecode
-                  (known-arity obj 'code))
-               ((eq? t type-proc)
-                  (known-arity (ref obj 1) 'proc))
-               ((eq? t type-clos)
-                  (known-arity (ref (ref obj 1) 1) 'clos))
-               (else
-                  (tuple 'bad-fn 0))))
-         ; #false
-         )
-
-      (define (arity-fail op wanted would-get)
-         (error "Would be an error: " (list op 'wants wanted 'but 'would 'get would-get 'arguments)))
-
-      ; rator nargs → better call opcode | #false = no better known option, just call | throw error if bad function or arity
-      ;; currently only checks arity, since goto-* are no currently missing from vm
-      (define (rtl-pick-call regs rator nargs)
-         (tuple-case rator
-            ((value rator)
-               (tuple-case (fn-type rator) ;; <- fixme, can be enabled again
-                  ((code n)
-                     (if (or (not n) (eq? n nargs))
-                        ;'goto-code
-                        #false
-                        (arity-fail rator n nargs)))
-                  ((proc n)
-                     (if (or (not n) (eq? n nargs))
-                        ; 'goto-proc
-                        #false
-                        (arity-fail rator n nargs)))
-                  ((clos n)
-                     (if (or (not n) (eq? n nargs))
-                        ; 'goto-clos
-                        #false
-                        (arity-fail rator n nargs)))
-                  (else
-                     ;; operator type not known at compile time
-                     (error "bad operator: " rator)
-                     #false)))
-            (else
-               ; (print "non value call " rator)
-               ; (print "ENV:")
-               ; (for-each (λ (x) (print " - " x)) regs)
-               #false)))
 
       (define (rtl-call regs rator rands)
          ; rator is here possibly #(value #<func>) and much of the call can be inlined
@@ -409,8 +401,7 @@ Compile AST to a code instruction tree suitable for assembly
          (rtl-args regs (cons rator rands)
             (λ (regs all)
                (let ((free (rtl-safe-registers (length all) all)))
-                  (rtl-jump (car all) (cdr all) free
-                     (rtl-pick-call regs rator (length rands)))))))
+                  (rtl-jump (car all) (cdr all) free rtl-goto)))))
 
       (define (value-simple? val)
          (tuple-case val
@@ -443,14 +434,14 @@ Compile AST to a code instruction tree suitable for assembly
                                     (let
                                        ((then (rtl-any regs then))
                                         (else (rtl-any regs else)))
-                                       (tuple 'jeqi i bp then else))))
+                                       (rtl-jeqi i bp then else))))
                               (rtl-simple regs a
                                  (λ (regs ap)
                                     (rtl-simple regs b (λ (regs bp)
                                        (let
                                           ((then (rtl-any regs then))
                                            (else (rtl-any regs else)))
-                                          (tuple 'jeq ap bp then else))))))))))
+                                          (rtl-jeq ap bp then else))))))))))
                   (else
                      (error "rtl-any: unknown branch type: " kind))))
             ((call rator rands)
@@ -534,18 +525,6 @@ Compile AST to a code instruction tree suitable for assembly
             (else
                (error "rtl-plain-lambda: bad node " exp))))
 
-      ;; temporary back-conversion for jump compiling
-      (define (bytecode->list thing)
-         (cond
-            ((bytecode? thing)
-               (bytevector->list thing))
-            ((function? thing)
-               ;; get the bytecode
-               (bytecode->list (ref thing 1)))
-            (else
-               (error "bytecode->list: " thing))))
-
-      ;; todo: control flow analysis time - if we can see what the arguments are here, the info could be used to make most continuation returns direct via known call opcodes, which could remove an important branch prediction killer
       ;;; proc = #(procedure-header <code-ptr> l0 ... ln)
       ; env node → env' owl-func
       (define (rtl-procedure node)
@@ -569,5 +548,5 @@ Compile AST to a code instruction tree suitable for assembly
 
       ;; todo: exit via fail cont on errors
       (define (compile exp env)
-         (ok (rtl-exp exp) env))
+         (rtl-ok (rtl-exp exp) env))
 ))

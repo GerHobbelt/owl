@@ -1,3 +1,10 @@
+#| doc
+Environment
+
+Evaluation happens in an environment. An environment maps variables to values. This library
+defines operations on the environment structure used by the compiler.
+|#
+
 (define-library (owl eval env)
 
    (export
@@ -188,7 +195,7 @@
       (define (apply-env exp env)
          (call/cc
             (λ (ret)
-               (ok 
+               (ok
                   ((walker env (B ret fail)) exp)
                   env
                   ))))

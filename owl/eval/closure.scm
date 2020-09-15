@@ -1,5 +1,22 @@
 #| doc
-Convert lambdas to closures where necessary
+Closure Conversion
+
+Even though all bindings and operations are just lambdas, we need to
+differentiate a few kinds of them depending on their content and use.
+
+A lambda occurring in the operator position does not need to be treated
+as a function, because it simply means assigning names to values. They
+are leaft intact and generally end up being implemented as register moves.
+
+The lambdas we need to represent somehow at runtime are further split
+to closures and procedures. A procedure is lambda which does not depend on 
+values known only at runtime, so the corresponding object can be constructed at compile
+time. In the special case where it also does not require any references
+to non-trivial other values, the value ends up being just the bytecode.
+
+A closure is a lambda which requires some values known only at runtime.
+For these a procedure is generated at compile time, and instructions to
+add the remaining values at runtime are added to bytecode.
 |#
 
 (define-library (owl eval closure)

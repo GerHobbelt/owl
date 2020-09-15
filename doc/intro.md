@@ -6,18 +6,17 @@ structures and assignments.
 
 Simplicity and flexibility are similarly important goals in the implementation.
 Owl runs on top of a tiny (20-40KB) portable standalone virtual machine written
-in C. Programs can be typed to REPL interactively, run from script files,
-compiled to bytecode for running on the plain VM, or compiled via C to
-standalone executables. The C output is standalone, so programs can be shipped
-as C-files.
+in C. Programs can be either developed interactively, or compiled to similarly
+portable standalone binaries via C.
 
-Currently Owl powers for example the text editor used to write this page, the
-shell the editor is running on top of, and the tools used to generate this web
-page. Some programs are available via package managers on various platforms.
-Efficiency of these actual programs is the main speed criteria. This makes
-features such as startup time and memory efficiency more relevant than
-synthetic benchmarks. There is room for optimization, but currently emphasis
-is on simplicity and flexibility.
+Owl is mainly used for writing small programs. For example the
+editor used to type this document, the shell that started the editor, the tools
+monitoring solar power being fed to this computer, and the tools
+used to convert the source document to a this web page on the server, are all
+Owl programs. It is designed to make programming these kinds of tasks, at least
+subjectively, easy and fun.
+
+
 
 #index
 
@@ -25,11 +24,21 @@ is on simplicity and flexibility.
 
 ## Requirements
 
+It should be easy to get owl up and running on most somewhat POSIX-compliant
+systems, such as Linux, any BSD. You should have #{make} and a working C-compiler
+installed. For example in Debian-based Linux distributions you can use:
+
+   $ sudo apt-get install gcc
+
+You may also need #{git} and #{make} if you download the sources from git or
+want to build the full source package.
+
+
 ## Building
 
-Owl consists of a single binary #{ol}, which contains the REPL, compiler and
-builtin libraries. Releases have a precompiled #{ol.c} file, which can be
-downloaded and used as follows:
+The easiest option is to download the current precompiled C-version of #{ol},
+and compile with with a C-compiler. Ol is the standalone repl and compiler,
+which also has the builtin libraries described in this manual.
 
    $ curl https://haltp.org/files/ol-0.1.23.c.gz \
       | gzip -d \
@@ -41,10 +50,10 @@ downloaded and used as follows:
    > ,quit
    bye bye _o/~
 
-This version takes very little time to compile with a C-compiler, because the
-code is not optimized.
-
-Alternatively you can download all of the sources and make a traditional install.
+This version of ol is compiled with no C-code optimizations, so the resulting
+C-code is small and takes very little time and resources to compile.
+Alternatively you can download all of the sources and make a traditional
+install.
 
    $ git clone https://gitlab.com/owl-lisp/owl.git
    $ cd owl-lisp
@@ -53,10 +62,11 @@ Alternatively you can download all of the sources and make a traditional install
 
 ## Installation
 
+If you just built ol, you can use it from wherever convenient. Usually it is
+convenient to put such binaries to your home directory under bin/ -directory.
+
 You can install owl and the manual pages with #{sudo make install} after building
 the sources or a release tarball.
-
-Alternatively you can just build ol and copy it somewhere convenient.
 
 
 ## Testing Operation
@@ -76,4 +86,14 @@ programming languages.
 You can exit owl by pressing Ctrl-d, denoting end of input in UNIX, asking the
 REPL to exit via #{,quit}, or by asking the thread scheduler to stop everything with
 #{(halt 1)}.
+
+Compiler mode can be tested for example by doing
+
+   $ echo '(lambda (args) (print "hello world") 0)' \
+      | ol  -x c -o - \
+      | gcc -x c -o test -
+   $ ./test
+   hello world
+
+
 
