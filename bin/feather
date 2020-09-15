@@ -159,8 +159,10 @@
             (put empty 'markdown (file->list path))
             others))
       (else
-         (print-to stderr (str "What should I do with " path "?"))
-         others)))
+         (print "Adding " path " (raw)")
+         (cons
+            (put empty 'markdown (string->list path))
+            others))))
 
 ;;; Rendering
 
@@ -190,8 +192,9 @@
    (if (get doc 'markdown)
       (bytes->string (get doc 'markdown))
       (str
-         "\n## " (get doc 'name (get doc 'path)) ": " (get doc 'title) "\n"
-         (get doc 'initial-doc "\n")
+         "\n### " (get doc 'title) ": " (get doc 'name (get doc 'path))  "\n"
+         (or (get doc 'initial-doc "\n")
+            "")
          "\n"
          "Exported values:\n\n"
          (foldr
@@ -200,7 +203,7 @@
          "\n"
          (if (get doc 'examples #f)
             (str
-               "### Examples\n\n"
+               "Examples:\n\n"
                (foldr str ""
                   (map render-example
                      (get doc 'examples))))
