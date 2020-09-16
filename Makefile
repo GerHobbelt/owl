@@ -72,17 +72,16 @@ web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
 	bin/ol -r bin/feather -o web-manual.md \
 		doc/intro.md doc/libraries.md \
 		"## Data Structures" \
-		owl/args.scm \
-		owl/bytevector.scm \
-		owl/boolean.scm \
-		owl/codec.scm \
 		owl/lazy.scm \
 		owl/queue.scm \
 		owl/string.scm \
 		owl/list.scm \
 		owl/vector.scm \
 		owl/list-extra.scm \
+		owl/bytevector.scm \
 		owl/lcd/rlist.scm \
+		owl/lcd/ff.scm \
+		owl/iff.scm \
 		"## Owl Things" \
 		owl/fasl.scm \
 		owl/sum.scm \
@@ -99,12 +98,14 @@ web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
 		owl/math/complex.scm \
 		owl/math/extra.scm \
 		"## Misc" \
+		owl/args.scm \
 		owl/metric.scm \
 		owl/parse.scm \
 		owl/date.scm \
 		owl/digest.scm \
 		owl/readline.scm \
 		owl/regex.scm \
+		owl/codec.scm \
 		owl/random.scm \
 		owl/io.scm \
 		owl/render.scm \
@@ -119,7 +120,8 @@ web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
 		"## Compiler" \
 		owl/eval.scm owl/eval/alpha.scm owl/eval/assemble.scm owl/eval/ast.scm owl/eval/cgen.scm owl/eval/closure.scm owl/eval/compile.scm owl/eval/cps.scm owl/eval/data.scm owl/eval/env.scm owl/eval/fixedpoint.scm owl/eval/register.scm \
 		doc/related.md \
-		doc/faq.md 
+		doc/faq.md
+
 
 
 manual.man: manual.md
