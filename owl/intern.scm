@@ -27,7 +27,7 @@ Value interning and conversions
       (owl list)
       (owl math)
       (owl function)
-      (owl lcd ff)
+      (owl ff)
       (owl tuple)
       (owl symbol))
 

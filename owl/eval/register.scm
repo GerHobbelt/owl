@@ -16,7 +16,7 @@ Old code. Scheduled for a rewrite.
 
    (import
       (owl core)
-      (owl lcd ff)
+      (owl ff)
       (owl math)
       (owl list-extra)
       (owl primop)

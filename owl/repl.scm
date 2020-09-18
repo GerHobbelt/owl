@@ -17,7 +17,7 @@
       (owl list)
       (owl eval)
       (owl primop)
-      (owl lcd ff)
+      (owl ff)
       (owl sort)
       (owl eval env)
       (owl eval data)

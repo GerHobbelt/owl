@@ -14,7 +14,7 @@ Number stores (radix trees with a ff at each node)
 
    (import
       (owl core)
-      (owl lcd ff)
+      (owl ff)
       (only (owl math integer) ncar ncdr ncons)
       (owl list))
 

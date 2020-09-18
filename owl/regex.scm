@@ -25,7 +25,7 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
       (prefix (only (owl parse) byte rune either epsilon imm parses star plus) get-)
       (only (owl syscall) error)
       (owl io)
-      (owl lcd ff)
+      (owl ff)
       (owl list)
       (owl lazy)
       (owl math)

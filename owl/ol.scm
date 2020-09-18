@@ -58,7 +58,7 @@
    (owl variable))
 
 
-(import (owl lcd ff))
+(import (owl ff))
 
 ;; implementation features, used by cond-expand
 (define *features*
@@ -309,7 +309,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
                            1)))))))
       2))
 
-(import (owl lcd ff))
+(import (owl ff))
 
 (define (directory-of path)
    (runes->string

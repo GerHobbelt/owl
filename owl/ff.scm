@@ -28,7 +28,7 @@ which makes it possible to build balanced trees by comparison.
 
 |#
 
-(define-library (owl lcd ff)
+(define-library (owl ff)
 
    (import
       (owl core)

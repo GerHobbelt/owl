@@ -41,7 +41,7 @@ up Owl are just fasl-encoded functions.
       (owl bytevector)
       (owl math)
       (owl primop)
-      (owl lcd ff)
+      (owl ff)
       (owl symbol)
       (owl lazy)
       (only (owl syscall) error)

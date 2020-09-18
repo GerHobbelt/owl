@@ -26,7 +26,7 @@ defines operations on the environment structure used by the compiler.
 
    (import
       (owl core)
-      (owl lcd ff)
+      (owl ff)
       (owl function)
       (owl list)
       (owl tuple)

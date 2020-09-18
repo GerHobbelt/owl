@@ -35,7 +35,7 @@ operation where desired.
       (owl core)
       (owl queue)
       (owl syscall)
-      (owl lcd ff)
+      (owl ff)
       (owl function)
       (owl primop)
       (owl list)

@@ -23,7 +23,7 @@ it makes some compilation steps easier.
       (owl io)
       (owl eval data)
       (only (owl syscall) error)
-      (owl lcd ff))
+      (owl ff))
 
    (begin
 

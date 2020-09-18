@@ -17,7 +17,7 @@ allow setting and getting a value.
       (owl list)
       (owl io)
       (only (owl syscall) mail interact wait-mail thread thunk->thread link)
-      (owl lcd ff))
+      (owl ff))
 
    (begin
 

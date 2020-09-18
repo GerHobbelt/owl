@@ -79,12 +79,12 @@ web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
 		owl/vector.scm \
 		owl/list-extra.scm \
 		owl/bytevector.scm \
-		owl/lcd/rlist.scm \
-		owl/lcd/ff.scm \
+		owl/rlist.scm \
+		owl/ff.scm \
 		owl/iff.scm \
 		"## Owl Things" \
 		owl/fasl.scm \
-		owl/sum.scm \
+		owl/lcd.scm \
 		owl/dump.scm \
 		owl/gensym.scm \
 		owl/variable.scm \

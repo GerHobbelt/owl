@@ -1,5 +1,7 @@
 
-(import (owl sum))
+(import (owl lcd))
+
+;; ---------------------- 8< ----------------------
 
 (define-sum-type lizt
    (nil)
@@ -30,7 +32,7 @@
 
 (print (fold  + 0 (iota  0 1 100)))
 
-;; example that did not work in previous macro expander
+;; ---------------------- 8< ----------------------
 
 (define-sum-type arith
    (sum a b)

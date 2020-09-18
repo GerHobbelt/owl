@@ -32,7 +32,7 @@ is how the usual bin/ol interpreter is built.
       (owl bytevector)
       (owl math)
       (owl function)
-      (owl lcd ff)
+      (owl ff)
       (owl string)
       (only (owl primop) call/cc)
       (owl render)

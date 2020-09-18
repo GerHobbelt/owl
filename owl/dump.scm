@@ -19,7 +19,7 @@ This library is used to serialize programs to FASL format.
       (owl tuple)
       (owl sort)
       (owl syscall)
-      (owl lcd ff)
+      (owl ff)
       (owl symbol)
       (owl bytevector)
       (owl vector)

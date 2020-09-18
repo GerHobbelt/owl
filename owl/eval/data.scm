@@ -12,7 +12,7 @@ to verify some aspects of use of the data structure at compile time.
 
    (import
       (owl core)
-      (owl sum))
+      (owl lcd))
 
    (export
       success

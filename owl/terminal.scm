@@ -75,7 +75,7 @@
       (owl list-extra)
       (owl port)
       (prefix (owl parse) get-)
-      (owl lcd ff)
+      (owl ff)
       (scheme base)
       (owl io)
       (only (owl unicode) utf8-decoder utf8-encode)

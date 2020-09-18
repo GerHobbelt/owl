@@ -1,21 +1,18 @@
-Owl Lisp is a simple programming language. It is essentially equivalent to the
-Scheme programming language developed at MIT, but follows its tradition of
-simplicity and orthogonality even further at the expense of some standards
-compatibility. The most obvious change is the removal of all mutable data
-structures and assignments.
+(work in progress)
+
+Owl Lisp is a purely functional dialect of the Scheme programming language. It
+is essentially equivalent to the R7RS version of Scheme, but follows its
+tradition of simplicity and orthogonality even further at the expense of some
+standards compatibility. The most obvious change is the removal of all mutable
+data structures and assignments.
 
 Simplicity and flexibility are similarly important goals in the implementation.
-Owl runs on top of a tiny (20-40KB) portable standalone virtual machine written
-in C. Programs can be either developed interactively, or compiled to similarly
-portable standalone binaries via C.
+Owl runs on top of a tiny portable standalone virtual machine written
+in C. Programs can be interpreted and compiled to standalone binaries.
 
-Owl is mainly used for writing small programs. For example the
-editor used to type this document, the shell that started the editor, the tools
-monitoring solar power being fed to this computer, and the tools
-used to convert the source document to a this web page on the server, are all
-Owl programs. It is designed to make programming these kinds of tasks, at least
-subjectively, easy and fun.
-
+Though it may not initially seem that way, the main reason for developing owl 
+has been to write actual programs. For example the text editor used to type 
+this document, and most of the tools that build this site, are owl programs.
 
 
 #index

@@ -18,7 +18,7 @@ friendliness the bytecode is interned, just like we do with symbols.
 
    (import
       (owl core)
-      (owl lcd ff)
+      (owl ff)
       (owl list)
       (owl math)
       (owl list-extra)

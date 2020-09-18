@@ -110,7 +110,7 @@ iomux is running. This may happen when working with code that has not called
       (owl unicode)
       (owl fasl)
       (owl tuple)
-      (owl lcd ff)
+      (owl ff)
       (only (owl primop) set-ticker wait)
       (owl port)
       (owl lazy)
@@ -778,7 +778,10 @@ iomux is running. This may happen when working with code that has not called
          (quotient (sys-clock_gettime (sys-CLOCK_REALTIME)) 1000000))
 
       (define (_poll2 rs ws timeout)
-         (sys-prim 43 rs ws timeout))
+         (lets
+             ((res (sys-prim 43 rs ws timeout))
+              (waked x res))
+             (values waked x)))
 
       (define (muxer-add rs ws alarms mail)
          (tuple-case (ref mail 2)
@@ -804,7 +807,7 @@ iomux is running. This may happen when working with code that has not called
                      (muxer rs ws alarms))
                   (lets
                      ((timeout (if (single-thread?) #false 0))
-                      ((waked x) <= (_poll2 rs ws timeout)))
+                      (waked x (_poll2 rs ws timeout)))
                      (cond
                         (waked
                            (lets ((rs ws alarms (wakeup rs ws alarms waked x)))
@@ -823,7 +826,7 @@ iomux is running. This may happen when working with code that has not called
                         (lets
                            ((timeout
                               (if (single-thread?) (min fx-greatest (- (caar alarms) now)) 0))
-                            ((waked x) <= (_poll2 rs ws timeout)))
+                            (waked x (_poll2 rs ws timeout)))
                            (cond
                               (waked
                                  (lets ((rs ws alarms (wakeup rs ws alarms waked x)))

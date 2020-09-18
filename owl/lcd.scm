@@ -1,14 +1,20 @@
 #| doc
-Functional Data Types
+Lambda Calculus Data
 
-This library allows defining algebraic data types as functions.
+This library defines macros for using functions (which are lambda expressions) as data
+structures.
+
 |#
-(define-library (owl sum)
+
+(define-library (owl lcd)
 
    (import
       (owl core))
 
-   (export define-sum-type)
+   (export
+      define-sum-type
+      prod
+      trod)
 
    (begin
 
@@ -39,7 +45,21 @@ This library allows defining algebraic data types as functions.
                   __names (option ...)
                   __expected ((option arg ...) ...)))
 
-            ))))
+            ))
+
+      (define-syntax prod
+         (syntax-rules ()
+            ((prod val ...)
+               (lambda (c) (c val ...)))))
+
+      (define-syntax trod
+         (syntax-rules ()
+            ((trod tag val ...)
+               (lambda (c)
+                  ((c tag) val ...)))))
+
+
+))
 
 
 

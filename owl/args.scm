@@ -29,7 +29,7 @@ in the usual way.
       (owl string)
       (owl equal)
       (owl regex)
-      (owl lcd ff)
+      (owl ff)
       (scheme cxr)
       (scheme write))
 

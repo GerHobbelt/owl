@@ -29,7 +29,7 @@ or other formats.
       (owl list)
       (owl list-extra)
       (owl boolean)
-      (owl lcd ff)
+      (owl ff)
       (owl tuple)
       (owl function)
       (owl syscall)

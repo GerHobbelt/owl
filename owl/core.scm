@@ -14,7 +14,7 @@
       define-values
       define-record-type
       _record-values
-      not B C H I K self
+      B C H I K self
       type-complex
       type-rational
       type-int+
@@ -43,6 +43,7 @@
       type-string-dispatch
       type-thread-state
 
+      not
       maybe
    )
 
@@ -197,13 +198,14 @@
 
       ;; let sequence
       (define-syntax lets
-         (syntax-rules (<=)
+         (syntax-rules (<= <-)
             ((lets ((name val) . bindings) exp . exps)
                ;; (name val) ≡ ((λ (name) ...) val)
                ((lambda (name) (lets bindings exp . exps)) val))
-            ((lets (((name . names) <= val) . bindings) exp . exps)
-               (bind val
-                  (lambda (name . names) (lets bindings exp . exps))))
+            ((lets ((name1 name2 ... <- source) . bindings) exp . exps)
+               ;; lcd tuple bind
+               (source
+                  (lambda (name1 name2 ...) (lets bindings exp . exps))))
             ((lets ((name1 name2 ... (op . args)) . bindings) exp . exps)
                ;; (v1 v2 .. vn (op a1 .. an)) ≡ call-with-values, this is a generalization of the above
                (receive (op . args)
@@ -403,7 +405,6 @@
 
       (define self I)
 
-      (define not (C eq? #f))
 
 
       ;;;
@@ -528,4 +529,6 @@
 
       (define (maybe op arg)
          (if arg (op arg) arg))
+
+      (define (not x) (eq? x #f))
 ))

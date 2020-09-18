@@ -22,7 +22,7 @@
       (owl math extra)
       (owl vector)
       (owl list-extra)
-      (owl lcd ff)
+      (owl ff)
       (owl lazy)
       (owl symbol)
       (owl io) ; testing

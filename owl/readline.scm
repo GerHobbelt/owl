@@ -26,7 +26,7 @@ traditional readline library does.
       (owl lazy)
       (owl list-extra)
       (owl port)
-      (owl lcd ff)
+      (owl ff)
       (owl terminal)
       (owl io)
       (owl sys)

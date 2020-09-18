@@ -19,7 +19,7 @@ rewrite rule causes all of the matches to be added.
    (import
       (owl core)
       (owl list)
-      (owl lcd ff)
+      (owl ff)
       (owl equal)
       (owl symbol)
       (owl gensym)
