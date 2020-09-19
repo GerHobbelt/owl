@@ -380,7 +380,7 @@
 
 
       (define-syntax define-library
-         (syntax-rules (export _define-library define-library)
+         (syntax-rules (export _define-library)
             ;; push export to the end (should syntax-error on multiple exports before this)
             ((define-library x ... (export . e) term . tl)
              (define-library x ... term (export . e) . tl))

@@ -1,8 +1,15 @@
 #| doc
 Command Line Arguments
 
-This library makes it easy to write tools which use command line arguments
-in the usual way.
+This library makes it easy to write tools which use standard UNIX command line
+tool conventions. These include accepting short and long versions of flags (-h
+or --help), packing multiple flags to a single short one (-hai = -h -a -i),
+handling and verification of flag arguments (--output foo.txt), ability to
+handle flags anywhere in the arguments and use of -- to stop command line
+argument processing (e.g. to remove a file called -h or process globbed files
+coming from an untrusted source).
+
+
 |#
 
 
@@ -12,6 +19,7 @@ in the usual way.
       process-arguments    ;; sexp → cl-rules
       format-rules         ;; cl-rules → str
       print-rules          ;; cl-rules → _
+      parse-args           ;; cl-rules args -> dict args' | false false
       cl-rules)            ;; sexp → cl-rules
 
    (import
@@ -19,6 +27,7 @@ in the usual way.
       (owl symbol)
       (owl list-extra)
       (owl lazy)
+      (owl boolean)
       (owl function)
       (owl math)
       (owl syscall)
@@ -30,8 +39,10 @@ in the usual way.
       (owl equal)
       (owl regex)
       (owl ff)
+      (owl lcd)
       (scheme cxr)
-      (scheme write))
+      (scheme write)
+      )
 
    (begin
       ;; cl-rules is a ff of
@@ -58,6 +69,7 @@ in the usual way.
                (cdr (string->bytes str)))
             #false))
 
+      ;; switch to returning these
       (define (fail fools)
          (write-bytes stderr (foldr render '(10) fools))
          #false)
@@ -108,7 +120,7 @@ in the usual way.
          (cond
             ((null? args)
                (if (mandatory-args-given? dict rules)
-                  (tuple (fill-defaults dict rules) (reverse others))
+                  (prod (fill-defaults dict rules) (reverse others))
                   #false))
             ((dashy? (car args))
                (cond
@@ -157,11 +169,19 @@ in the usual way.
       (define (process-arguments args rules error-msg cont)
          (let ((res (walk rules args empty #n)))
             (if res
-               (lets ((dict others res))
+               (lets ((dict others <- res))
                   (cont dict others))
                (begin
                   (print-to stderr error-msg)
                   #false))))
+
+      ;; a simpler api; rules args -> dict rest | false false on error
+      (define (parse-args rules args)
+         (let ((res (walk rules args empty null)))
+            (if res
+               (lets ((dict others <- res))
+                  (values dict others))
+               (values false false))))
 
       ;; and now a friendlier way to define the rules
 

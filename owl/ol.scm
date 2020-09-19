@@ -49,7 +49,7 @@
    (owl eval ast)
    (owl thread)
    (owl args)
-   (only (owl dump) make-compiler load-fasl)
+   (only (owl compile) make-compiler load-fasl)
    (only (owl primop) bind mkt)
    (owl eval)
    (owl eval data)

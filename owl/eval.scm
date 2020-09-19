@@ -35,7 +35,7 @@ is the function typically found at toplevel as eval.
       (owl eval cps)
       (only (owl tuple) tuple?) ;; temp
       (owl eval closure)
-      (owl eval compile)
+      (owl eval rtl)
       (only (owl io) print)
       (owl proof)
       )

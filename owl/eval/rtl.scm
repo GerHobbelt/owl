@@ -16,7 +16,7 @@ This module is quite old. The register allocator could be updated at some point,
 after which the number of VM registers could be reduced.
 |#
 
-(define-library (owl eval compile)
+(define-library (owl eval rtl)
 
    (export
       compile)

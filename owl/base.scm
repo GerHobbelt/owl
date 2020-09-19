@@ -10,6 +10,7 @@ Values exported in this library are available when starting owl interactively. T
    (export
       (exports (owl core))
       (exports (owl list))
+      (exports (owl boolean))
       (exports (owl rlist))
       (exports (owl list-extra))
       (exports (owl ff))
@@ -49,6 +50,7 @@ Values exported in this library are available when starting owl interactively. T
 
    (import
       (owl core)
+      (owl boolean)
       (owl list)
       (owl rlist)
       (owl list-extra)
@@ -74,7 +76,7 @@ Values exported in this library are available when starting owl interactively. T
       (owl math)
       (owl digest)
       (owl syntax-rules)
-      (only (owl dump) suspend)
+      (only (owl compile) suspend)
       (only (owl primop) halt lets/cc ref wait)
       (only (owl sexp) read read-ll)
       (scheme base)

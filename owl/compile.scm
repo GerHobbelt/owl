@@ -1,10 +1,12 @@
 #| doc
 Program Serialization
 
-This library is used to serialize programs to FASL format.
+This library writes programs in formats required from the compiler. Programs 
+can currently be written as FASL-encoded bytecode for use in the VM, or a mixture 
+of C and FASL when compiling to C.
 |#
 
-(define-library (owl dump)
+(define-library (owl compile)
 
    (export
       make-compiler    ; ((make-compiler extra-insts) entry path opts native)
