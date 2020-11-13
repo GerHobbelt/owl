@@ -198,7 +198,7 @@
 
       ;; let sequence
       (define-syntax lets
-         (syntax-rules (<= <-)
+         (syntax-rules (<-)
             ((lets ((name val) . bindings) exp . exps)
                ;; (name val) ≡ ((λ (name) ...) val)
                ((lambda (name) (lets bindings exp . exps)) val))

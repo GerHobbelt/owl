@@ -17,6 +17,7 @@ A random access list is a data structure, which unsurprisingly attempts to make
 random access and update efficient.
 
 The performance characteristics of this random access list library are:
+
    car → O(1)
    cdr → O(log n)
    cons → O(log n)
@@ -33,14 +34,15 @@ a sequence of complete binary trees. The binary trees are built out of cons
 cells when needed. The first tree is always of height 1, meaning it just holds
 the value, much like a regular cons cell. The next node always holds a binary
 tree either of the same or next height. There can be at most two trees of the
-same height next to eachother. Therefore, tree heights `(1 1)`, `(1 2 4)` and
-`(1 1 2 4 4)` are valid, whereas `(1 1 1)`, `(2 2 4)` and `(1 2 2 8)` are not.
-`(5)` is right out.
+same height next to each other. Therefore, tree heights (1 1), (1 2 4) and
+(1 1 2 4 4) are valid, whereas (1 1 1), (2 2 4) and (1 2 2 8) are not.
+(5) is right out.
 
-Secondly, trees can be addressed directly with bits. It takes a n-bit number
+Secondly, trees can be addressed directly with bits. It takes a n-bit number to
 address each node of a complete binary tree of height n. Finding a value from a
-list works by first finding the tree in which the value is held, and then using
-the remaining bits to find the correct leaf node in the tree.
+random access list works here by first finding the tree in which the value is
+held, and then using the remaining bits to find the correct leaf node in the
+tree.
 
 It is easy to see that it takes O(log n) steps to find the tree in which some
 particular value is held, and then another O(log n) steps to walk the tree to a
@@ -74,10 +76,6 @@ update.
       rlen
       rlist
       rfold
-      rfoldr
-      riter
-      riterr
-      rmap
       rnull?
       rpair?
       list->rlist
@@ -249,15 +247,11 @@ update.
       (define (rlist . args)
          (list->rlist args))
 
-      (define rmap    #f)
-      (define rfoldr  #f)
-      (define riter   #f)
-      (define riterr  #f)
-
-      (define rla (rlist 1 2))
-      (define rlb (rlist 3 4 5))
-      
       (example
+
+         let rla = (rlist 1 2)
+
+         let rlb = (rlist 3 4 5)
 
          (rcar (rcons 11 rnull)) = 11
 

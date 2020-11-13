@@ -1,8 +1,8 @@
 #| doc
 System Interface
 
-This library defined various system calls and wrappers for calling them. 
-The calls available are mainly frequently needed ones defined in the POSIX 
+This library defined various system calls and wrappers for calling them.
+The calls available are mainly frequently needed ones defined in the POSIX
 standard, or otherwise portable enough to be available in most systems these days.
 |#
 
@@ -96,6 +96,7 @@ standard, or otherwise portable enough to be available in most systems these day
       (owl port)
       (owl list)
       (owl vector)
+      (only (owl unicode) utf8-decode)
       (only (owl primop) halt))
 
    (begin
@@ -348,12 +349,22 @@ standard, or otherwise portable enough to be available in most systems these day
       (define (open-dir path)
          (sys 11 path))
 
+
+      (define (maybe-read-unicode-string ptr)
+         (let ((data (mem-string (sys 12 ptr))))
+            (if data
+               (let ((decoded (utf8-decode (string->list data))))
+                  (if decoded
+                     (list->string decoded)
+                     data))
+               #false)))
+
       ;; unsafe-dirfd → #false | eof | raw-string
       (define (read-dir obj)
          (and
             (integer? obj)
             (or
-               (mem-string (sys 12 obj))
+               (maybe-read-unicode-string obj)
                (and (zero? (errno)) (eof-object)))))
 
       (define (close-dir obj)

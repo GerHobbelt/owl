@@ -38,15 +38,14 @@ after which the number of VM registers could be reduced.
       (prefix (owl eval data) rtl-)
       (only (owl eval env) primop-of)
       (owl eval assemble)
-      ; (owl eval data)
       (owl eval closure))
 
    (begin
 
-      (define try-n-perms 5000) ;; how many load permutations to try before evicting more registers
+      (define try-n-perms 1000) ;; how many load permutations to try before evicting more registers
 
-       ; regs = (node ...), biggest id first
-      ; node = #(var <sym> id)
+      ; regs = (node ...), biggest id first
+      ; node = #(var <sym> id)                   ;; <- convert to sum type
       ;      = #(val <value> id)
       ;      = #(env <regs> id)
       ;      = #(lit <values> id)

@@ -61,10 +61,10 @@
                new-define-syntax-transformer)
             primops))
 
-      ;; toplevel variable to which loaded libraries are added
 
       (define (? x) #true)
 
+      ;; toplevel variable to which loaded libraries are added
       (define library-key '*libraries*)     ;; list of loaded libraries
       (define features-key '*features*)     ;; list of implementation feature symbols
       (define includes-key '*include-dirs*) ;; paths where to try to load includes from
@@ -832,7 +832,7 @@
          (let ((fd (if (equal? path "-") stdin (open-input-file path))))
             (if fd
                (repl-port env fd)
-               (tuple 'error "cannot open file" env))))
+               (tuple 'error "cannot open file" env #f))))
 
       ;; -> success
       (define (repl-string env str)

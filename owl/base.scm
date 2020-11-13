@@ -84,7 +84,6 @@ Values exported in this library are available when starting owl interactively. T
       (scheme write)
 
       ;; just pull into the fasl
-      (owl codec)
       (owl date)
       (scheme case-lambda)
       (scheme complex)
