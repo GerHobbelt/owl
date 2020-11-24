@@ -40,7 +40,6 @@
 
 (define *interactive* #false)  ;; be silent
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
-;(define *owl-names* #empty) ;; default is empty, so safe to remove jh
 (define *owl-version* "0.2a")
 
 (import
@@ -324,8 +323,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
 (define (heap-entry symbol-list)
    (λ (codes) ;; all my codes are belong to codes
       (lets
-         ((initial-names *owl-names*)
-          (interner-thunk (initialize-interner symbol-list codes)))
+         ((interner-thunk (initialize-interner symbol-list codes)))
          (λ (vm-special-ops)
             (let ((compiler (make-compiler vm-special-ops)))
                ;; still running in the boostrapping system
@@ -371,7 +369,6 @@ Check out https://haltp.org/posts/owl.html for more information.")
                                                 (cons '*libraries* *libraries*)
                                                 (cons 'dump compiler)
                                                 (cons '*owl-version* *owl-version*)
-                                                (cons '*owl-names* initial-names)
                                                 (cons 'eval exported-eval)
                                                 (cons 'render render)
                                                 (cons '*vm-special-ops* vm-special-ops)

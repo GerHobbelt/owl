@@ -79,7 +79,7 @@ is the function typically found at toplevel as eval.
                                  (exit (fail why)))))
                         (ok exp env)
                         compiler-passes))))
-            (report-failure fail-val)
+            (report-failure env fail-val)
             (list 'repl-eval)))
 
       (define (evaluate exp env)

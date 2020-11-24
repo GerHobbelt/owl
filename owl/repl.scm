@@ -139,8 +139,7 @@
                         (halt 125)))
                   (begin
                      ;(maybe-show-metadata env val)
-                     ((writer-to (env-get env name-tag empty))
-                        stdout val)
+                     ((writer-to empty) stdout val)
                      (if (not (display "\n> "))
                         (halt 125)))))))
 
@@ -611,22 +610,6 @@
             includes-key    ;; where to load libraries from
             features-key))  ;; implementation features
 
-      ;; update *owl-names* (used by renderer of repl prompt) if the defined value is a function
-      (define (maybe-name-function env name value)
-         (if (and #false (function? value)) ;; TODO DROP #FALSE
-            (lets
-               ((names (env-get env name-tag empty))
-                (old (get env value))
-                (env
-                  (if old
-                     env
-                     (env-set env name-tag
-                        (put names value name)))))
-               (if (eq? (type value) 16)
-                  env
-                  ;; if this is a proc or closure name also the internal parts
-                  (maybe-name-function env name (ref value 1))))
-            env))
 
       ;; update *owl-meta* to have some data about this
       (define (maybe-save-metadata env name value)
@@ -668,7 +651,6 @@
                      ((ok value env2)
                         (lets
                            ((env (env-set env (cadr exp) value))
-                            (env (maybe-name-function env (cadr exp) value))
                             ;(env (maybe-save-metadata env (cadr exp) value))
                             )
                            (ok
@@ -739,12 +721,6 @@
                             (env-set lib-env current-library-key name))))
                      (success (repl-library exps lib-env repl fail) ;; anything else must be incuded explicitly
                         ((ok library lib-env)
-                           ;; get new function names and metadata from lib-env (later to be handled differently)
-                           (lets
-                              ((names (env-get lib-env name-tag empty))
-                               (env (env-set env name-tag (ff-union (env-get env name-tag empty) names (λ (old new) new))))
-                               (meta (env-get lib-env meta-tag empty))
-                               (env (env-set env meta-tag (ff-union (env-get env meta-tag empty) meta (λ (old new) new)))))
                               (ok
                                  (repl-message
                                     (list->string
@@ -754,7 +730,7 @@
                                     (cons (cons name library)
                                        (remove ;; drop the loading tag for this library
                                           (B (C equal? name) car)
-                                          (env-get lib-env library-key #n))))))) ; <- lib-env may also have just loaded dependency libs
+                                          (env-get lib-env library-key #n)))))) ; <- lib-env may also have just loaded dependency libs
                         ((fail why)
                            (fail
                               (list "Library" name "failed to load because" why))))))

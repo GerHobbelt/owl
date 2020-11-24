@@ -424,11 +424,12 @@ operation where desired.
                (ref outcome 2)
                (fail-fn outcome))))
 
-      (define (report-failure retval)
+      ;; move elsewhere
+      (define (report-failure env retval)
          (λ (outcome)
             (tuple-case outcome
                ((crashed opcode a b)
-                  (print-to stderr (verbose-vm-error empty opcode a b))
+                  (print-to stderr (verbose-vm-error env opcode a b))
                   retval)
                ((error cont reason info)
                   ;; note: these could be restored via cont
@@ -443,8 +444,10 @@ operation where desired.
                   (print-to stderr (list "bug: " outcome))
                   retval))))
 
-      (define (try thunk retval)
-         (try-thunk thunk (report-failure retval) (list 'try)))
+      (define (try thunk retval . envp)
+         (try-thunk thunk 
+            (report-failure (if (null? envp) empty (car envp)) retval) 
+            (list 'try)))
 
       ;; find a thread id that looks like one started via repl
       (define (repl-eval-thread threads)
