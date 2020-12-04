@@ -1,3 +1,9 @@
+#| doc
+List Functions
+
+
+|#
+
 (define-library (owl list)
 
    (export
@@ -10,7 +16,7 @@
       fold-map foldr-map
       append concatenate
       reverse
-      filter remove
+      filter remove separate
       keep
       every any
       unfold
@@ -83,7 +89,7 @@
       (define (unfold op st end?)
          (if (end? st)
             #n
-            (lets ((this st (op st)))
+            (lets ((st this (op st)))
                (cons this (unfold op st end?)))))
 
       ;; op s1 s2 lst -> s1' s2', fold with 2 states
@@ -255,10 +261,26 @@
       (define (remove pred lst)
          (filter (B not pred) lst))
 
-      (let ((l '(1 2 () 3 () 4)))
-         (example
-            (filter null? l) = '(() ())
-            (remove null? l) = '(1 2 3 4)))
+      (example
+         let l = '(1 2 () 3 () 4)
+         (filter null? l) = '(() ())
+         (remove null? l) = '(1 2 3 4))
+
+      (define (separate lst pred)
+         (let loop ((lst lst) (is '()) (isnt '()))
+            (cond
+               ((null? lst)
+                  (values
+                     (reverse is)
+                     (reverse isnt)))
+               ((pred (car lst))
+                  (loop (cdr lst) (cons (car lst) is) isnt))
+               (else
+                  (loop (cdr lst) is (cons (car lst) isnt))))))
+
+      (example
+         let l = '(#t (1 2) #f (3))
+         (separate l pair?) = (values '((1 2) (3)) '(#t #f)))
 
       (define (every pred lst)
          (or (null? lst) (and (pred (car lst)) (every pred (cdr lst)))))

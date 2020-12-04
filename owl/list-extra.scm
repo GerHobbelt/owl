@@ -1,8 +1,22 @@
+#| doc
+Extra List Functions
+
+These common list processing operations require numbers, so they are 
+defined in a library loaded after math code.
+|#
+
 (define-library (owl list-extra)
+
+   ;; A note on naming: There are del, get, set and ref functions for
+   ;; various data structures, where the prefix (or lack of it) denotes
+   ;; the type of data structure being operated on. L is the prefix for
+   ;; regular list operations. Lack of generic functions for these
+   ;; similar operations dispatching by the type of the data structure
+   ;; is a feature.
 
    (export
       lset ldel lget length
-      led ledn lins
+      led ledn lins lref
       take drop iota
       list-ref
       list-tail
@@ -24,6 +38,8 @@
             ((null? lst) (error "list-ref: out of list" pos))
             ((eq? pos 0) (car lst))
             (else (list-ref (cdr lst) (- pos 1)))))
+
+      (define lref list-ref)
 
       (define (lget lst pos def)
          (cond
@@ -74,7 +90,7 @@
                   (cons hd (lins tl (- pos 1) val))))))
 
       (example
-         (list-ref '(a b c) 1) = 'b
+         (lref '(a b c) 1) = 'b
          (lset '(a b c) 1 'x) = '(a x c)
          (ldel '(a b c) 1) = '(a c)
          (led '(1 2 3) 1 (C * 10)) = '(1 20 3)
@@ -105,26 +121,14 @@
          (drop '(a b c) 2) = '(c)
          (drop '(a) 100) = '())
 
-      (define (iota-up p s e)
-         (if (< p e)
-            (cons p (iota-up (+ p s) s e))
-            #n))
-
-      (define (iota-down p s e)
-         (if (> p e)
-            (cons p (iota-down (+ p s) s e))
-            #n))
-
       (define (iota from step to)
-         (cond
-            ((> step 0)
-               (if (< to from) #n (iota-up from step to)))
-            ((< step 0)
-               (if (> to from) #n (iota-down from step to)))
-            ((= from to)
-               #n)
-            (else
-               (error "bad iota: " (list 'iota from step to)))))
+         (unfold
+            (lambda (pos)
+               (values (+ pos step) pos))
+            from
+            (if (< from to)
+               (lambda (x) (>= x to))
+               (lambda (x) (<= x to)))))
 
       (example
          (iota 0 1 5) = '(0 1 2 3 4)

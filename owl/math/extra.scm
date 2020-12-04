@@ -197,7 +197,9 @@ Extra Math Functions
 
       (define (render-digits num tl base)
          (fold (λ (a b) (cons b a)) tl
-            (unfold (λ (n) (lets ((q r (truncate/ n base))) (values (char-of r) q))) num zero?)))
+            (unfold
+               (λ (n) (lets ((q r (truncate/ n base))) (values q (char-of r))))
+               num zero?)))
 
       ;; move to math.scm
 
