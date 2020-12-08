@@ -124,7 +124,7 @@
    (syntax-rules (theorem)
       ((theory theorem thing ... theorem . rest)
          ;; n>1 left
-         (cons (theorem thing ...) (theory theorem . rest)))
+         (cons (theorem . rest) (theory theorem thing ...)))
       ((theory . stuff)
          ;; last one
          (list stuff))))
