@@ -130,7 +130,6 @@ operation where desired.
          (system-println "[signal-halt]")
          (halt 42)) ;; exit owl with a specific return value
 
-      ;; syscalls used when profiler is running
       (define mcp-syscalls
          (tuple
 
@@ -356,48 +355,6 @@ operation where desired.
                state)
             ;; don't record anything for now for the rare thread starts and resumes with syscall results
             state))
-
-      ;; nested thread steps cause
-      ;;    - exit and false -> forget todo & done
-      ;;    - crash -> forget
-
-      ;; st=#(cont todo done) → finished? st'
-      ;; finished? = #f -> new state but no result yet, #t = result found and state is thunk, else error
-      ;; TODO: downgrade to single state and prune useless such nodes from tree whenever # of options is reduced down to 1
-      (define (step-parallel st)
-         (lets ((cont todo done st))
-            (if (null? todo)
-               (if (null? done)
-                  ;; no options left
-                  (values #true (λ () (cont #n)))
-                  ;; rewind the track, spin the record and take it back
-                  (step-parallel (tuple cont done #n)))
-               (lets ((state todo todo))
-                  (if (eq? (type state) type-tuple)
-                     (lets ((fini state (step-parallel state)))
-                        (if (null? fini)
-                           ;; crashed, propagate
-                           (values #n state)
-                           ;; either par->single or single->value state change,
-                           ;; but consumed a quantum already so handle it in next round
-                           (values #false (tuple cont todo (cons state done)))))
-                     (lets ((op a b c (run state thread-quantum)))
-                        (cond
-                           ((eq? op 1) ;; out of time, a is new state
-                              (values #false
-                                 (tuple cont todo (cons a done))))
-                           ((eq? op 2) ;; finished, return value and thunk to continue computation
-                              (values #true
-                                 (λ () (cont (cons a (λ () (syscall 22 todo done)))))))
-                           ((eq? op 22) ;; start nested parallel computation
-                              (lets ((contp a) (todop b) (donep c)
-                                     (por-state (tuple contp todop donep)))
-                                 (values #false
-                                    (tuple cont todo (cons por-state done)))))
-                           (else
-                              ;; treat all other reasons and syscalls as errors
-                              (print "bad syscall op within par: " op)
-                              (values #n (tuple op a b c))))))))))
 
       (define (thread-controller self todo done state)
          (if (null? todo)

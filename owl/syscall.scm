@@ -1,20 +1,21 @@
 #| doc
 Owl System Calls
 
-Typical Scheme programs have a continuation underlying in the execution of a program. 
-Depending on the implementation strategy, this continuation may be an actual variable 
-and a function, as is done in Owl, or it is simulated on a more traditional stack-based 
+Typical Scheme programs have a continuation underlying in the execution of a program.
+Depending on the implementation strategy, this continuation may be an actual variable
+and a function, as is done in Owl, or it is simulated on a more traditional stack-based
 system.
 
-Owl has in fact two continuations. One is the normal one you can capture with call-with-current-continuation, but the other
-one is threaded even through that operation. The other continuation is that of the 
-thread scheduler. It is also a regular program. The main difference in it is that it is 
-expected to be called initially when the program starts and the second continuation is 
-blank. Calling the blank continuation is what eventually terminates the whole program.
+Owl has in fact two continuations. One is the normal one you can capture with
+call-with-current-continuation, but the other one is threaded even through that
+operation. The other continuation is that of the thread scheduler. It is also a
+regular program. The main difference in it is that it is expected to be called
+initially when the program starts and the second continuation is blank. Calling
+the blank continuation is what eventually terminates the whole program.
 
-Normal progams can only access the second continuation via a primop. When this happens, 
-the continuation of the running program is captured as usual, and the second thread 
-scheduler continuation is called with the information provided in the call along with 
+Normal progams can only access the second continuation via a primop. When this happens,
+the continuation of the running program is captured as usual, and the second thread
+scheduler continuation is called with the information provided in the call along with
 the continuation allowing resuming execution of the program from the corresponding state.
 
 Wrappers for calling the thread scheduler are defined in this library.
@@ -23,12 +24,11 @@ Wrappers for calling the thread scheduler are defined in this library.
 (define-library (owl syscall)
 
    (export
-      syscall error interact accept-mail wait-mail check-mail
+      syscall error interact accept-mail wait-mail next-mail check-mail
       exit-owl release-thread catch-thread set-signal-action
       single-thread? kill link mail
       return-mails fork-named exit-thread exit-owl
-      poll-mail-from start-profiling stop-profiling running-threads par*
-      par por* por
+      poll-mail-from start-profiling stop-profiling running-threads
       library-exit
       thread thunk->thread)
 
@@ -79,33 +79,16 @@ Wrappers for calling the thread scheduler are defined in this library.
          (syscall 19 value value) ;; set exit value proposal in thread scheduler
          (exit-thread value))     ;; stop self and leave the rest (io etc) running to completion
 
-      ;; (executable ...) → (first-value . rest-ll) | (), or crash if something crashes in them
-      (define (par* ts)
-         (syscall 22 ts #n))
-
       (define (library-exit rval)
          (syscall 24 rval #f))
-         
-      ;; macro for calling from code directly
-      (define-syntax par
-         (syntax-rules ()
-            ((par exp ...)
-               (par* (list (λ () exp) ...)))))
-
-      (define (por* ts)
-         (let loop ((rss (par* ts)))
-            (cond
-               ((null? rss) #false)
-               ((car rss) => self)
-               (else (loop ((cdr rss)))))))
-
-      (define-syntax por
-         (syntax-rules ()
-            ((por exp ...)
-               (por* (list (λ () exp) ...)))))
 
       (define (wait-mail)           (syscall 13 #false #false))
       (define (check-mail)          (syscall 13 #false #true))
+
+      ;; returns values, so that it can be used directly with lets
+      (define (next-mail)
+         (let ((envelope (wait-mail)))
+            (values (ref envelope 1) (ref envelope 2))))
 
       (define (accept-mail pred)
          (let loop ((this (wait-mail)) (rev-spam #n))
