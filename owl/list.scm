@@ -11,7 +11,7 @@ List Functions
       caar cadr cdar cddr
       car* cdr*
       list?
-      zip fold foldr map for-each
+      zip foldl foldr fold map for-each
       memq assq getq last
       fold-map foldr-map
       append concatenate
@@ -76,12 +76,14 @@ List Functions
                   (cons hd (zip op (cdr a) (cdr b)))))))
 
       ;; op state lst -> state', walk over a list from left and compute a value
-      (define (fold op state lst)
+      (define (foldl op state lst)
          (if (null? lst)
             state
-            (fold op
+            (foldl op
                (op state (car lst))
                (cdr lst))))
+
+      (define fold foldl)
 
       (example
          (zip cons '(1 2 3) '(a b c d)) = '((1 . a) (2 . b) (3 . c)))
