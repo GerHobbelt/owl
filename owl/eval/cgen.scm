@@ -180,7 +180,7 @@ is how the usual bin/ol interpreter is built.
          (lets ((ah al b qh ql rem bs (get6 (cdr bs))))
             (values
                (list "{uint64_t a=(uint64_t)immval(R["ah"])<<FBITS|immval(R["al"]);hval b=immval(R["b"]);uint64_t q=a/b;R["qh"]=F(q>>FBITS);R["ql"]=F(q);R["rem"]=F(a-q*b);}\n")
-               bs (-> regs (put qh 'fixnum) (put ql 'fixnum) (put rem 'fixnum)))))
+               bs (pipe regs (put qh 'fixnum) (put ql 'fixnum) (put rem 'fixnum)))))
 
       (define (indent i)
          (list->string

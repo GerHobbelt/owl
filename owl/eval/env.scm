@@ -263,7 +263,7 @@ defines operations on the environment structure used by the compiler.
 
       ;; only special forms supported by the compiler, no primops etc
       (define *tabula-rasa*
-         (->
+         (pipe
             (list->ff
                (list
                   ;; special forms.

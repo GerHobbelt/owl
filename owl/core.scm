@@ -15,6 +15,7 @@
       define-record-type
       _record-values
       B C H I K self
+      null?
       type-complex
       type-rational
       type-int+
@@ -23,7 +24,7 @@
 
       immediate? allocated? raw? record?
 
-      -> ->> if-lets
+      partial pipe pipel piper if-lets ;; -> would be better as |
 
       type-bytecode
       type-proc
@@ -105,12 +106,12 @@
                ((let keyword ((var init) ...) exp . rest)
                   (letrec ((keyword (lambda (var ...) exp . rest))) (keyword init ...)))))
 
-      ;; todo: these essential optimizations and more should be handled by partial eval later
+      ;; warning: some peephole optimizations done here
       (define-syntax if
          (syntax-rules (not eq? null? empty?)
             ((if test exp) (if test exp #false))
-            ((if (not test) then else) (if test else then))
-            ((if (null? test) then else) (if (eq? test '()) then else))
+            ((if (not test) then else) (if test else then))               ;; optimization
+            ((if (null? test) then else) (if (eq? test '()) then else))   ;; optimization
             ((if (eq? a b) then else) (_branch 0 a b then else))
             ((if (a . b) then else) (let ((x (a . b))) (if x then else)))
             ((if #false then else) else)
@@ -342,14 +343,14 @@
                   (case-lambda walk args opts ...)))
 
             ((case-lambda walk args ((a b c d) . body) opts ...)
-               (if (and (eq? 1 (type args)) 
-                        (eq? 1 (type (cdr args))) 
-                        (eq? 1 (type (cdr (cdr args)))) 
-                        (eq? 1 (type (cdr (cdr (cdr args))))) 
+               (if (and (eq? 1 (type args))
+                        (eq? 1 (type (cdr args)))
+                        (eq? 1 (type (cdr (cdr args))))
+                        (eq? 1 (type (cdr (cdr (cdr args)))))
                         (eq? #null (cdr (cdr (cdr (cdr args))))))
-                  (let ((a (car args)) 
-                        (b (car (cdr args))) 
-                        (c (car (cdr (cdr args)))) 
+                  (let ((a (car args))
+                        (b (car (cdr args)))
+                        (c (car (cdr (cdr args))))
                         (d (car (cdr (cdr (cdr args)))))) . body)
                   (case-lambda walk args opts ...)))
 
@@ -405,7 +406,13 @@
 
       (define self I)
 
+      (define (null? x) (eq? x '()))
 
+      (define-syntax partial
+         (syntax-rules ()
+            ((_ f x ...)
+               (lambda (y)
+                  (f x ... y)))))
 
       ;;;
       ;;; DESCRIPTOR FORMAT
@@ -468,7 +475,7 @@
 
 
       ;; records could be removed
-      
+
       (define (record? x) (eq? type-record (type x)))
 
       (define-syntax _record-values
@@ -499,21 +506,28 @@
                         (λ (ob) (eq? tag (ref ob 1)))
                         ((field accessor) ...) (fieldname ...) ()))))))
 
-      (define-syntax ->
+      ;; left pipe: aggregate calls to first argument on the left
+      (define-syntax pipel
          (syntax-rules ()
-            ((-> a) a)
-            ((-> a ... (op arg ...))
-               (op (-> a ...) arg ...))
-            ((-> a ... x)
-               (x (-> a ...)))))
+            ((_ a) a)
+            ((_ a ... (op arg ...))
+               (op (pipel a ...) arg ...))
+            ((_ a ... x)
+               (x (pipel a ...)))))
 
-      (define-syntax ->>
+      ;; as with fold, left pipe is the default
+      (define-syntax pipe
          (syntax-rules ()
-            ((->> a) a)
-            ((->> a ... (op arg ...))
-               (op arg ... (->> a ...)))
-            ((->> a ... x)
-               (x (->> a ...)))))
+            ((pipe . args) (pipel . args))))
+
+      ;; right pipe: aggregate calls to the rightmost argument
+      (define-syntax piper
+         (syntax-rules ()
+            ((_ a) a)
+            ((_ a ... (op arg ...))
+               (op arg ... (piper a ...)))
+            ((_ a ... x)
+               (x (piper a ...)))))
 
       (define-syntax if-lets
          (syntax-rules ()

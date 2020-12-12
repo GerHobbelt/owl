@@ -342,7 +342,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
                                     ;; store initial state values
                                     (state 'call
                                        (λ (st)
-                                          (-> st
+                                          (pipe st
                                              (put 'command-line-arguments vm-args)
                                              (put 'features *features*)
                                              )))
