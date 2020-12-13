@@ -40,6 +40,7 @@
       (only (owl metric) format-time format-number)
       (only (owl thread) try-thunk)
       (only (owl regex) string->regex)
+      (only (owl compile) suspend)
       (scheme cxr)
       (scheme write))
 
@@ -191,6 +192,7 @@
    ,load string      - (re)load a file
    ,time exp         - time evaluation
    ,libraries        - show all currently loaded libraries
+   ,save <path>      - save current heap, restart with $ ol -l <path>
    ,quit             - exit owl")
 
       (define (symbols? exp)
@@ -283,6 +285,19 @@
                      ((fail why) ;; <- actually goes boom. repl-time should run in a thread.
                         (print ";; failed to evaluate expression")
                         (prompt env (repl-message))
+                        (repl env in)))))
+            ((save)
+               (lets ((path in (uncons in #false)))
+                  (if (string? path)
+                     (begin
+                        ;; this captures a continuation of the whole system and exits with
+                        ;; "saved" to dumping process and "Welcome back" when the serialized
+                        ;; heap is started in the future
+                        (prompt env (repl-message (suspend path)))
+
+                        (repl env in))
+                     (begin
+                        (prompt env "Usage: ,save \"file.suffix\"")
                         (repl env in)))))
             ((quit)
                0)
@@ -556,8 +571,6 @@
             includes-key    ;; where to load libraries from
             features-key))  ;; implementation features
 
-
-
       ;; env exps -> env' | #f
       (define (repl-exps env exps eval-repl repl)
          (fold
@@ -709,21 +722,18 @@
       ;; run the repl on a fresh input stream, report errors and catch exit
 
       (define (stdin-sexp-stream env)
-         (λ ()
-            (byte-stream->exp-stream
-               (if (env-get env '*readline* #f)
-                  (port->readline-byte-stream stdin)
-                  (port->byte-stream stdin))
-               sexp-parser
-               (resuming-syntax-fail
-                  (λ (x)
-                     ;; x is not typically a useful error message yet
-                     (print ";; syntax error")
-                     (if (env-get env '*interactive* #false)
-                        (display "> ")))))))  ;; reprint prompt
+         (byte-stream->exp-stream
+            (if (env-get env '*readline* #f)
+               (port->readline-byte-stream stdin)
+               (port->byte-stream stdin))
+            sexp-parser
+            (resuming-syntax-fail
+               (λ (x)
+                  ;; x is not typically a useful error message yet
+                  (print ";; syntax error")
+                  (if (env-get env '*interactive* #false)
+                     (display "> "))))))  ;; reprint prompt
 
-      ;; todo: return also the input stream here to preserve history and state
-      ;; todo: switch to evaluating expression at a time
       (define eof '(eof))
 
       ;; like repl-port, but bounces back to operation on errors, processes
