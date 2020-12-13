@@ -5,7 +5,7 @@
       repl-file
       repl-port
       repl-string
-      repl-trampoline
+      repl-ui
       repl
       print-repl-error
       bind-toplevel
@@ -196,6 +196,7 @@
       (define (symbols? exp)
          (and (list? exp) (every symbol? exp)))
 
+      ;; tailcalls repl with whatever env and input remain
       (define (repl-op repl op in env)
          (case op
             ((help)
@@ -284,8 +285,7 @@
                         (prompt env (repl-message))
                         (repl env in)))))
             ((quit)
-               ; this goes to repl-trampoline
-               (tuple 'ok 'quitter env))
+               0)
             (else
                (prompt env
                   (repl-message
@@ -726,23 +726,27 @@
       ;; todo: switch to evaluating expression at a time
       (define eof '(eof))
 
-      ;; like repl-port, but bounces back to operation on errors and remembers input history
-      ;; todo: rename and add repl op handling (only) here
-      (define (repl-trampoline repl env)
+      ;; like repl-port, but bounces back to operation on errors, processes
+      ;; repl commands (,help) and remembers input history and environemnt after
+      ;; errors
+      (define (repl-ui repl env)
          (let loop ((env env) (input (stdin-sexp-stream env)))
             (lets ((exp input (uncons input eof)))
-               (if (eq? exp eof)
-                  (begin
+               (cond
+                  ((eq? exp eof)
                      (if (env-get env '*interactive* #false)
                         (print "bye bye _o/~"))
                      0)
-                  (success (eval-repl exp env repl)
-                     ((ok result env)
-                        (prompt env result)
-                        (loop env input))
-                     ((fail why)
-                        (prompt env (repl-message (str ";; " why)))
-                        (loop env input)))))))
+                  ((repl-op? exp)
+                     (repl-op loop (cadr exp) input env))
+                  (else
+                     (success (eval-repl exp env repl)
+                        ((ok result env)
+                           (prompt env result)
+                           (loop env input))
+                        ((fail why)
+                           (prompt env (repl-message (str ";; " why)))
+                           (loop env input))))))))
 
       (define (repl-port env fd)
          (repl env

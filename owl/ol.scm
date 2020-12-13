@@ -287,7 +287,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
                   ((get dict 'test) => (H try-test-string env))
                   ((null? others)
                      (greeting env)
-                     (repl-trampoline repl
+                     (repl-ui repl
                         (env-set env '*readline*
                            (if (get dict 'no-readline)
                               #false
@@ -312,6 +312,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
          (or
             (memq #\/ (reverse (string->runes path)))
             #n))))
+
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
    (make-compiler empty))
 
