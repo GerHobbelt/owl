@@ -38,14 +38,14 @@ VM primops
          (C raw type-bytecode))
 
       (define (app a b)
-         (if (null? a)
+         (if (eq? a '())
             b
             (cons (car a) (app (cdr a) b))))
 
       ;; l -> fixnum | #false if too long
       (define (len l)
          (let loop ((l l) (n 0))
-            (if (null? l)
+            (if (eq? l '())
                n
                (lets ((n o (fx+ n 1)))
                   (and (eq? o 0) (loop (cdr l) n))))))

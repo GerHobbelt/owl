@@ -47,10 +47,12 @@ structures.
 
             ))
 
+      ;; apply to a function or use (lets ((a b c <- (prod 1 2 3))) ...)
       (define-syntax prod
          (syntax-rules ()
             ((prod val ...)
                (lambda (c) (c val ...)))))
+
 
       (define-syntax trod
          (syntax-rules ()

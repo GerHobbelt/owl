@@ -12,7 +12,7 @@ defines operations on the environment structure used by the compiler.
       empty-env
       apply-env env-fold
       verbose-vm-error prim-opcodes opcode->wrapper primop-of primitive?
-      poll-tag link-tag buffer-tag signal-tag thread-quantum meta-tag
+      poll-tag link-tag buffer-tag signal-tag thread-quantum
       current-library-key
       env-set-macro *tabula-rasa* env-del
       env-get ;; env key default → val | default
@@ -52,7 +52,6 @@ defines operations on the environment structure used by the compiler.
       (define buffer-tag "mcp/buffs")
       (define link-tag "mcp/links")
       (define signal-tag "mcp/break")
-      (define meta-tag '*owl-metadata*) ; key for object metadata
       (define current-library-key '*owl-source*) ; toplevel value storing what is being loaded atm
 
       (define thread-quantum 10000)

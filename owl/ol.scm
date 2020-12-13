@@ -124,14 +124,14 @@
 
 (define (owl-run outcome args path)
    (if outcome
-      (tuple-case outcome
+      (success outcome
          ((ok val env)
             ;; be silent when all is ok
             ;; exit with 126 and have error message go to stderr when the run crashes
             (try (λ () (val args)) 126))
-         ((error reason env input)
+         ((fail why)
             (print-repl-error
-               (list "ol: cannot run" path "because there was an error during loading:" reason))
+               (list "ol: cannot run" path "because there was an error during loading:" why))
             2))
       1))
 
@@ -170,7 +170,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
       (λ ()
          ;; evaluate in a thread to catch error messages here
          (let ((outcome (if (equal? path "-") (repl-port env stdin) (repl-file env path))))
-            (tuple-case outcome
+            (success outcome
                ((ok val env)
                   (if (function? val)
                      (begin
@@ -197,13 +197,10 @@ Check out https://haltp.org/posts/owl.html for more information.")
                      (begin
                         (print "The last value should be a function of one value (the command line arguments), but it is instead " val)
                         2)))
-               ((error reason env input)
+               ((fail reason)
                   (print-repl-error
                      (list "Cannot compile" path "because " reason))
-                  2)
-               (else
-                  (print-repl-error "Weird eval outcome.")
-                  3))))
+                  2))))
       #false))
 
 (define (try-load-state path args)
@@ -248,7 +245,6 @@ Check out https://haltp.org/posts/owl.html for more information.")
          (halt 126))))
 
 (import (prefix (owl sys) sys-))
-
 ;; todo: this should probly be wrapped in a separate try to catch them all
 ; ... → program rval going to exit-owl
 (define (repl-start vm-args repl compiler env)
@@ -300,10 +296,10 @@ Check out https://haltp.org/posts/owl.html for more information.")
                      ;; load the given files
                      (define input
                         (foldr (λ (path tail) (ilist ',load path tail)) #n others))
-                     (tuple-case (repl (env-set env '*interactive* #false) input)
+                     (success (repl (env-set env '*interactive* #false) input)
                         ((ok val env)
                            0)
-                        ((error reason partial-env input)
+                        ((fail reason)
                            (print-repl-error reason)
                            1)))))))
       2))
@@ -316,7 +312,6 @@ Check out https://haltp.org/posts/owl.html for more information.")
          (or
             (memq #\/ (reverse (string->runes path)))
             #n))))
-
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
    (make-compiler empty))
 
