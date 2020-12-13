@@ -745,10 +745,7 @@
 
       (define (repl-port env fd)
          (repl env
-            (if (eq? fd stdin)
-               (λ () (fd->exp-stream stdin sexp-parser (silent-syntax-fail #n)))
-
-               (fd->exp-stream fd sexp-parser (silent-syntax-fail #n)))))
+            (fd->exp-stream fd sexp-parser (silent-syntax-fail #n))))
 
       (define (repl-file env path)
          (let ((fd (if (equal? path "-") stdin (open-input-file path))))
