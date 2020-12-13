@@ -1,5 +1,4 @@
 #| doc
-
 Input and Output
 
 Owl is is by default a multitasking system. Multiple threads can be working on
@@ -65,6 +64,7 @@ iomux is running. This may happen when working with code that has not called
       port->byte-stream       ;; fd → (byte ...) | thunk
       port->tail-byte-stream  ;; fd → (byte ...) | thunk
       byte-stream->port       ;; bs fd → bool
+      byte-stream->block-stream ;; bs size -> (bvec ...)
       port->block-stream      ;; fd → (bvec ...)
       block-stream->port      ;; (bvec ...) fd → bool
       copy-port               ;; from-fd to-fd
@@ -619,21 +619,26 @@ iomux is running. This may happen when working with code that has not called
             (else
                (block-stream->port (bs) fd))))
 
+      (define (byte-stream->block-stream bs size)
+         (lambda ()
+            (let loop ((bs bs) (n size) (out #n))
+               (cond
+                  ((eq? n 0)
+                     (pair (list->bytevector (reverse out))
+                        (loop bs size null)))
+                  ((pair? bs)
+                     (loop (cdr bs) (- n 1) (cons (car bs) out)))
+                  ((null? bs)
+                     (if (null? out)
+                        null
+                        (loop bs 0 out)))
+                  (else
+                     (loop (bs) n out))))))
+
       (define (byte-stream->port bs fd)
-         (let loop ((bs bs) (n stream-block-size) (out #n))
-            (cond
-               ((eq? n 0)
-                  (if (write-really (list->bytevector (reverse out)) fd)
-                     (loop bs stream-block-size #n)
-                     #false))
-               ((pair? bs)
-                  (loop (cdr bs) (- n 1) (cons (car bs) out)))
-               ((null? bs)
-                  (if (null? out)
-                     #true
-                     (loop bs 0 out)))
-               (else
-                  (loop (bs) n out)))))
+         (block-stream->port
+            (byte-stream->block-stream bs stream-block-size)
+            fd))
 
       (define (byte-stream->lines ll)
          (let loop ((ll ll) (out #n))
