@@ -727,6 +727,7 @@
       (define eof '(eof))
 
       ;; like repl-port, but bounces back to operation on errors and remembers input history
+      ;; todo: rename and add repl op handling (only) here
       (define (repl-trampoline repl env)
          (let loop ((env env) (input (stdin-sexp-stream env)))
             (lets ((exp input (uncons input eof)))
