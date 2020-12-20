@@ -2,7 +2,7 @@
 ;;; ol.scm: an Owl read-eval-print loop.
 ;;;
 
-#| Copyright (c) 2012-2019 Aki Helin
+#| Copyright (c) Aki Helin
  |
  | Permission is hereby granted, free of charge, to any person obtaining a
  | copy of this software and associated documentation files (the "Software"),
@@ -31,7 +31,8 @@
 
 (import (owl core))   ;; reload default macros needed for defining libraries etc
 
-;; forget everhything except these and core values (later list also them explicitly)
+;; forget everythng except these and core values (later list also them explicitly)
+
 ,forget-all-but (quote *libraries* _branch _define rlambda)
 
 ;; --------------------------------------------------------------------------------
@@ -54,22 +55,14 @@
    (owl eval data)
    (owl repl)
    (owl base)
-   (owl variable))
-
-
-(import (owl ff))
+   (owl variable)
+   (owl ff))
 
 ;; implementation features, used by cond-expand
 (define *features*
    (cons
       (string->symbol (string-append "owl-lisp-" *owl-version*))
       '(owl-lisp r7rs exact-closed ratios exact-complex full-unicode immutable)))
-
-(define initial-environment
-   (bind-toplevel
-      (env-fold env-put-raw
-         *owl-kernel*
-         (cdr (assoc '(owl base) *libraries*)))))
 
 (define (path->string path)
    (let ((data (file->vector path)))
@@ -83,7 +76,6 @@
       ((equal? s "library") 'library) ;; threads and IO, nothing else
       ((equal? s "plain")   'plain)   ;; just the program
       (else #false)))
-
 
 (define command-line-rules
    (cl-rules
@@ -123,24 +115,20 @@
          new)))
 
 (define (owl-run outcome args path)
-   (if outcome
-      (success outcome
-         ((ok val env)
-            ;; be silent when all is ok
-            ;; exit with 126 and have error message go to stderr when the run crashes
-            (try (λ () (val args)) 126))
-         ((fail why)
-            (print-repl-error
-               (list "ol: cannot run" path "because there was an error during loading:" why))
-            2))
-      1))
+   (success outcome
+      ((ok val env)
+         ;; be silent when all is ok
+         ;; exit with 126 and have error message go to stderr when the run crashes
+         (try (λ () (val args)) 126))
+      ((fail why)
+         (print-repl-error
+            (list "ol: cannot run" path "because there was an error during loading:" why))
+         2)))
 
 (define about-owl
 "Owl Lisp -- a functional scheme
 Copyright (c) Aki Helin
 Check out https://haltp.org/posts/owl.html for more information.")
-
-
 
 (define usual-suspects
    (list
@@ -162,7 +150,6 @@ Check out https://haltp.org/posts/owl.html for more information.")
          rand seed->rands
          (fold (λ (ff x) (put ff x x)) empty (iota 0 1 100)) ;; all kinds of nodes
          ))
-
 
 ;; handles $ ol -c stuff
 (define (repl-compile compiler env path opts)
@@ -245,7 +232,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
          (halt 126))))
 
 (import (prefix (owl sys) sys-))
-;; todo: this should probly be wrapped in a separate try to catch them all
+
 ; ... → program rval going to exit-owl
 (define (repl-start vm-args repl compiler env)
    (or
@@ -282,8 +269,10 @@ Check out https://haltp.org/posts/owl.html for more information.")
                            1)))
                   ((get dict 'run) =>
                      (λ (path)
-                        (owl-run (try (λ () (repl-file env path)) #false) (cons "ol" others) path)))
-                  ((get dict 'evaluate) => (H try-repl-string env)) ;; FIXME: no error reporting
+                        (owl-run
+                           (try (λ () (repl-file env path)) (fail "crash"))
+                           (cons "ol" others) path)))
+                  ((get dict 'evaluate) => (H try-repl-string env))
                   ((get dict 'test) => (H try-test-string env))
                   ((null? others)
                      (greeting env)
@@ -304,8 +293,6 @@ Check out https://haltp.org/posts/owl.html for more information.")
                            1)))))))
       2))
 
-(import (owl ff))
-
 (define (directory-of path)
    (runes->string
       (reverse
@@ -315,6 +302,12 @@ Check out https://haltp.org/posts/owl.html for more information.")
 
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
    (make-compiler empty))
+
+(define initial-environment
+   (bind-toplevel
+      (env-fold env-put-raw
+         *owl-kernel*
+         (cdr (assoc '(owl base) *libraries*)))))
 
 (define (heap-entry symbol-list)
    (λ (codes) ;; all my codes are belong to codes
