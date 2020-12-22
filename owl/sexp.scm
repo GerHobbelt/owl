@@ -225,7 +225,7 @@
          (get-parses
             ((lp (get-imm #\())
              (things
-               (get-star parser))
+               (get-star! parser))
              (skip maybe-whitespace)
              (tail
                (get-either
@@ -289,7 +289,7 @@
          (get-one-of
             (get-parses
                ((head (get-rune-if is-initial?))
-                (tail (get-star (get-rune-if is-subsequent?))))
+                (tail (get-star! (get-rune-if is-subsequent?))))
                (string->uninterned-symbol (runes->string (cons head tail))))
             (get-parses
                ((head (get-imm #\.))
@@ -394,7 +394,7 @@
             (intern-symbols sexp)))
 
       (define get-sexps
-         (get-greedy-star sexp-parser))
+         (get-star! sexp-parser))
 
       ;; whitespace at either end
       (define get-padded-sexps
