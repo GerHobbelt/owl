@@ -1,7 +1,7 @@
 #| doc
 Extra List Functions
 
-These common list processing operations require numbers, so they are 
+These common list processing operations require numbers, so they are
 defined in a library loaded after math code.
 |#
 
@@ -21,8 +21,7 @@ defined in a library loaded after math code.
       list-ref
       list-tail
       make-list
-      split-at
-      )
+      split-at)
 
    (import
       (owl core)
@@ -160,4 +159,5 @@ defined in a library loaded after math code.
          (list-tail '(a b c) 1) = '(b c)
          (make-list 3 'x) = '(x x x)
          (split-at '(a b c d) 2) = (values '(a b) '(c d)))
+
 ))

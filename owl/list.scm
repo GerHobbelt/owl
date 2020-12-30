@@ -1,7 +1,9 @@
 #| doc
-List Functions
+Basic List Functions
 
-
+Operations in this library depend only on primitive operations. The
+rest of the usual operations typically depend on numbers, which are
+implemented in (owl math).
 |#
 
 (define-library (owl list)
@@ -12,7 +14,8 @@ List Functions
       car* cdr*
       list?
       zip foldl foldr fold map for-each
-      memq assq getq last
+      mem memq assq getq
+      last
       fold-map foldr-map
       append concatenate
       reverse
@@ -131,6 +134,12 @@ List Functions
                (op (car lst))
                (for-each op (cdr lst)))))
 
+      (define (mem pred lst x)
+         (cond
+            ((null? lst) #false)
+            ((pred x (car lst)) lst)
+            (else (mem pred (cdr lst) x))))
+
       (define (memq x lst)
          (cond
             ((null? lst) #false)
@@ -153,6 +162,7 @@ List Functions
                (getq (cdr lst) k def))))
 
       (example
+         (mem eq? '(1 2 3) 2) = '(2 3)
          (assq 'a '((a . 1) (b . 2))) = '(a . 1)
          (assq 'c '((a . 1) (b . 2))) = #false)
 
@@ -370,4 +380,6 @@ List Functions
          (interleave 'x '()) = ()
          (halve '(a b c d)) = (values '(a b) '(c d))
          (halve '(a b c d e)) = (values '(a b c) '(d e)))
+
 ))
+

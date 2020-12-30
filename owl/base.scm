@@ -52,6 +52,7 @@ Values exported in this library are available when starting owl interactively. T
       (owl core)
       (owl boolean)
       (owl list)
+      (owl alist)
       (owl rlist)
       (owl list-extra)
       (owl tuple)
