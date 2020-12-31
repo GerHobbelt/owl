@@ -25,6 +25,7 @@ VM primops
       call/cc3     ;; return three values
       create-type
       object-size
+      object->list
       len
 
       opcode-arity-ok?)
@@ -235,4 +236,15 @@ VM primops
                         (ref (car primops) 1))
                      (else
                         (loop (cdr primops))))))))
+
+      (define (read-object obj pos lst)
+         (lets ((pos _ (fx- pos 1)))
+            (if (eq? pos 0)
+               lst
+               (read-object obj pos
+                  (cons (ref obj pos) lst)))))
+
+      (define (object->list obj)
+         (read-object obj (object-size obj) #n))
+
 ))

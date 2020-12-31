@@ -18,7 +18,6 @@ of C and FASL when compiling to C.
       (owl core)
       (owl fasl)
       (owl list)
-      (owl tuple)
       (owl sort)
       (owl syscall)
       (owl ff)
@@ -32,8 +31,10 @@ of C and FASL when compiling to C.
       (owl io)
       (owl port)
       (owl math)
+      (owl tuple) ;; for thread manager
       (owl render)
       (owl lazy)
+      (only (owl primop) object->list)
       (owl regex)
       (only (owl fasl) objects-below)
       (owl eval cgen)
@@ -65,7 +66,7 @@ of C and FASL when compiling to C.
                (else
                   (fold walk
                      (put trail node #true)
-                     (tuple->list node)))))
+                     (object->list node)))))
          (define trail
             (walk (put empty tag #n) node))
 
@@ -73,7 +74,6 @@ of C and FASL when compiling to C.
             (walk (put empty tag #n) node)
             tag #n))
 
-      ;; FIXME - fails with variable fixnum size and usual vectors
       (define (file->string path)
          (bytes->string
             (vec-iter
@@ -82,8 +82,6 @@ of C and FASL when compiling to C.
                      vec
                      (error "Unable to load: " path))))))
 
-      ;; todo: compress the rts source in heap
-      ;; todo: include rts source into lib-ccomp instead of keeping it in a separate file
       (define rts-source
          (list->bytevector
             (file->list "c/_vm.c")))
@@ -144,7 +142,6 @@ of C and FASL when compiling to C.
       (define (dump-fasl obj path)
          (dump-data (fasl-encode-stream obj self) path))
 
-      ;; fixme: sould be (load-fasl <path> <fail>)
       (define (load-fasl path fval)
          (let ((port (open-input-file path)))
             (if port
@@ -158,7 +155,7 @@ of C and FASL when compiling to C.
             (foldr render #n
                (ff-fold
                   (λ (tl func info)
-                     (lets ((opcode new-func c-code info))
+                     (lets ((opcode new-func c-code <- info))
                         ;; render code if there (shared users do not have it)
                         (if c-code
                            ;; all of these end to an implicit goto apply
@@ -190,7 +187,7 @@ of C and FASL when compiling to C.
                            (lets
                               ((wrapper (raw (list 0 (>> code 8) (band code 255)) type-bytecode)))
                               (loop (+ code 1) (cdr obs)
-                                 (cons (cons (car obs) (tuple code wrapper src)) out)))))
+                                 (cons (cons (car obs) (prod code wrapper src)) out)))))
                      (else
                         (loop code (cdr obs) out)))))))
 
@@ -204,13 +201,14 @@ of C and FASL when compiling to C.
          (cons 'bytecode (bytevector->list val)))
 
       ; native-ops → (obj → obj')
-      ;; fixme: rewrite...
       (define (make-native-cook native-ops extras)
          (λ (obj)
             (cond
                ;; if chosen to be a macro instruction in the new vm, replace with new bytecode calling it
                ;; write a reference to the wrapper function instead of the original bytecode
-               ((get native-ops obj #false) => (C ref 2))
+               ((get native-ops obj #false) =>
+                  (lambda (info)
+                     (lets ((op func c <- info)) func)))
                ;; if this is a macro instruction in the current system, convert back
                ;; to vanilla bytecode, or the target machine won't understand this
                ((extended-opcode obj) =>
@@ -243,7 +241,7 @@ of C and FASL when compiling to C.
       (define (original-sources native-ops extras)
          (ff-fold
             (λ (sources bytecode info)
-               (lets ((opcode wrapper c-code info))
+               (lets ((opcode wrapper c-code <- info))
                   (put sources opcode
                      (clone-code bytecode extras))))
             empty native-ops))

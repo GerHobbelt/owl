@@ -7,6 +7,7 @@
       letrec*
       if when unless
       cond case define define*
+      prod
       lets or and list
       ilist tuple tuple-case
       define-library
@@ -196,6 +197,12 @@
                   . body))
             ((define* name (lambda (arg ...) . body))
                (define* (name arg ...) . body))))
+
+      ;; apply to a function or use (lets ((a b c <- (prod 1 2 3))) ...)
+      (define-syntax prod
+         (syntax-rules ()
+            ((prod val ...)
+               (lambda (c) (c val ...)))))
 
       ;; let sequence
       (define-syntax lets
@@ -545,4 +552,6 @@
          (if arg (op arg) arg))
 
       (define (not x) (eq? x #f))
+
+
 ))
