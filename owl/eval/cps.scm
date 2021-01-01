@@ -34,8 +34,7 @@ continuation to thread-scheduler continuation whenever a thread switch occurs.
       (owl io)
       (only (owl syscall) error)
       (only (owl eval env) primop? primop-of)
-      (owl eval data)
-      (owl primop))
+      (owl eval data))
 
    (begin
       ;; fixme: information about cps-special primops could be stored elsewhere

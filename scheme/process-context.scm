@@ -2,7 +2,7 @@
 
    (import
       (scheme base)
-      (only (owl primop) halt)
+      (only (owl core) halt)
       (only (owl ff) get)
       (only (owl syscall) error)
       (only (owl sys) getenv get-environment)

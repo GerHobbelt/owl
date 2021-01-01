@@ -2,7 +2,7 @@
 (define-library (macro test)
 
    (import
-      (owl base)
+      (owl toplevel)
       (owl syntax-rules))
    
    (export

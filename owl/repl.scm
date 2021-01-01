@@ -16,7 +16,6 @@
       (owl core)
       (owl list)
       (owl eval)
-      (owl primop)
       (owl ff)
       (owl sort)
       (owl eval env)

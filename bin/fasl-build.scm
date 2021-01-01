@@ -1,7 +1,7 @@
 
-;; remove these after next fasl update
-   ,load "owl/io.scm" ;; temporarily for copy-file
-   (import (owl io))
+;; Only if core update is necessary
+,load "owl/core.scm" ;; temporarily for new core
+(import (owl core))
 
 (import (owl sys))
 (import (owl metric))

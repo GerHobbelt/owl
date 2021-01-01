@@ -27,7 +27,6 @@
       (owl symbol)
       (owl io) ; testing
       (owl port)
-      (owl primop)
       (owl unicode)
       (only (owl syscall) error)
       (only (owl intern) intern-symbols string->uninterned-symbol))

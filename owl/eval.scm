@@ -24,8 +24,6 @@ is the function typically found at toplevel as eval.
       (owl list)
       (owl macro)
       (owl thread)
-      (only (owl primop) lets/cc)
-      (only (owl primop) call/cc)
       (only (owl syscall) error)
       (owl eval data)
       (owl eval env)

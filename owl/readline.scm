@@ -17,7 +17,6 @@ traditional readline library does.
    (import
       (owl core)
       (owl math)
-      (owl primop)
       (owl list)
       (owl string)
       (owl tuple)

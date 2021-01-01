@@ -97,7 +97,7 @@ standard, or otherwise portable enough to be available in most systems these day
       (owl list)
       (owl vector)
       (only (owl unicode) utf8-decode)
-      (only (owl primop) halt))
+      )
 
    (begin
 

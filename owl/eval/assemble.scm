@@ -25,8 +25,7 @@ friendliness the bytecode is interned, just like we do with symbols.
       (owl eval data)
       (only (owl eval data) rtl-case)
       (only (owl syscall) error interact)
-      (only (owl eval register) allocate-registers n-registers)
-      (owl primop))
+      (only (owl eval register) allocate-registers n-registers))
 
    (begin
 

@@ -39,8 +39,7 @@ defines operations on the environment structure used by the compiler.
       (owl port)
       (owl eval data)
       (scheme base)
-      (scheme cxr)
-      (owl primop))
+      (scheme cxr))
 
    (begin
 

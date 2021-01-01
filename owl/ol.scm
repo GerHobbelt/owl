@@ -50,11 +50,10 @@
    (owl thread)
    (owl args)
    (only (owl compile) make-compiler load-fasl)
-   (only (owl primop) bind mkt)
    (owl eval)
    (owl eval data)
    (owl repl)
-   (owl base)
+   (owl toplevel)
    (owl variable)
    (owl ff))
 
@@ -307,7 +306,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
    (bind-toplevel
       (env-fold env-put-raw
          *owl-kernel*
-         (cdr (assoc '(owl base) *libraries*)))))
+         (cdr (assoc '(owl toplevel) *libraries*)))))
 
 (define (heap-entry symbol-list)
    (λ (codes) ;; all my codes are belong to codes

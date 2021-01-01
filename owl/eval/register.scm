@@ -19,7 +19,6 @@ Old code. Scheduled for a rewrite.
       (owl ff)
       (owl math)
       (owl list-extra)
-      (owl primop)
       (owl io)
       (owl equal)
       (owl eval data)

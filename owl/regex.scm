@@ -30,7 +30,6 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
       (owl lazy)
       (owl math)
       (owl string)
-      (owl primop)
       (owl vector)
       (owl list-extra)
       (owl iff))

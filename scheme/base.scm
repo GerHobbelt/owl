@@ -249,7 +249,6 @@
       (only (owl syscall) error)
       (only (owl variable) link-variable)
       (owl string)
-      (owl primop)
       (owl math)
       (owl math extra)
       (owl bytevector)

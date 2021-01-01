@@ -111,7 +111,6 @@ iomux is running. This may happen when working with code that has not called
       (owl fasl)
       (owl tuple)
       (owl ff)
-      (only (owl primop) set-ticker wait)
       (owl port)
       (owl lazy)
       (only (owl vector) merge-chunks vec-leaves))

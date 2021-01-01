@@ -25,7 +25,6 @@ are indexed from 1 and there is little error detection apart from range checks.
    (import
       (owl core)
       (owl list)
-      (only (owl primop) len object-size object->list)
       (only (owl syscall) error))
 
    (begin

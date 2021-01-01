@@ -26,7 +26,6 @@ rewrite rule causes all of the matches to be added.
       (owl list-extra)
       (owl math)
       (only (owl render) str)
-      (only (owl primop) primops) ;; for names to be added as implicit literals
       (only (owl syscall) error)
       (owl proof))
 

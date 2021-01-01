@@ -33,8 +33,7 @@ Wrappers for calling the thread scheduler are defined in this library.
       thread thunk->thread)
 
    (import
-      (owl core)
-      (owl primop))
+      (owl core))
 
    (begin
 

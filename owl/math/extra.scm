@@ -35,7 +35,6 @@ Extra Math Functions
       (owl list)
       (owl list-extra)
       (owl sort)
-      (owl primop)
       (only (owl syscall))
       (only (owl math integer) to-int+ to-fix+ quotient negate)
       (prefix (owl math integer) i)

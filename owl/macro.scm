@@ -1,14 +1,16 @@
 #| doc
 Macro Expansion
 
-Macros are operations on code to be performed before evaluating it. This is done by the macro 
-expander defined in this library. The role of the macro expander is to apply macros at appropriate 
-positions on the code and pass required information to it. The actual transformations are done 
-by the functions stored as values of the macros.
+Macros are operations on code to be performed before evaluating it. This is
+done by the macro expander defined in this library. The role of the macro
+expander is to apply macros at appropriate positions on the code and pass
+required information to it. The actual transformations are done by the
+functions stored as values of the macros.
 
-A function to be used as a macro receives two arguments, the form to be expanded and the next 
-free fresh symbol not occurring in the form or the parent expression of it, and returns a tuple 
-of the expanded form and the next free symbol.
+A function to be used as a macro receives two arguments, the form to be
+expanded and the next free fresh symbol not occurring in the form or the parent
+expression of it, and returns a tuple of the expanded form and the next free
+symbol.
 
 The macro expander can be tested from toplevel by using ,expand.
 |#
@@ -26,7 +28,6 @@ The macro expander can be tested from toplevel by using ,expand.
       (only (owl syscall) error)
       (owl equal)
       (owl list-extra)
-      (owl primop)
       (owl math)
       (owl io)
       (owl sort)
@@ -37,27 +38,10 @@ The macro expander can be tested from toplevel by using ,expand.
 
    (begin
 
-      ;;; Misc
-
-      (define symbols-of
-
-         (define (walk exp found)
-            (cond
-               ((pair? exp)
-                  (walk (cdr exp)
-                     (walk (car exp) found)))
-               ((and (symbol? exp) (not (memq exp found)))
-                  (cons exp found))
-               (else found)))
-
-         (C walk #n))
-
 
       ;;;
       ;;; Basic pattern matching for matching the rule pattern against sexp
       ;;;
-
-      (define (? x) #true)
 
       (define (match pattern exp)
 
@@ -87,8 +71,6 @@ The macro expander can be tested from toplevel by using ,expand.
             (pair? exp)
             (eq? (car exp) 'syntax-error)
             (list? exp)))
-
-      ;; note: this will handle all macro expansion in the future
 
       (define (expand exp env free abort)
 
@@ -191,9 +173,6 @@ The macro expander can be tested from toplevel by using ,expand.
                      (values exp free))))
             (else
                (values exp free))))
-
-      ; maybe extend the env if a macro is being defined
-
 
       (define (macro-expand exp env fail)
          (lets/cc exit ;; in case fail is not a continuation

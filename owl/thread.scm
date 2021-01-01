@@ -37,7 +37,6 @@ operation where desired.
       (owl syscall)
       (owl ff)
       (owl function)
-      (owl primop)
       (owl list)
       (owl math)
       (owl tuple)

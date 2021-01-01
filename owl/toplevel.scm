@@ -5,7 +5,7 @@ Values exported in this library are available when starting owl interactively. T
 (exports ...) allows exporting all values exported by another library.
 |#
 
-(define-library (owl base)
+(define-library (owl toplevel)
 
    (export
       (exports (owl core))
@@ -78,7 +78,6 @@ Values exported in this library are available when starting owl interactively. T
       (owl digest)
       (owl syntax-rules)
       (only (owl compile) suspend)
-      (only (owl primop) halt lets/cc ref wait)
       (only (owl sexp) read read-ll)
       (scheme base)
       (scheme cxr)

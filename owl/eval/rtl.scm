@@ -33,7 +33,6 @@ after which the number of VM registers could be reduced.
       (owl eval ast)
       (owl lazy)
       (owl sort)
-      (owl primop)
       (owl io)
       (prefix (owl eval data) rtl-)
       (only (owl eval env) primop-of)

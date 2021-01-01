@@ -34,7 +34,6 @@ of C and FASL when compiling to C.
       (owl tuple) ;; for thread manager
       (owl render)
       (owl lazy)
-      (only (owl primop) object->list)
       (owl regex)
       (only (owl fasl) objects-below)
       (owl eval cgen)

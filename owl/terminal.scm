@@ -66,7 +66,6 @@
 
    (import
       (owl core)
-      (owl primop)
       (owl list)
       (owl tuple)
       (owl syscall)

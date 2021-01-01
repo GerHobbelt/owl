@@ -34,7 +34,6 @@ is how the usual bin/ol interpreter is built.
       (owl function)
       (owl ff)
       (owl string)
-      (only (owl primop) call/cc)
       (owl render)
       (only (owl syscall) error))
 

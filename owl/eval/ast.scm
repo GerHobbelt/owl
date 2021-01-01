@@ -16,7 +16,6 @@ The AST format could switch to using sum types at some point.
    (import
       (owl list-extra)
       (owl math)
-      (owl primop)
       (owl tuple)
       (owl list)
       (owl symbol)
