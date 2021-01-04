@@ -21,13 +21,16 @@ defined in a library loaded after math code.
       list-ref
       list-tail
       make-list
-      split-at)
+      split-at
+      has? hasq? ;; <- here temporarily
+      )
 
    (import
       (owl core)
       (owl math integer)
       (owl list)
       (owl proof)
+      (owl equal-prim)
       (owl syscall))
 
    (begin
@@ -160,4 +163,19 @@ defined in a library loaded after math code.
          (make-list 3 'x) = '(x x x)
          (split-at '(a b c d) 2) = (values '(a b) '(c d)))
 
-))
+      ;; temporary versions
+      (define (has? lst elem)
+         (cond
+            ((null? lst) #f)
+            ((simple-equal? (car lst) elem)
+               #t)
+            (else
+               (has? (cdr lst) elem))))
+
+      (define (hasq? lst elem)
+         (cond
+            ((null? lst) #f)
+            ((eq? (car lst) elem)
+               #t)
+            (else
+               (hasq? (cdr lst) elem))))))

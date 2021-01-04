@@ -23,17 +23,19 @@
       (owl io)
       (owl port)
       (owl time)
+      (owl alist)
       (owl list-extra)
       (owl render)
       (owl string)
       (owl sexp)
+      (owl symbol)
+      (owl math integer)
       (owl syntax-rules)
       (only (owl sys) get-heap-bytes-written) ;; <- could be moved to some profiling
       (only (owl readline) port->readline-byte-stream)
       (only (owl parse) fd->exp-stream byte-stream->exp-stream file->exp-stream try-parse silent-syntax-fail resuming-syntax-fail)
       (prefix (only (owl parse) plus) get-kleene-)
       (owl function)
-      (scheme base)
       (owl lazy)
       (owl macro)
       (only (owl metric) format-time format-number)
@@ -41,7 +43,8 @@
       (only (owl regex) string->regex)
       (only (owl compile) suspend)
       (scheme cxr)
-      (scheme write))
+      (scheme write)
+      (scheme base))
 
    (begin
 
@@ -308,9 +311,9 @@
 
       ;; → (name ...) | #false
       (define (exported-names env lib-name)
-         (let ((libp (assoc lib-name (env-get env library-key #n))))
+         (let ((libp (alget (env-get env library-key #n) lib-name #f)))
             (if libp
-               (env-fold (λ (out name value) (cons name out)) #n (cdr libp))
+               (env-fold (λ (out name value) (cons name out)) #n libp)
                #false)))
 
       ;; todo: this uses direct environment access - move to lib-env or handle here?
@@ -381,11 +384,11 @@
       ;; → 'ok env | 'needed name | 'circular name, non-ok exists via fail
       (define (import-set->library iset libs fail)
          (cond
-            ((assoc iset libs) =>
-               (λ (pair)
-                  (if (eq? (cdr pair) 'loading) ;; trying to reload something
+            ((alget libs iset #f) =>
+               (λ (val)
+                  (if (eq? val 'loading) ;; trying to reload something
                      (fail 'circular iset)
-                     (values 'ok (cdr pair)))))
+                     (values 'ok val))))
             ((match `(only ,? . ,symbols?) iset)
                (lets ((ok lib (import-set->library (cadr iset) libs fail)))
                   (values 'ok
@@ -660,7 +663,7 @@
                       (name exps (uncons exps #false))
                       (libs (env-get env library-key #n))
                       ;; mark the current library as being loaded for circular dependency detection
-                      (env (env-set env library-key (cons (cons name 'loading) libs)))
+                      (env (env-set env library-key (alset libs name 'loading)))
                       (fail
                         (λ (reason)
                            (ret (fail (list "Library" name "failed:" reason)))))

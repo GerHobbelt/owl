@@ -1,7 +1,7 @@
-#| doc 
+#| doc
 Association Lists
 
-Association lists a lists of pairs of keys and their corresponding values. This 
+Association lists a lists of pairs of keys and their corresponding values. This
 library has functions for processing them following the naming and argument order
 conventions used also in other data structures.
 |#
@@ -10,11 +10,19 @@ conventions used also in other data structures.
 
    (import
       (owl core)
+      (owl equal)
       (owl proof))
 
    (export
-      ;; usual naming conventions: [short datastructure type prefix]
-      ;; [name shared across data structures]
+
+      ;; eq? keys
+      setq
+      getq
+      delq
+      edq
+      ednq
+
+      ;; equal? keys
       alset
       alget
       aldel
@@ -26,46 +34,65 @@ conventions used also in other data structures.
       ;; association list operations. same naming conventions as used elsewhere, such as in (owl ff)
 
       ;; edit list spine node at key / end
-      (define (aledn lst key op)
-         (cond
-            ((eq? lst #null)
-               (op lst))
-            ((eq? (car (car lst)) key)
-               (op lst))
-            (else
-               (cons (car lst)
-                  (aledn (cdr lst) key op)))))
+      (define (mk-edn equal?)
+         (define (edn lst key op)
+            (cond
+               ((eq? lst #null)
+                  (op lst))
+               ((equal? (car (car lst)) key)
+                  (op lst))
+               (else
+                  (cons (car lst)
+                     (edn (cdr lst) key op)))))
+        edn)
 
-      ;; edit a list value node at key
-      (define (aled lst key op def)
-         (aledn lst key
-            (lambda (node)
-               (if (null? node)
-                  (list (cons key (op def)))
-                  (cons
-                     (cons key (op (cdr (car node))))
-                     (cdr node))))))
+      (define (mk-get equal?)
+         (define (get lst key def)
+            (cond
+               ((eq? lst #null)
+                  def)
+               ((equal? (car (car lst)) key)
+                  (cdr (car lst)))
+               (else
+                  (get (cdr lst) key def))))
+         get)
 
-      (define (alset lst key val)
-         (aled lst key
-            (lambda (old) val)
-            #f))
+      (define (make-association-ops compare)
+         (lets
+            ((edn (mk-edn compare))
+             (get (mk-get compare))
+             (edv
+                (lambda (lst key op def)
+                   (edn lst key
+                     (lambda (node)
+                        (if (null? node)
+                           (list (cons key (op def)))
+                           (cons
+                              (cons key (op (cdr (car node))))
+                              (cdr node)))))))
+             (set
+                (lambda (lst key val)
+                   (edv lst key (lambda (old) val)
+                   #f)))
+             (del
+                (lambda (lst key)
+                   (edn lst key
+                      (lambda (val)
+                         (if (eq? val #null)
+                            val
+                            (cdr val)))))))
+            (values
+               edn
+               edv
+               get
+               set
+               del)))
 
-      (define (aldel lst key)
-         (aledn lst key
-            (lambda (val)
-               (if (null? val)
-                  val
-                  (cdr val)))))
+      (define-values (ednq edq getq setq delq)
+         (make-association-ops eq?))
 
-      (define (alget lst key def)
-         (cond
-            ((eq? lst #null)
-               def)
-            ((eq? (car (car lst)) key)
-               (cdr (car lst)))
-            (else
-               (alget (cdr lst) key def))))
+      (define-values (aledn aled alget alset aldel)
+         (make-association-ops equal?))
 
       (example
          let al = '((a . 1) (b . 2))
@@ -75,3 +102,6 @@ conventions used also in other data structures.
          (alset al 'c 3) = '((a . 1) (b . 2) (c . 3))
          (pipe al (aldel 'a) (aldel 'b) (alset 'x 10)) = '((x . 10)))
 ))
+
+
+
