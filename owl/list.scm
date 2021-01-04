@@ -30,7 +30,8 @@ implemented in (owl math).
       fold2
       halve
       interleave
-      diff union intersect)
+      diff union intersect
+      ╯°□°╯)
 
    (import
       (owl core)
@@ -371,9 +372,12 @@ implemented in (owl math).
                   (if (null? h)
                      (values (reverse (cons (car t) out)) (cdr t))
                      (walk (cdr t) (cdr h) (cons (car t) out)))))))
+
       (lets ((l '(a b c d e f)))
          (example
             l = (lets ((head tail (halve l))) (append head tail))))
+
+      (define ╯°□°╯ reverse)
 
       (example
          (interleave 'x '(a b c)) = '(a x b x c)
