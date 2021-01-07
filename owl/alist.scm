@@ -10,10 +10,16 @@ conventions used also in other data structures.
 
    (import
       (owl core)
+      (owl list)
       (owl equal)
       (owl proof))
 
    (export
+
+      ;; shared
+      alist
+      alkeys
+      alvalues
 
       ;; eq? keys
       setq
@@ -101,6 +107,28 @@ conventions used also in other data structures.
          (alset al 'b 20) = '((a . 1) (b . 20))
          (alset al 'c 3) = '((a . 1) (b . 2) (c . 3))
          (pipe al (aldel 'a) (aldel 'b) (alset 'x 10)) = '((x . 10)))
+
+
+      ;; equality-independent functions and macros
+
+      (define-syntax alist
+         (syntax-rules ()
+            ((alist a b . cs)
+               (cons (cons a b) (alist . cs)))
+            ((alist)
+               '())
+            ((alist x)
+               (syntax-error "Uneven alist arguments. Last one: " 'x))))
+
+      (define (alkeys al)
+         (map car al))
+
+      (define (alvalues al)
+         (map cdr al))
+
+      (example
+         (alkeys (alist 'a 1 'b 2)) = '(a b)
+         (alvalues (alist 'a 1)) = '(1))
 ))
 
 
