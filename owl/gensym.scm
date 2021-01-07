@@ -27,18 +27,22 @@ original expression.
       (owl tuple)
       (owl render)
       (owl proof)
-      (owl math))
+      (owl math integer))
 
    (begin
 
       ; return the gensym id of exp (number) or #false
+
+      (define (between? a x b)
+         (and (< a x)
+              (< x b)))
 
       (define (count-gensym-id str pos end n)
          (if (= pos end)
             n
             (let ((this (ref str pos)))
                (cond
-                  ((< 47 this 58)
+                  ((between? 47 this 58)
                      (count-gensym-id str (+ pos 1) end (+ (* n 10) (- this 48))))
                   (else #false)))))
 
