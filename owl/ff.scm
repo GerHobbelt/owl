@@ -22,7 +22,7 @@ return if the key is not mapped. `put` can be used to extend a ff and
   #f
   > (get (del f 'foo) 'foo #f)
   #f
-This data structure is made possible by the fact, that Owl has an 
+This data structure is made possible by the fact, that Owl has an
 order-preserving garbage collector. Therefore we have a total order on objects,
 which makes it possible to build balanced trees by comparison.
 
@@ -52,6 +52,7 @@ which makes it possible to build balanced trees by comparison.
       ff-iter
       ff-min
       ff-max
+      ff
       keys)
 
    (begin
@@ -521,6 +522,14 @@ which makes it possible to build balanced trees by comparison.
          (get ff 'a 0) = 1
          (get ff 'x 0) = 0)
 
+
+   (define-syntax ff
+      (syntax-rules ()
+         ((ff a b . cs)
+            (put (ff . cs) a b))
+         ((ff) empty)
+         ((ff a)
+            (syntax-error "Uneven ff construction. Last argument: " a))))
 ))
 
 
