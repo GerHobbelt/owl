@@ -46,7 +46,6 @@ up Owl are just fasl-encoded functions.
       (only (owl syscall) error)
       (owl proof)
       (owl list)
-      (owl tuple)
       (owl rlist))
 
    (begin
@@ -87,7 +86,7 @@ up Owl are just fasl-encoded functions.
                   (if (raw? obj)
                      seen
                      (fold partial-object-closure seen
-                        (tuple->list obj)))))))
+                        (object->list obj)))))))
 
       (define (sub-objects root pred)
          (ff->list
@@ -146,13 +145,13 @@ up Owl are just fasl-encoded functions.
                            (copy-bytes out val (- bs 1)))))
                   (lets
                      ((t (type-byte-of val))
-                      (s (tuple-length val)))
+                      (s (object-size val)))
                      ; options for optimization
                      ; t and s fit in 6 bits -> pack (seems to be only about 1/20 compression)
                      ; t fits in 6 bits -> (+ (<< t 2) 3) (ditto)
                      (ilist 1 t
-                        (send-number s
-                           (render-fields out (tuple->list val) pos clos))))))))
+                        (send-number (- s 1)
+                           (render-fields out (object->list val) pos clos))))))))
 
       (define fasl-finale (list 0)) ; stream end marker
 
