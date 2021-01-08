@@ -49,11 +49,6 @@ particular value is held, and then another O(log n) steps to walk the tree to a
 given position, Threfore we have a total complexity of O(log n) for access and
 update.
 
-   (rcar (rcons 11 rnull)) → 11
-   (rnull? (rcons 11 rnull)) → #false
-   (rlist->list (rcons 1 (rcons 2 rnull))) → (1 2))
-   (rget (list->rlist (iota 0 1 1000)) 123 #f) → 123
-   (rget (list->rlist (iota 0 1 1000)) 1234 #f) → #false
 
 |#
 
@@ -76,8 +71,10 @@ update.
       rlen
       rlist
       rfold
+      rfoldr
       rnull?
       rpair?
+      rreverse
       list->rlist
       rlist->list)
 
@@ -85,9 +82,12 @@ update.
 
       ;; note that for now the pattern match must come in the same order
       ;; as the data type definition
+
+      ;; data structure for holding the spine of the rlist, on which the
+      ;; binary trees grow in order
       (define-sum-type rl-case
-         (snd x t)
-         (fst x t)
+         (snd x t)   ;; possible subsequent node of the same depth
+         (fst x t)   ;; first node of a depth
          (nil))
 
       (define rnull (nil))
@@ -216,6 +216,13 @@ update.
                         (fst (set tree pos d val) rl))))
                ((nil) rl))))
 
+      ;;; mapping
+
+
+      ;(define (rmap op rl)
+      ;   (rmap-at op rl 0))
+
+
       ;;; fold from left
 
       (define (rfold-node op st n d)
@@ -238,6 +245,30 @@ update.
                            depth))))
                ((nil) st))))
 
+      ;;; fold from right
+
+      (define (rfoldr-node op st n d)
+         (if (eq? d 1)
+            (op n st)
+            (lets ((d _ (fx>> d 1)))
+               (rfoldr-node op (rfoldr-node op st (cdr n) d) (car n) d))))
+
+      (define (rfoldr op st rl)
+         (let loop ((rl rl) (st st) (depth 0))
+            (rl-case rl
+               ((snd a rl)
+                  (rfoldr-node op
+                     (loop rl st depth)
+                      a depth))
+               ((fst a rl)
+                  (if (eq? depth 0)
+                     (op a (loop rl st 1))
+                     (lets ((depth _ (fx+ depth depth)))
+                        (rfoldr-node op
+                           (loop rl st depth)
+                           a depth))))
+               ((nil) st))))
+
       (define (list->rlist x)
          (foldr rcons rnull x))
 
@@ -247,24 +278,21 @@ update.
       (define (rlist . args)
          (list->rlist args))
 
+      (define (rreverse rl)
+         (rfold
+            (lambda (st x)
+               (rcons x st))
+            rnull rl))
+
       (example
-
          let rla = (rlist 1 2)
-
          let rlb = (rlist 3 4 5)
-
          (rcar (rcons 11 rnull)) = 11
-
          (rget rnull 100 'no) = 'no
-
          (rget rla 1 'no) = 2
-
          (rget rla 9 'no) = 'no
-
          (rnull? (rcdr (rcons 11 rnull))) = #t
-
          (rlen (rcons 11 rnull)) = 1
-
          (rlist->list (rlist 11 22 33)) = '(11 22 33)
 
 )))
