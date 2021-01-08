@@ -163,11 +163,9 @@
 (define (Rat rs)
    (lets
       ((rs a (Int rs))
-       (rs b (Nat rs)))
-      (values rs
-         (if (eq? b 0)
-            0
-            (/ a b))))) ; <- could also make explicitly one for which gcd(a,b) = 1
+       (rs b (Nat rs))
+       (r (/ a (+ b 1)))) ;; <- to avoid 0
+      (values rs r)))
 
 (define (Comp rs)
    (lets
@@ -209,7 +207,7 @@
 
 (define List (List-of Byte))
 
-(define Rlist (Rlist-of Byte))
+(define Rlist (Rlist-of Short))
 
 (define (Ff-of thing)
    (λ (rs)
@@ -421,16 +419,16 @@
          ∀ a ∊ Byte ∀ r ∊ Rlist
             a = (rcar (rcons a r))
 
-      ;theorem rlist-rfoldr-copy
-      ;   ∀ r ∊ Rlist
-      ;      r = (rfoldr rcons #n r)
+      theorem rlist-rfoldr-copy
+         ∀ r ∊ Rlist
+            r = (rfoldr rcons rnull r)
 
-      ;theorem rlist-rfold-reverse
-      ;   ∀ r ∊ Rlist
-      ;      r = (rrev (rfold (λ (o x) (rcons x o)) #n r))
+      theorem rlist-rfold-reverse
+         ∀ r ∊ Rlist
+            r = (rreverse (rfold (λ (o x) (rcons x o)) rnull r))
 
       ;theorem rlist-set-get-map
-      ;   ∀ r ∊ (Rlist-of Byte)
+      ;   ∀ r ∊ (Rlist-of Short)
       ;      (rmap (λ (x) (+ x 1)) r)
       ;       = (fold
       ;            (lambda (rp i) (rset rp i (+ 1 (rget rp i 'bad))))
@@ -504,7 +502,28 @@
 
 ))
 
-(define tests (append tests-1 tests-2))
+(define tests-3
+   (theory
+
+      theorem round-half
+         ∀ a ∊ Nat
+            (round (+ a 0.5)) = (+ a 1)
+
+      theorem ceil-up
+         ∀ a ∊ Int
+            (ceiling (+ a 0.00001)) = (+ a 1)
+
+      theorem room-height
+         ∀ a ∊ Rat
+            (abs (- (ceiling a) (floor a))) = (if (integer? a) 0 1)
+
+      theorem round-sign
+         ∀ a ∊ Rat
+            (round a) = (* -1 (round (* -1 a)))
+
+))
+
+(define tests (append tests-1 tests-2 tests-3))
 
 
 ;; Practice
