@@ -273,7 +273,7 @@ update.
          (foldr rcons rnull x))
 
       (define (rlist->list rl)
-         (reverse (rfold (λ (pre val) (cons val pre)) '() rl)))
+         (rfoldr cons null rl))
 
       (define (rlist . args)
          (list->rlist args))
