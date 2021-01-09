@@ -9,7 +9,6 @@
       repl
       print-repl-error
       bind-toplevel
-      library-import            ; env exps fail-cont → env' | (fail-cont <reason>)
       *owl-kernel*)
 
    (import
@@ -476,32 +475,38 @@
       (define (any->string obj)
          (list->string (render obj #n)))
 
-      (define (library-import env exps fail repl)
-         (fold
-            (λ (env iset)
-               (lets ((status lib (call/cc2 (λ (ret) (import-set->library iset (env-get env library-key #n) ret)))))
-                  (cond
-                     ((eq? status 'needed)
-                        (lets ((status env (try-autoload env repl lib)))
-                           (cond
-                              ((eq? status 'ok)
-                                 (library-import env exps fail repl))
-                              ((eq? status 'error)
-                                 (fail (list "Failed to load" lib "because" env)))
-                              (else
-                                 (fail (list "I didn't have or find library" (any->string lib)))))))
-                     ((eq? status 'ok)
-                        (env-fold env-put-raw env lib)) ;; <- TODO env op, should be in (owl env)
-                     ((eq? status 'circular)
-                        (fail (list "Circular dependency causing reload of" (bytes->string (render lib #n)))))
-                     (else
-                        (fail (list "BUG: bad library load status: " status))))))
-            env exps))
+      (define (import-iset repl ret)
+         (lambda (env iset)
+            (lets ((status lib (call/cc2 (λ (ret) (import-set->library iset (env-get env library-key #n) ret)))))
+               (cond
+                  ((eq? status 'needed)
+                     (lets ((status env (try-autoload env repl lib)))
+                        (cond
+                           ((eq? status 'ok)
+                              ;; env now contains the library
+                              ((import-iset repl ret) env iset))
+                           ((eq? status 'error)
+                              (ret (fail (list "Failed to load" lib "because" env))))
+                           (else
+                              (ret (fail (list "I didn't have or find library" (any->string lib))))))))
+                  ((eq? status 'ok)
+                     (env-fold env-put-raw env lib)) ;; <- TODO env op, should be in (owl env)
+                  ((eq? status 'circular)
+                     (ret (fail (list "Circular dependency causing reload of" (bytes->string (render lib #n))))))
+                  (else
+                     (ret (fail (list "BUG: bad library load status: " status))))))))
 
-      ;; temporary toplevel import doing what library-import does within libraries
+      (define (library-import env exps fail repl)
+         ;(print "importing " exps)
+         (lets/cc ret ()
+            (ok
+               (repl-message "loaded")
+               (fold (import-iset repl ret) env exps))))
+
+      ;; toplevel import doing what library-import does within libraries
       (define (toplevel-library-import env exps repl)
          (lets/cc ret
-            ((fail (λ (x) (ret (fail (cons "Import failed because" x))))))
+            ((fail (λ (x) (ret (fail x)))))
             (library-import env exps fail repl)))
 
       (define (match-feature req feats libs fail)
@@ -539,9 +544,11 @@
          (cond
             ((null? exp) (fail "no export?"))
             ((headed? 'import (car exp))
-               (repl-library (cdr exp)
-                  (library-import env (cdar exp) fail repl)
-                  repl fail))
+               (success (library-import env (cdar exp) fail repl)
+                  ((ok value env)
+                     (repl-library (cdr exp) env repl fail))
+                  ((fail why)
+                     (fail why))))
             ((headed? 'begin (car exp))
                ;; run basic repl on it
                (success (repl env (cdar exp))
@@ -591,17 +598,13 @@
             ((abort (λ (why) (ret (fail (list "Macro expansion of " exp " failed: " why)))))
              (env exp (macro-expand exp env abort)))
             (cond
-               ((import? exp) ;; <- new library import, temporary version
-                  (lets
-                     ((envp (toplevel-library-import env (cdr exp) repl)))
-                     (if (pair? envp) ;; the error message
-                        (fail envp)
-                        (ok
-                           (repl-message
-                              (list->string
-                                 (foldr render #n
-                                    (cons ";; Imported " (cdr exp)))))
-                           envp))))
+               ((import? exp)
+                  (success (toplevel-library-import env (cdr exp) repl)
+                     ((ok value env)
+                        (ok value env))
+                     ((fail why)
+                        (fail
+                           (list "Failed to import " exp " because: " why)))))
                ((definition? exp)
                   (success (evaluate (caddr exp) env)
                      ((ok value env2)

@@ -1,8 +1,6 @@
 #!/usr/bin/ol --run
 
-;; todo: move to (owl proof) after dust settles
-
-;; DSL - still being prototyped
+;; DSL
 ;
 ;  Theorem = (∀ var ... ∊ set)* Term
 ;  Term = Term ⇒ Term                    -- implies
@@ -20,28 +18,24 @@
 ;; Params
 
 (define elem-ip 20) ;; inverse probability of stopping element addition for linear random data structures
-(define max-bits 128)
+(define max-bits 256)
 
 ;; theorem :: rs → rs' bindings ok?
 
 ; f :: ? → _, keys
 (define (domain x)
    (cond
-      ;((rlist? x)  (iota 0 1 (rlen x)))
       ((list? x)   (iota 0 1 (length x)))
       ((string? x) (iota 0 1 (string-length x)))
       ((vector? x) (iota 0 1 (vector-length x)))
-      ;((ff? x)     (keys x))
       (else (error "domain: what is " x))))
 
 ; f :: _ → ?, values
 (define (range x)
    (cond
-      ;((rlist? x)  (rlist->list x))
       ((list? x)   x)
       ((string? x) (string->list x))
       ((vector? x) (vector->list x))
-      ;((ff? x)     (ff-fold (λ (out k v) (cons v out)) #n x))
       (else (error "range: what is " x))))
 
 ;; rs (thing_1 ...) def → rs' thing_i | rs def
@@ -56,12 +50,6 @@
       (else
          (lets ((rs n (rand rs (length l))))
             (values rs (list-ref l n))))))
-
-;; todo: precedence: ¬ ∧ ∨ ∀ ∃ ⇒
-;; todo:
-;; todo: is the ∀ a ∊ A P == ∀ a (a ∊ A) ⇒ P worth having a nonstandard syntax?
-;; plan: (translate rs env thing ... OP . rst) -> translate left and right sides around op, convert to (OP-value first rest)
-;; type-specific translators to avoid extra checks?
 
 ;; node :: rs env → rs' env' result
 
@@ -108,12 +96,6 @@
       ((translate rs term)
          (values rs #n term))))
 
-#| theorem name:
- |   ...
- | proof:
- |   ...
- |#
-
 (define-syntax theorem
    (syntax-rules ()
       ((theorem name . stuff)
@@ -142,7 +124,8 @@
    (C rand 256))
 
 (define (Short rs)
-   (lets ((digit rs (uncons rs 0)))
+   (lets
+      ((digit rs (uncons rs 0)))
       (values rs digit)))
 
 (define (Nat rs)
@@ -205,7 +188,7 @@
                 (rs tail ((Rlist-of thing) rs)))
                (values rs (rcons head tail)))))))
 
-(define List (List-of Byte))
+(define List (List-of Short))
 
 (define Rlist (Rlist-of Short))
 
