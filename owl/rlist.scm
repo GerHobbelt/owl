@@ -25,7 +25,9 @@ The performance characteristics of this random access list library are:
    set → O(log n)
    len → O(log n)
    fold → O(n)
-   append → O(n)
+   foldr → O(n)
+   map → O(n)
+   append → O(n log n)
    list->rlist → O(n log n)
    rlist->list → O(n)
 
@@ -69,12 +71,14 @@ update.
       rcdr
       rset
       rlen
+      rmap
       rlist
       rfold
       rfoldr
       rnull?
       rpair?
       rreverse
+      rappend
       list->rlist
       rlist->list)
 
@@ -216,11 +220,39 @@ update.
                         (fst (set tree pos d val) rl))))
                ((nil) rl))))
 
-      ;;; mapping
+      ;;; map
 
+      (define (dup x)
+         (if (eq? x 0)
+            1
+            (lets ((x _ (fx+ x x)))
+               x)))
 
-      ;(define (rmap op rl)
-      ;   (rmap-at op rl 0))
+      (define (rmap-node op node d)
+         (if (eq? d 1)
+            (op node)
+            (lets
+               ((d _ (fx>> d 1)))
+               (cons
+                  (rmap-node op (car node) d)
+                  (rmap-node op (cdr node) d)))))
+
+      (define (rmap-at op rl d)
+         (rl-case rl
+            ((snd tree rl)
+               (snd
+                  (rmap-node op tree d)
+                  (rmap-at op rl d)))
+            ((fst tree rl)
+               (let ((d (dup d)))
+                  (fst
+                     (rmap-node op tree d)
+                     (rmap-at op rl d))))
+            ((nil)
+               rl)))
+
+      (define (rmap op rl)
+         (rmap-at op rl 0))
 
 
       ;;; fold from left
@@ -284,6 +316,9 @@ update.
                (rcons x st))
             rnull rl))
 
+      (define (rappend ra rb)
+         (rfoldr rcons rb ra))
+
       (example
          let rla = (rlist 1 2)
          let rlb = (rlist 3 4 5)
@@ -294,5 +329,5 @@ update.
          (rnull? (rcdr (rcons 11 rnull))) = #t
          (rlen (rcons 11 rnull)) = 1
          (rlist->list (rlist 11 22 33)) = '(11 22 33)
-
-)))
+         (rmap dup (rlist 10 20 30)) = (rlist 20 40 60)
+         (rappend rla rlb) = (rlist 1 2 3 4 5))))

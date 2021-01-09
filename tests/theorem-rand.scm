@@ -427,17 +427,23 @@
          ∀ r ∊ Rlist
             r = (rreverse (rfold (λ (o x) (rcons x o)) rnull r))
 
-      ;theorem rlist-set-get-map
-      ;   ∀ r ∊ (Rlist-of Short)
-      ;      (rmap (λ (x) (+ x 1)) r)
-      ;       = (fold
-      ;            (lambda (rp i) (rset rp i (+ 1 (rget rp i 'bad))))
-      ;            r
-      ;            (iota 0 1 (rlen r)))
+      theorem rlist-set-get-map
+         ∀ r ∊ Rlist
+            (rmap (λ (x) (+ x 1)) r)
+             = (fold (lambda (rp i) (rset rp i (+ 1 (rget rp i 'bad)))) r (iota 0 1 (rlen r)))
+
+      theorem rlist-map
+          ∀ l ∊ (List-of Short)
+             l = (rlist->list (list->rlist l))
 
       theorem rlist-convert
          ∀ l ∊ List
             l = (rlist->list (list->rlist l))
+
+      theorem rlist-len
+         ∀ a ∊ Rlist
+            ∀ b ∊ Rlist
+               (rlen (rappend a b)) = (+ (rlen a) (rlen b))
 
       theorem rlist-cons-moves
          ∀ r ∊ Rlist
