@@ -221,13 +221,14 @@ which makes it possible to build balanced trees by comparison.
                (λ (l k v r) (ff-max r v)))
             def))
 
+      ;; (k v -> v') ff -> ff'
       (define (ff-map fn ff)
          (if ff
             (ff
                (lambda (l k v r)
-                  (red (ff-map fn l) k (fn v) (ff-map fn r)))
+                  (red (ff-map fn l) k (fn k v) (ff-map fn r)))
                (lambda (l k v r)
-                  (black (ff-map fn l) k (fn v) (ff-map fn r))))
+                  (black (ff-map fn l) k (fn k v) (ff-map fn r))))
             empty))
 
       (define (ff-get ff key def self)
@@ -529,7 +530,7 @@ which makes it possible to build balanced trees by comparison.
          (ff->list (del test 'x)) = '((a . 1) (b . 2) (c . 3))
          (ff-fold (λ (out k v) (cons v out)) #n test) = '(3 2 1)
          (ff-foldr (λ (out k v) (cons v out)) #n test) = '(1 2 3)
-         (ff-map null? (ff 'a 1 'b '())) = (ff 'a #f 'b #t)
+         (ff-map (lambda (k v) (null? v)) (ff 'a 1 'b '())) = (ff 'a #f 'b #t)
          )
 
 
