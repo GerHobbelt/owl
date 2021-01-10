@@ -52,6 +52,7 @@ which makes it possible to build balanced trees by comparison.
       ff-iter
       ff-min
       ff-max
+      ff-map
       ff
       keys)
 
@@ -220,6 +221,15 @@ which makes it possible to build balanced trees by comparison.
                (λ (l k v r) (ff-max r v)))
             def))
 
+      (define (ff-map fn ff)
+         (if ff
+            (ff
+               (lambda (l k v r)
+                  (red (ff-map fn l) k (fn v) (ff-map fn r)))
+               (lambda (l k v r)
+                  (black (ff-map fn l) k (fn v) (ff-map fn r))))
+            empty))
+
       (define (ff-get ff key def self)
          (if ff
             (ff
@@ -313,14 +323,6 @@ which makes it possible to build balanced trees by comparison.
                         (cons (cons k v)
                            (λ () (loop r tail))))))
                tail)))
-
-      (define (del-nlogn ff to-del) ;; TEMPORARY
-         (ff-fold
-            (λ (ff k v)
-               (if (eq? k to-del)
-                  ff
-                  (put ff k v)))
-            empty ff))
 
       (define (list->ff lst)
          (fold
@@ -506,30 +508,31 @@ which makes it possible to build balanced trees by comparison.
                (color-black ff)
                ff)))
 
+      (define-syntax ff
+         (syntax-rules ()
+            ((ff a b . cs)
+               (put (ff . cs) a b))
+            ((ff) empty)
+            ((ff a)
+               (syntax-error "Uneven ff construction. Last argument: " a))))
+
       (example
-
-         let ff = (list->ff '((a . 1) (b . 2) (c . 3)))
-
+         let test = (list->ff '((a . 1) (b . 2) (c . 3)))
+         (get test 'a 0) = 1
+         (get test 'x 0) = 0
+         (keys test) = '(a b c)
          (ff->list empty) = ()
          (ff->list (put empty 'a 42)) = '((a . 42))
-         (ff->list (put ff 'a 42)) = '((a . 42) (b . 2) (c . 3))
-         (ff->list (put ff 'd 42)) = '((a . 1) (b . 2) (c . 3) (d . 42))
-         (ff->list (del ff 'a)) = '((b . 2) (c . 3))
-         (ff->list (del ff 'x)) = '((a . 1) (b . 2) (c . 3))
-         (ff-fold (λ (out k v) (cons v out)) #n ff) = '(3 2 1)
-         (ff-foldr (λ (out k v) (cons v out)) #n ff) = '(1 2 3)
-         (keys ff) = '(a b c)
-         (get ff 'a 0) = 1
-         (get ff 'x 0) = 0)
+         (ff->list (put test 'a 42)) = '((a . 42) (b . 2) (c . 3))
+         (ff->list (put test 'd 42)) = '((a . 1) (b . 2) (c . 3) (d . 42))
+         (ff->list (del test 'a)) = '((b . 2) (c . 3))
+         (ff->list (del test 'x)) = '((a . 1) (b . 2) (c . 3))
+         (ff-fold (λ (out k v) (cons v out)) #n test) = '(3 2 1)
+         (ff-foldr (λ (out k v) (cons v out)) #n test) = '(1 2 3)
+         (ff-map null? (ff 'a 1 'b '())) = (ff 'a #f 'b #t)
+         )
 
 
-   (define-syntax ff
-      (syntax-rules ()
-         ((ff a b . cs)
-            (put (ff . cs) a b))
-         ((ff) empty)
-         ((ff a)
-            (syntax-error "Uneven ff construction. Last argument: " a))))
 ))
 
 
