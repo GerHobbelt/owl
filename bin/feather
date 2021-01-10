@@ -2,7 +2,6 @@
 
 (import
    (owl sexp)
-   (owl sys)
    (owl args)
    (owl proof)
    (owl date)
@@ -114,7 +113,6 @@
    (string->regex "s/#/##/g"))
 
 (define (passive-doc-content txt)
-   (print "passivating " txt)
    (if (string? txt)
       (quote-hashes txt)
       (quote-hashes (str txt))))
@@ -140,7 +138,7 @@
                      (sselect-all sexps '(define-library begin example)))))
             (if (or initial-doc lib-name)
                (cons
-                  (-> empty
+                  (pipe empty
                      (put 'path path)
                      (put 'length (length content))
                      (maybe-put 'name lib-name)

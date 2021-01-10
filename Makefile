@@ -85,7 +85,7 @@ web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
 		"## Owl Things" \
 		owl/fasl.scm \
 		owl/lcd.scm \
-		owl/dump.scm \
+		owl/compile.scm \
 		owl/gensym.scm \
 		owl/variable.scm \
 		owl/proof.scm \
@@ -105,7 +105,6 @@ web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
 		owl/digest.scm \
 		owl/readline.scm \
 		owl/regex.scm \
-		owl/codec.scm \
 		owl/random.scm \
 		owl/io.scm \
 		owl/render.scm \
@@ -118,7 +117,7 @@ web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
 		doc/internals.md \
 		doc/vm.md \
 		"## Compiler" \
-		owl/eval.scm owl/eval/alpha.scm owl/eval/assemble.scm owl/eval/ast.scm owl/eval/cgen.scm owl/eval/closure.scm owl/eval/compile.scm owl/eval/cps.scm owl/eval/data.scm owl/eval/env.scm owl/eval/fixedpoint.scm owl/eval/register.scm \
+		owl/eval.scm owl/eval/alpha.scm owl/eval/assemble.scm owl/eval/ast.scm owl/eval/cgen.scm owl/eval/closure.scm owl/eval/rtl.scm owl/eval/cps.scm owl/eval/data.scm owl/eval/env.scm owl/eval/fixedpoint.scm owl/eval/register.scm \
 		doc/related.md \
 		doc/faq.md
 

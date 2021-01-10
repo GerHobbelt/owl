@@ -1,18 +1,12 @@
-(work in progress)
+Owl Lisp is a simple programming language. It is essentially a dialect of R7RS
+Scheme, in case you happen to be familiar with it, but follows its tradition of
+simplicity and orthoganility even further at the expense of some standards
+compatiblity.
 
-Owl Lisp is a purely functional dialect of the Scheme programming language. It
-is essentially equivalent to the R7RS version of Scheme, but follows its
-tradition of simplicity and orthogonality even further at the expense of some
-standards compatibility. The most obvious change is the removal of all mutable
-data structures and assignments.
-
-Simplicity and flexibility are similarly important goals in the implementation.
-Owl runs on top of a tiny portable standalone virtual machine written
-in C. Programs can be interpreted and compiled to standalone binaries.
-
-Though it may not initially seem that way, the main reason for developing owl 
-has been to write actual programs. For example the text editor used to type 
-this document, and most of the tools that build this site, are owl programs.
+Owl exist mainly to provide a simple and portable runtime for writing various
+small and medium standalone programs. For example the text editor used write
+this documentation, and tools to build this website, are owl programs. Some
+Owl programs are also packaged in various operating systems.
 
 
 #index
@@ -22,8 +16,9 @@ this document, and most of the tools that build this site, are owl programs.
 ## Requirements
 
 It should be easy to get owl up and running on most somewhat POSIX-compliant
-systems, such as Linux, any BSD. You should have #{make} and a working C-compiler
-installed. For example in Debian-based Linux distributions you can use:
+systems, such as Linux, any BSD. Owl is mainly developed on OpenBSD and Linux.
+You should have #{make} and a working C-compiler installed. For example in
+Debian-based Linux distributions you can use:
 
    $ sudo apt-get install gcc
 

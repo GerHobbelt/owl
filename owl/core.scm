@@ -25,7 +25,7 @@
 
       immediate? allocated? raw? record?
 
-      partial pipe pipel piper if-lets ;; -> would be better as |
+      partial pipe piper if-lets ;; -> would be better as |
 
       type-bytecode
       type-proc
@@ -540,19 +540,16 @@
                         (λ (ob) (eq? tag (ref ob 1)))
                         ((field accessor) ...) (fieldname ...) ()))))))
 
+      ;; as with fold, left pipe is the default
       ;; left pipe: aggregate calls to first argument on the left
-      (define-syntax pipel
+      (define-syntax pipe
          (syntax-rules ()
             ((_ a) a)
             ((_ a ... (op arg ...))
-               (op (pipel a ...) arg ...))
+               (op (pipe a ...) arg ...))
             ((_ a ... x)
-               (x (pipel a ...)))))
+               (x (pipe a ...)))))
 
-      ;; as with fold, left pipe is the default
-      (define-syntax pipe
-         (syntax-rules ()
-            ((pipe . args) (pipel . args))))
 
       ;; right pipe: aggregate calls to the rightmost argument
       (define-syntax piper
