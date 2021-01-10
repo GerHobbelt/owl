@@ -347,6 +347,11 @@
          ∀ f ∊ (Ff-of Byte)
             empty = (ff-fold (λ (ff key val) (del ff key)) f f)
 
+      theorem ff-map
+         ∀ f ∊ (Ff-of Byte)
+            (map (partial * 2) (map cdr (ff->list f))) =
+               (map cdr (ff->list (ff-map (lambda (k v) (+ v v)) f)))
+
       theorem ff-put
          ∀ f ∊ (Ff-of Byte) ∀ a b ∊ Byte
             b = (get (put f a b) a #false)
