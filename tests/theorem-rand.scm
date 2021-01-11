@@ -1,5 +1,9 @@
 #!/usr/bin/ol --run
 
+;; This file will run some tests when loaded, but can also be
+;; used as a program by issuing e.g.
+;;   bin/vm fasl/boot.fasl --run tests/theorem-rand.scm --seed 42
+
 ;; DSL
 ;
 ;  Theorem = (∀ var ... ∊ set)* Term
@@ -595,8 +599,8 @@
                         (lets
                            ((elapsed (/ (- (time-ms) start) 1000))
                             (rounds-per-sec (/ n (max elapsed 1)))
-                            (rounds-per-hour (* rounds-per-sec (* 60 1))))
-                           (print "round " n ", " (round rounds-per-hour) "rpm")))
+                            (rounds-per-minute (* rounds-per-sec (* 60 1))))
+                           (print "round " n ", " (round rounds-per-minute) "rpm")))
                      (lets ((rs fails (failures rs)))
                         (if (null? fails)
                            (if (equal? n end)
