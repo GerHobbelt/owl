@@ -110,55 +110,23 @@
       (define (repl-message . args) (cons repl-message-tag args))
       (define (repl-message? foo) (and (pair? foo) (eq? repl-message-tag (car foo))))
 
-
+      (define (maybe-prompt env)
+         (and (env-get env '*interactive* #f)
+              (or (display "> ")
+                  (halt 125)))) ;; stdout in bad shape
 
       ;; render the value if *interactive*, and print as such (or not at all) if it is a repl-message
       ;; if interactive mode and output fails, the error is fatal
       (define (prompt env val)
-         (let ((prompt (env-get env '*interactive* #false)))
-            (if prompt
-               (if (repl-message? val)
-                  (begin
-                     (for-each print (cdr val))
-                     (if (not (display "> "))
-                        (halt 125)))
-                  (begin
-                     ((writer-to empty) stdout val)
-                     (if (not (display "\n> "))
-                        (halt 125)))))))
-
-       ;; just be quiet
-      (define repl-load-prompt
-         (λ (val result?) #n))
-
-      ;; load and save path to *loaded*
-
-      (define (repl-load repl path in env)
-         (lets
-            ((exps ;; find the file to read
-               (or
-                  (file->exp-stream path sexp-parser (silent-syntax-fail #n))
-                  (file->exp-stream
-                     (string-append (env-get env '*owl* "NA") path)
-                     sexp-parser
-                     (silent-syntax-fail #n)))))
-            (if exps
-               (lets
-                  ((current-prompt (env-get env '*interactive* #false)) ; <- switch prompt during loading
-                   (load-env
-                     (if prompt
-                        (env-set env '*interactive* #false) ;; <- switch prompt during load (if enabled)
-                        env))
-                   (outcome (repl load-env exps)))
-                  (success outcome
-                     ((ok val env)
-                        (ok val (env-set env '*interactive* current-prompt)))
-                     ((fail reason)
-                        (fail (list "Could not load" path "because" reason)))))
-               (fail
-                  (list "Could not find any of"
-                     (list path (string-append (env-get env '*owl* "") path))
-                     "for loading.")))))
+         (if (env-get env '*interactive* #false)
+            (if (repl-message? val)
+               (begin
+                  (for-each print (cdr val))
+                  (maybe-prompt env))
+               (begin
+                  ((writer-to empty) stdout val)
+                  (print)
+                  (maybe-prompt env)))))
 
       (define (repl-time thunk)
          (try-thunk
@@ -199,29 +167,60 @@
       (define (symbols? exp)
          (and (list? exp) (every symbol? exp)))
 
-      ;; tailcalls repl with whatever env and input remain
-      (define (repl-op repl op in env)
+      ;; repl-cont is env, input -> program-exit, directly or via tail call to repl-cont
+      (define (repl-load repl-cont repl-exps path in env)
+         (lets
+            ((exps ;; find the file to read
+               (or
+                  (file->exp-stream path sexp-parser (silent-syntax-fail #n))
+                  (file->exp-stream
+                     (string-append (env-get env '*owl* "NA") path)
+                     sexp-parser
+                     (silent-syntax-fail #n)))))
+            (if exps
+               (lets
+                  ((interactive? (env-get env '*interactive* #false)) ; <- switch prompt during loading
+                   (load-env
+                     (if prompt
+                        (env-set env '*interactive* #false) ;; <- switch prompt during load (if enabled)
+                        env))
+                   (outcome (repl-exps load-env exps)))
+                  (success outcome
+                     ((ok val env)
+                        (let ((env (env-set env '*interactive* interactive?)))
+                           (prompt env (repl-message (str ";; loaded " path)))
+                           (repl-cont env  in)))
+                     ((fail reason)
+                        (print-repl-error
+                           (list "Could not load" path "because" reason))
+                        (maybe-prompt env)
+                        ;; loading results in termination with a non-zero value if
+                        ;; the session is not interactive
+                        (if interactive?
+                           (repl-cont env in)
+                           10))))
+               (begin
+                  (prompt env
+                     (repl-message (str ";; failed to find file " path)))
+                  (repl-cont env in)))))
+
+      (define (repl-op repl-cont repl op in env)
          (case op
             ((help)
                (prompt env (repl-message repl-ops-help))
-               (repl env in))
+               (repl-cont env in))
             ((load)
                (lets ((op in (uncons in #false)))
                   (if (string? op)
-                     (success (repl-load repl op in env)
-                        ((ok exp env)
-                           (prompt env (repl-message (string-append ";; Loaded " op)))
-                           (repl env in))
-                        ((fail why)
-                           (prompt env (repl-message (str ";; Failed to load " op ": " why)))
-                           ;; drop out of loading (recursively) files, or hit repl trampoline on toplevel
-                           (fail  why)))
-                     (fail (list "expected ,load \"dir/foo.scm\", got " op)))))
+                     (repl-load repl-cont repl op in env)
+                     (begin
+                        (print ";; expected a string argumnet")
+                        (repl-cont env in)))))
             ((forget-all-but)
                (lets ((op in (uncons in #false)))
                   (if (symbols? op)
                      (let ((nan (tuple 'defined (tuple 'value 'undefined))))
-                        (repl
+                        (repl-cont
                            (env-keep env
                               (λ (name)
                                  (if (or (primop-of name) (memq name op))
@@ -240,7 +239,7 @@
                               (sort string<?
                                  (map symbol->string
                                     (env-keys env))))))))
-               (repl env in))
+               (repl-cont env in))
             ((find)
                (lets
                   ((thing in (uncons in #false))
@@ -261,12 +260,12 @@
                         (prompt env (repl-message)))
                      (else
                         (prompt env "I would have preferred a regex or a symbol.")))
-                  (repl env in)))
+                  (repl-cont env in)))
             ((libraries libs)
                (print "Currently defined libraries:")
                (for-each print (map car (env-get env library-key #n)))
                (prompt env (repl-message))
-               (repl env in))
+               (repl-cont env in))
             ((expand)
                (lets ((exp in (uncons in #false)))
                   (lets/cc ret
@@ -274,7 +273,7 @@
                       (env exp (macro-expand exp env abort)))
                      (print ";; " exp))
                   (prompt env (repl-message))
-                  (repl env in)))
+                  (repl-cont env in)))
             ((time)
                (lets ((exp in (uncons in #false))
                       (exp (list 'lambda '() exp))) ;; thunk it
@@ -282,11 +281,11 @@
                      ((ok val envp)
                         (repl-time val)
                         (prompt env (repl-message))
-                        (repl env in))
+                        (repl-cont env in))
                      ((fail why) ;; <- actually goes boom. repl-time should run in a thread.
                         (print ";; failed to evaluate expression")
                         (prompt env (repl-message))
-                        (repl env in)))))
+                        (repl-cont env in)))))
             ((save)
                (lets ((path in (uncons in #false)))
                   (if (string? path)
@@ -296,17 +295,17 @@
                         ;; heap is started in the future
                         (prompt env (repl-message (suspend path)))
 
-                        (repl env in))
+                        (repl-cont env in))
                      (begin
                         (prompt env "Usage: ,save \"file.suffix\"")
-                        (repl env in)))))
+                        (repl-cont env in)))))
             ((quit)
                0)
             (else
                (prompt env
                   (repl-message
                      (str ";; unknown repl op: " op ". use ,help for help.")))
-               (repl env in))))
+               (repl-cont env in))))
 
       ;; → (name ...) | #false
       (define (exported-names env lib-name)
@@ -698,8 +697,8 @@
                      ((fail why)
                         (fail (list "Failed to evaluate " exp " because " why))))))))
 
-      ; (repl env in) -> #(ok value env) | #(error reason env remaining-input|#f)
 
+      ;; env exp-ll -> success
       (define (repl env in)
          (let loop ((env env) (in in) (last 'blank))
             (cond
@@ -711,7 +710,7 @@
                         ((eof-object? this)
                            (ok last env))
                         ((repl-op? this)
-                           (repl-op repl (cadr this) in env))
+                           (repl-op repl repl (cadr this) in env))
                         (else
                            (success (eval-repl this env repl)
                               ((ok result env)
@@ -720,7 +719,6 @@
                               ((fail reason)
                                  (fail reason)))))))
                (else
-                  ;; prompt here
                   (loop env (in) last)))))
 
 
@@ -742,9 +740,15 @@
       (define eof '(eof))
 
       ;; like repl-port, but bounces back to operation on errors, processes
-      ;; repl commands (,help) and remembers input history and environemnt after
+      ;; repl commands (,help) and remembers input history and environment after
       ;; errors
-      (define (repl-ui repl env)
+
+      (define (repl-port env fd)
+         (repl env
+            (fd->exp-stream fd sexp-parser (silent-syntax-fail #n))))
+
+      ;; env -> program exit value (unsigned byte)
+      (define (repl-ui env)
          (let loop ((env env) (input (stdin-sexp-stream env)))
             (lets ((exp input (uncons input eof)))
                (cond
@@ -753,19 +757,16 @@
                         (print "bye bye _o/~"))
                      0)
                   ((repl-op? exp)
-                     (repl-op loop (cadr exp) input env))
+                     (repl-op loop repl (cadr exp) input env))
                   (else
                      (success (eval-repl exp env repl)
                         ((ok result env)
                            (prompt env result)
                            (loop env input))
                         ((fail why)
-                           (prompt env (repl-message (str ";; " why)))
+                           (print-repl-error why)
+                           (maybe-prompt env)
                            (loop env input))))))))
-
-      (define (repl-port env fd)
-         (repl env
-            (fd->exp-stream fd sexp-parser (silent-syntax-fail #n))))
 
       (define (repl-file env path)
          (let ((fd (if (equal? path "-") stdin (open-input-file path))))

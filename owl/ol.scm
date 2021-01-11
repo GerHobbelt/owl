@@ -1,3 +1,27 @@
+#| Owl Entry
+
+This file is the program that ends up being the ol binary. Typically
+such a program would consist of a few definitions and library imports,
+eventually followed by the function of command line arguments that is
+the actual program.
+
+A few complications arise from the fact that we are compiling the compiler
+itself. Most essentially, any dependencies left from the existing compiler to the
+next version of itself will cause a snowball effect. Each new version of the
+compiler would have a larger proportion of old legacy code with it. Such
+dependencies could be things like an old version of bignum library, because
+the previous parser used unicode decoding where addition defined by the
+previous version was used.
+
+This and some other selfcompilation issues are mostly avoided or detected
+by dropping most definitions and existing libraries at the beginning of this
+file. This way almose all code must be freshly loaded. Each compilation of
+a new version of owl will then use new version to repeatedly compile itself
+until a version is reached which compiles an exact replica of itself from the
+same source code. This ensures that all changes have propagated everywhere and
+there cannot be any snowballing effects due to accidental dependencies.
+
+|#
 ;;;
 ;;; ol.scm: an Owl read-eval-print loop.
 ;;;
@@ -23,21 +47,30 @@
  | DEALINGS IN THE SOFTWARE.
  |#
 
+;; ------------------------------- 8< -------------------------------
+
+;; Cleanup phase
+
+;; reload owl/core.scm to replace (owl core) of the current version
+
 ,load "owl/core.scm"
 
-(mail 'intern (tuple 'flush)) ;; ask symbol interner to forget all symbols it knows
+(mail 'intern (tuple 'flush)) ;; ask symbol interner to forget everything
 
 (define *libraries* #n) ;; clear loaded libraries
 
 (import (owl core))   ;; reload default macros needed for defining libraries etc
 
-;; forget everythng except these and core values (later list also them explicitly)
+;; forget everything except these and core values (later list also them explicitly)
 
 ,forget-all-but (quote *libraries* _branch _define rlambda)
 
 ;; --------------------------------------------------------------------------------
 
-(import (owl core))   ;; get define, define-library, import, ... from the just loaded (owl core)
+;; Reload phase
+
+;; get define, define-library, etc from the new (owl core)
+(import (owl core))
 
 (define *interactive* #false)  ;; be silent
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
@@ -114,6 +147,7 @@
          (string-append path ".c")
          new)))
 
+;; outcome args path -> program-exit-value | nonzero-on-error
 (define (owl-run outcome args path)
    (success outcome
       ((ok val env)
@@ -128,7 +162,7 @@
 (define about-owl
 "Owl Lisp -- a functional scheme
 Copyright (c) Aki Helin
-Check out https://haltp.org/posts/owl.html for more information.")
+Check out https://haltp.org/owl for more information.")
 
 (define usual-suspects
    (list
@@ -276,7 +310,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
                   ((get dict 'test) => (H try-test-string env))
                   ((null? others)
                      (greeting env)
-                     (repl-ui repl
+                     (repl-ui
                         (env-set env '*readline*
                            (if (get dict 'no-readline)
                               #false
