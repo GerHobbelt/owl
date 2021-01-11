@@ -584,14 +584,19 @@
             (else
                (lets
                   ((seed (or (get dict 'seed)  (random-seed)))
-                   (end (get dict 'rounds))) ; #false if not given
+                   (end (get dict 'rounds))
+                   (start (time-ms)))
                   (print "Starting random continuous test, seed " seed)
                   (if end
                      (print "Will run up to " end)
                      (print "Will run forever"))
                   (let loop ((n 0) (rs (seed->rands seed)))
                      (if (eq? 0 (band n 31))
-                        (print " - " n))
+                        (lets
+                           ((elapsed (/ (- (time-ms) start) 1000))
+                            (rounds-per-sec (/ n (max elapsed 1)))
+                            (rounds-per-hour (* rounds-per-sec (* 60 1))))
+                           (print "round " n ", " (round rounds-per-hour) "rpm")))
                      (lets ((rs fails (failures rs)))
                         (if (null? fails)
                            (if (equal? n end)
