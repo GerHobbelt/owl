@@ -1,4 +1,6 @@
 #| doc
+Hash Algorithms
+
 The digest library provides functions for computing cryptographic signatures.
 Currently SHA1 and SHA256 digests and corresponding message authentication codes
 are supported.
@@ -6,12 +8,10 @@ are supported.
 The hash functions also have `hasher-raw` and `hasher-bytes` -variants, which
 return the state words and raw signature bytes correspondingly.
 
-```
   (sha1 data)   → hash-string
   (sha256 data) → hash-string
   (hmac-sha1   key message) → hash-string
   (hmac-sha256 key message) → hash-string
-```
 |#
 
 (define-library (owl digest)

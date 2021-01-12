@@ -1,4 +1,6 @@
 #| doc
+Lazy Lists
+
 Lazy lists (or streams) are like lists, but they are computed only as far as needed.
 You can for example define a lazy list of all integers below a million, and then
 proceed to run computations on them, without worrying whether you have enough memory
@@ -11,13 +13,11 @@ function of zero arguments (a thunk) which when called will return the rest of t
 lazy list. Therefore, since normal lists are a subset of lazy lists, all lazy list
 functions can also take normal lists as arguments.
 
-`Scheme warning`: recall that Owl does not have mutable data structures, so lazy
+Scheme warning: recall that Owl does not have mutable data structures, so lazy
 lists do not cache their results.
 
-```
   (pair head exp) → ll, lazy equivalent of (cons head exp), but exp is not evaluated yet
   (force-ll ll) → list, turn a lazy list into a regular one
-```
 |#
 
 (define-library (owl lazy)
@@ -53,7 +53,7 @@ lists do not cache their results.
       (define-syntax delay
          (syntax-rules ()
             ((delay (op . args))
-               (λ () (op . args)))
+               (lambda () (op . args)))
             ((delay value) value)))
 
       ;; force is effectively unnecessary in Owl, so might as well signal a

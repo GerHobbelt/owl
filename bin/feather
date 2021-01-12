@@ -1,0 +1,238 @@
+#!/usr/bin/ol -r
+
+(import
+   (owl sexp)
+   (owl args)
+   (owl proof)
+   (owl date)
+   (only (owl io) write-to))
+
+(define (make-markdown-prelude title)
+   (lets ((d m y H M S (date (time))))
+      (str "# " title "\n\n")
+   ))
+
+;;; sexp query
+
+(define (car-eq? exp a)
+   (and (pair? exp) (eq? (car exp) a)))
+
+(define (sselect-all exps sq)
+   (define (walk exps sq found)
+      (cond
+         ((null? exps)
+            found)
+         ((car-eq? (car exps) (car sq))
+            (if (null? (cdr sq))
+               (cons (car exps)
+                  (walk (cdr exps) sq found))
+               (walk (cdar exps) (cdr sq)
+                  (walk (cdr exps) sq
+                     found))))
+         (else
+            (walk (cdr exps) sq found))))
+   (walk exps sq #null))
+
+(define (sselect exps sq)
+   (cond
+      ((null? exps)
+         #false)
+      ((car-eq? (car exps) (car sq))
+         (if (null? (cdr sq))
+            (car exps)
+            (or
+               (sselect (cdar exps) (cdr sq))
+               (sselect (cdr exps) sq))))
+      (else
+         (sselect (cdr exps) sq))))
+
+(example
+   (sselect-all '((A (B 1)) (A (C 1)) (A (B 2))) '(A B))
+      = '((B 1) (B 2))
+   (sselect-all '((A (B 1) (B 2))) '(A B))
+      = '((B 1) (B 2))
+   (sselect-all '((A) (A (B 1) (B 11)) (A (C 1)) (A (B 2) (B 22))) '(A B))
+      = '((B 1) (B 11) (B 2) (B 22)))
+
+;;; Command line
+
+(define command-line-rules
+   (cl-rules
+     `((help     "-h" "--help")
+;       (source-dir "-d" "--directory" plural has-arg
+;          comment "a directory to find sources form (recursively)")
+       (output   "-o" "--output" has-arg default "manual.md"
+          comment "output file")
+;       (prelude  "-p" "--prelude" has-arg default "doc/manual.md"
+;          comment "documentation prelude file")
+       (title "-t" "--title" has-arg default ,(str "Owl Lisp " *owl-version*))
+       )))
+
+
+;;; Embedded documentation in comments
+
+(define initial-doc? (string->regex "m/^#\\| doc\\n/"))
+
+(define initial-doc (string->regex "s/^#\\| doc\\n(.*?)\\|#.*/\\1/"))
+
+(define (find-initial-documentation bs)
+   (if (initial-doc? bs)
+      (initial-doc bs)
+      #false))
+
+
+;;; Different kinds of documentation
+
+(define (maybe op arg)
+   (if arg (op arg) arg))
+
+(define (maybe-put ff key val)
+   (if val (put ff key val) ff))
+
+(define scheme-file? (string->regex "m/.*\\.scm$/"))
+(define markdown-file? (string->regex "m/.*\\.md$/"))
+
+(define (drop-newlines lst)
+   (if (and (pair? lst) (eq? (car lst) #\newline))
+      (drop-newlines (cdr lst))
+      lst))
+
+(define (process-initial-doc bp)
+   (if bp
+      (lets
+         ((bp (drop-newlines bp))
+          (pre post (take-while (lambda (x) (not (eq? x #\newline))) bp)))
+         (values
+            (bytes->string pre)
+            (bytes->string post)))
+      (values #f #f)))
+
+;; txt -> txt in which there should be no accidental markdown formatting
+
+(define quote-hashes
+   (string->regex "s/#/##/g"))
+
+(define (passive-doc-content txt)
+   (if (string? txt)
+      (quote-hashes txt)
+      (quote-hashes (str txt))))
+
+(define (gather-documentation path others)
+   (cond
+      ((scheme-file? path)
+         (print "Adding " path " (lisp)")
+         (lets ((content (file->list path))
+                (sexps (list->sexps content #false #false)) ;; module is in one sexp
+                (lib-name (maybe cadr (sselect sexps '(define-library))))
+                (exports (maybe cdr (sselect sexps '(define-library export))))
+                (initial-doc
+                      (find-initial-documentation content))
+
+                (doc-title doc-content
+                   (process-initial-doc initial-doc))
+                (doc-title (or doc-title path))
+                (doc-content
+                   (passive-doc-content doc-content)) ;; avoid accidental formatting
+                (examples
+                   (map cdr
+                     (sselect-all sexps '(define-library begin example)))))
+            (if (or initial-doc lib-name)
+               (cons
+                  (pipe empty
+                     (put 'path path)
+                     (put 'length (length content))
+                     (maybe-put 'name lib-name)
+                     (maybe-put 'exports exports)
+                     (maybe-put 'examples
+                        (if (null? examples)
+                           #f
+                           examples))
+                     (maybe-put 'title doc-title)
+                     (maybe-put 'initial-doc doc-content))
+                  others)
+               others)))
+      ((markdown-file? path)
+         (print "Adding " path " (markdown)")
+         (cons
+            (put empty 'markdown (file->list path))
+            others))
+      (else
+         (print "Adding " path " (raw)")
+         (cons
+            (put empty 'markdown (string->list path))
+            others))))
+
+;;; Rendering
+
+(define (render-unquoted val)
+   (let ((bytes (render* val null)))
+      (bytes->string
+         (if (eq? (car bytes) #\')
+            (cdr bytes)
+            bytes))))
+
+(define (render-example example)
+   (cond
+      ((null? example)
+         "")
+      ((equal? (car example) 'let)
+         (let ((example (cdr example)))
+            (str " - let #{" (render-unquoted (car example)) "} = #{" (render-unquoted (caddr example)) "}\n"
+               (render-example (cdddr example)))))
+      ((equal? (cadr example) '=)
+            (str " - #{" (render-unquoted (car example)) "} = #{" (render-unquoted (caddr example)) "}\n"
+               (render-example (cdddr example))))
+      (else
+         (error "weird example: " (list (car example) " in " example)))))
+
+
+(define (render-documentation doc)
+   (if (get doc 'markdown)
+      (bytes->string (get doc 'markdown))
+      (str
+         "\n### " (get doc 'title) ": " (get doc 'name (get doc 'path))  "\n"
+         (or (get doc 'initial-doc "\n")
+            "")
+         "\n"
+         "Exported values:\n\n"
+         (foldr
+            (λ (x tl) (str " - #{" x "}\n" tl))
+            "" (get doc 'exports #null))
+         "\n"
+         (if (get doc 'examples #f)
+            (str
+               "Examples:\n\n"
+               (foldr str ""
+                  (map render-example
+                     (get doc 'examples))))
+            "")
+      )))
+
+;;; Entry
+
+(λ (args)
+   (process-arguments (cdr args) command-line-rules "you lose"
+      (λ (opts extras)
+         (cond
+            ((get opts 'help)
+               (print (str (car args) " [opts] [markdown/lisp] ..."))
+               (print-rules command-line-rules))
+            ((null? extras)
+               (print "no content?"))
+            (else
+               (lets
+                   ((docs (foldr gather-documentation #null extras))
+                     (output-path
+                        (get opts 'output))
+                     (output-port
+                        (open-output-file output-path)))
+                  (print-to output-port (make-markdown-prelude (get opts 'title)))
+                  (for-each
+                     (λ (doc-node)
+                        (print-to output-port
+                           (render-documentation doc-node)))
+                     docs)
+                  (close-port output-port)
+                  (print (get opts 'output) " is done.")
+                  )))))
+   0)

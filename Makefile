@@ -6,6 +6,7 @@ BINDIR  = /bin
 MANDIR  = /share/man
 INSTALL = install
 CFLAGS  = -Wall -O2
+
 CC      = gcc
 
 
@@ -13,7 +14,7 @@ CC      = gcc
 
 all: owl documentation
 owl: bin/ol
-documentation: owl doc/ol.1.gz doc/ovm.1.gz # manual.md
+documentation: owl doc/ol.1.gz doc/ovm.1.gz
 
 
 ### Lisp boostrap
@@ -33,12 +34,7 @@ c/vm.c: c/_vm.c
 
 ## bytecode image (fixedpoint)
 
-fasl/boot.fasl: fasl/init.fasl
-	# start bootstrapping with the bundled init.fasl image
-	make bin/vm
-	bin/vm fasl/init.fasl -r bin/fasl-build.scm bin/vm fasl/init.fasl -r owl/ol.scm -o $@
-
-fasl/ol.fasl: fasl/boot.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
+fasl/ol.fasl: fasl/init.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
 	# selfcompile boot.fasl until a fixed point is reached
 	make bin/vm
 	bin/vm fasl/init.fasl -r bin/fasl-build.scm -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
@@ -72,13 +68,64 @@ doc/ovm.1.gz: doc/ovm.1
 
 ## other documentation
 
-manual.md: doc/manual.md owl/*.scm owl/*/*.scm scheme/*.scm
-	bin/ol -r bin/tada.scm -d owl -d scheme -o manual.md
+web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
+	bin/ol -r bin/feather -o web-manual.md \
+		doc/intro.md doc/libraries.md \
+		"## Data Structures" \
+		owl/lazy.scm \
+		owl/queue.scm \
+		owl/string.scm \
+		owl/list.scm \
+		owl/vector.scm \
+		owl/list-extra.scm \
+		owl/bytevector.scm \
+		owl/rlist.scm \
+		owl/ff.scm \
+		owl/iff.scm \
+		"## Owl Things" \
+		owl/fasl.scm \
+		owl/lcd.scm \
+		owl/compile.scm \
+		owl/gensym.scm \
+		owl/variable.scm \
+		owl/proof.scm \
+		owl/syntax-rules.scm \
+		owl/thread.scm \
+		"## Math" \
+		owl/math.scm \
+		owl/math/integer.scm \
+		owl/math/rational.scm \
+		owl/math/complex.scm \
+		owl/math/extra.scm \
+		"## Misc" \
+		owl/args.scm \
+		owl/metric.scm \
+		owl/parse.scm \
+		owl/date.scm \
+		owl/digest.scm \
+		owl/readline.scm \
+		owl/regex.scm \
+		owl/random.scm \
+		owl/io.scm \
+		owl/render.scm \
+		owl/sort.scm \
+		owl/syscall.scm \
+		owl/sys.scm \
+		owl/terminal.scm \
+		owl/time.scm \
+		owl/unicode.scm \
+		doc/internals.md \
+		doc/vm.md \
+		"## Compiler" \
+		owl/eval.scm owl/eval/alpha.scm owl/eval/assemble.scm owl/eval/ast.scm owl/eval/cgen.scm owl/eval/closure.scm owl/eval/rtl.scm owl/eval/cps.scm owl/eval/data.scm owl/eval/env.scm owl/eval/fixedpoint.scm owl/eval/register.scm \
+		doc/thanks.md \
+		doc/related.md \
+		doc/faq.md
+
+
 
 manual.man: manual.md
 	pandoc $? -s -t man >$@
-
-manual.pdf: manual.md
 	pandoc --pdf-engine xelatex -o $@ $?
 
 

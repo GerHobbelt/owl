@@ -1,4 +1,6 @@
 #| doc
+Complex Numbers
+
 This library defines complex arbitrary precision math functions.
 |#
 
@@ -11,7 +13,6 @@ This library defines complex arbitrary precision math functions.
       (owl core)
       (owl list)
       (owl syscall)
-      (only (owl primop) create-type)
 
       (prefix ;; prefix integer operations with i
          (only (owl math integer) + - * = << >> rem mod negate)

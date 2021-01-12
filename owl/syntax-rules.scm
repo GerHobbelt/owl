@@ -1,23 +1,37 @@
+#| doc
+Hygienic Macros
+
+This library implements hygienic macro expansion. The role of this library is to construct the transformer
+functions out of the usual define-syntax definitions as specified in R7RS Scheme.
+
+A macro mainly consists of a set of patterns to be tried on code. If one of them matches, then the corresponding
+rewrite rule is used to transform the expression. A pattern may contain literals, which means symbols that must
+be the same as in the pattern, and rest are generally used as syntax variables. A syntax variable is matched to
+any expression in the input expression, and it can be used to place the expression somewhere in the rewrite rule.
+
+It is also possible to use the ellipsis pattern, denoted by suffixing a pattern ..., which means that the
+pattern may occur zero or more times. Suffixing a syntax variable bound within such pattern with ... in the
+rewrite rule causes all of the matches to be added.
+|#
 
 (define-library (owl syntax-rules)
 
    (import
       (owl core)
       (owl list)
-      (owl lcd ff)
+      (owl ff)
       (owl equal)
       (owl symbol)
       (owl gensym)
       (owl list-extra)
       (owl math)
-      (only (owl render) str)       ;; temp
+      (only (owl render) str)
       (only (owl syscall) error)
-      ; (only (owl eval env) env-get)      ;; now handled via an abstraction violation
       (owl proof))
 
    (export
-      define-syntax-ng
-      )
+      define-syntax
+      new-define-syntax-transformer)
 
    (begin
 
@@ -26,6 +40,8 @@
          (let ((undefined (tuple 'undefined)))
             (λ (env key)
                (get env key undefined))))
+
+      (define env-get-raw get)
 
       (define (env-get env key def)
          (tuple-case (lookup env key)
@@ -43,13 +59,16 @@
       ;;;
 
       (define implicit-literals
-         '(lambda quote ...))
+         (append
+            '(lambda quote if ...)
+            (map (lambda (x) (ref x 1)) primops)))
 
 
       ;; env = ff of symbol ->
       ;;          (literal . value)
       ;;          (bound . value)
       ;;          ([depth] . values)
+      ;;          (other . value)    ;; bound, but not value (macro, prim)
 
       ;; to be sum values later
       (define (literal? binding)
@@ -57,6 +76,9 @@
 
       (define (bound? binding)
          (and (pair? binding) (eq? (car binding) 'bound)))
+
+      (define (other? binding)
+         (and (pair? binding) (eq? (car binding) 'other)))
 
       (define (ellipsis? binding)
          (and (pair? binding)
@@ -330,6 +352,8 @@
                            fail))
                      ((bound? val)
                         (ok env (cdr val)))
+                     ((other? val)
+                        (ok env pattern))
                      ((not val) ;; unbound, gensym
                         (lets ((env val (get-gensym env)))
                            (ok
@@ -440,7 +464,11 @@
                ((undefined (list 'no))
                 (val (env-get toplevel key undefined)))
                (if (eq? val undefined)
-                  env
+                  (let ((val (env-get-raw toplevel key undefined)))
+                     (if (eq? val undefined)
+                        env
+                        (put env key
+                           (cons 'other val))))
                   (put env key
                      (cons 'bound (maybe-quote val)))))))
 
@@ -457,11 +485,16 @@
                   (let loop ((pats pats) (targets targets))
                      (if (null? pats)
                         #f
-                        (match form (car pats) env 0
+                        (match
+                           (cdr form)               ;; do not match the first value, which is whatever the macro name happens
+                           (cdr (car pats))         ;; to be after renaming etc
+                           (env-bind env            ;; bind the name of the original macro to the actual matched value
+                              (caar pats)
+                              (car form))
+                            0
                            (lambda (env fail)
                               (rewrite (car targets) env '()
                                  (lambda (env result)
-                                    ; (print "TRANSFOMERS MADE: " result "\n" " -  out of " (car targets) "\n" " -  in " (ff->list env))
                                     (cons result (get env gensym-key)))
                                  fail))
                            (lambda ()
@@ -478,14 +511,12 @@
       (example
          (xlet ((foo 100)) foo) = 42)
 
-
-      ;; definer definition via macro api
-      (_define-macro define-syntax-ng
+      (define new-define-syntax-transformer
          (make-transformer
-            '(define-syntax-ng syntax-rules
+            '(define-syntax syntax-rules
               _define-macro *toplevel*)
             '(
-               (define-syntax-ng name
+               (define-syntax name
                   (syntax-rules literals
                      (pattern template)
                      ...))
@@ -502,7 +533,10 @@
             *toplevel* ;; get make-transformer
             ))
 
-      (define-syntax-ng xlet
+      ;; definer definition via macro api
+      (_define-macro define-syntax new-define-syntax-transformer)
+
+      (define-syntax xlet
          (syntax-rules ()
             ((xlet ((var val) ...) . body)
                ((lambda (var ...) . body) val ...))))

@@ -1,13 +1,24 @@
 #| doc
+Fixed Point Computation
 
-Owl does not allow you to use a special toplevel or use mutations to implement recursion.
-Lambdas are the only way to make variable bindings.
-Up to this point the compiler also has `rlambda` functions,
-   which will end up generating recursive bindings.
-They are essentially to `letrec` what `lambda` is to `let`.
-This compilation step gets rid of all the rlambdas
-   turning them the ones we all know and love.
-This is done by constructing the fixed points manually.
+Implementing recursion becomes an interesting problem when mutation is not allowed.
+Scheme allows recursion in definitions and via the letrec primitive form, which
+under the hood require mutable data structures. We don't have them here, and the
+only way to construct bindings and functions is a run of the mill lambda.
+
+Luckily, a lambda is all it takes to recurse. This library takes a version of the
+program in which one can use a recursive lambda, or rlambda, and converts it to
+a corresponding expression using only normal lambdas.
+
+The conversion is a custom one developed for the first version of Owl. It operates by
+exteding each recursive lambda with the other recursive functions it may
+call, propagating the required values to required call sites at required places,
+and constructing wrapper functions which convert the originally intended arguments
+to ones the actual recursive operations need.
+
+The added extra arguments are added after the original ones. This is important,
+because we want the wrapper functions to just consist of a few loads to free
+registers from their environment and a jump.
 
 |#
 
@@ -283,7 +294,7 @@ This is done by constructing the fixed points manually.
 
       ; bind all things from deps using possibly several nested head lambda calls
 
-            
+
       (define (generate-bindings deps body env)
          (define second (C ref 2))
          (define first (C ref 1))

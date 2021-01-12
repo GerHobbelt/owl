@@ -1,8 +1,12 @@
 #| doc
-Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting to become more like a compiler entry point
+Program Serialization
+
+This library writes programs in formats required from the compiler. Programs
+can currently be written as FASL-encoded bytecode for use in the VM, or a mixture
+of C and FASL when compiling to C.
 |#
 
-(define-library (owl dump)
+(define-library (owl compile)
 
    (export
       make-compiler    ; ((make-compiler extra-insts) entry path opts native)
@@ -14,10 +18,9 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (owl core)
       (owl fasl)
       (owl list)
-      (owl tuple)
       (owl sort)
       (owl syscall)
-      (owl lcd ff)
+      (owl ff)
       (owl symbol)
       (owl bytevector)
       (owl vector)
@@ -28,6 +31,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (owl io)
       (owl port)
       (owl math)
+      (owl tuple) ;; for thread manager
       (owl render)
       (owl lazy)
       (owl regex)
@@ -61,7 +65,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                (else
                   (fold walk
                      (put trail node #true)
-                     (tuple->list node)))))
+                     (object->list node)))))
          (define trail
             (walk (put empty tag #n) node))
 
@@ -69,7 +73,6 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
             (walk (put empty tag #n) node)
             tag #n))
 
-      ;; FIXME - fails with variable fixnum size and usual vectors
       (define (file->string path)
          (bytes->string
             (vec-iter
@@ -78,10 +81,9 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                      vec
                      (error "Unable to load: " path))))))
 
-      ;; todo: compress the rts source in heap
-      ;; todo: include rts source into lib-ccomp instead of keeping it in a separate file
       (define rts-source
-         (file->string "c/_vm.c"))
+         (list->bytevector
+            (file->list "c/_vm.c")))
 
       ; str -> str' | #false
       (define (utf8-decode-string str)
@@ -139,7 +141,6 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (define (dump-fasl obj path)
          (dump-data (fasl-encode-stream obj self) path))
 
-      ;; fixme: sould be (load-fasl <path> <fail>)
       (define (load-fasl path fval)
          (let ((port (open-input-file path)))
             (if port
@@ -153,7 +154,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
             (foldr render #n
                (ff-fold
                   (λ (tl func info)
-                     (lets ((opcode new-func c-code info))
+                     (lets ((opcode new-func c-code <- info))
                         ;; render code if there (shared users do not have it)
                         (if c-code
                            ;; all of these end to an implicit goto apply
@@ -185,7 +186,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                            (lets
                               ((wrapper (raw (list 0 (>> code 8) (band code 255)) type-bytecode)))
                               (loop (+ code 1) (cdr obs)
-                                 (cons (cons (car obs) (tuple code wrapper src)) out)))))
+                                 (cons (cons (car obs) (prod code wrapper src)) out)))))
                      (else
                         (loop code (cdr obs) out)))))))
 
@@ -199,13 +200,14 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
          (cons 'bytecode (bytevector->list val)))
 
       ; native-ops → (obj → obj')
-      ;; fixme: rewrite...
       (define (make-native-cook native-ops extras)
          (λ (obj)
             (cond
                ;; if chosen to be a macro instruction in the new vm, replace with new bytecode calling it
                ;; write a reference to the wrapper function instead of the original bytecode
-               ((get native-ops obj #false) => (C ref 2))
+               ((get native-ops obj #false) =>
+                  (lambda (info)
+                     (lets ((op func c <- info)) func)))
                ;; if this is a macro instruction in the current system, convert back
                ;; to vanilla bytecode, or the target machine won't understand this
                ((extended-opcode obj) =>
@@ -238,7 +240,7 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
       (define (original-sources native-ops extras)
          (ff-fold
             (λ (sources bytecode info)
-               (lets ((opcode wrapper c-code info))
+               (lets ((opcode wrapper c-code <- info))
                   (put sources opcode
                      (clone-code bytecode extras))))
             empty native-ops))
@@ -376,7 +378,8 @@ Heap dumper (for ovm) <- to be renamed to lib-compile later, as this is starting
                      ;; dump ovm.c and replace /*AUTOGENERATED INSTRUCTIONS*/ with new native ops (if any)
                      (write-bytes port
                         (string->bytes
-                           (str-replace runtime
+                           (str-replace
+                              (list->string (vector->list runtime))
                               "/*AUTOGENERATED INSTRUCTIONS*/"
                               (render-native-ops native-ops))))
 

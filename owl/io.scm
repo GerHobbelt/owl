@@ -1,5 +1,24 @@
 #| doc
-Simple direct blocking IO (replaces the old thread-based one)
+Input and Output
+
+Owl is is by default a multitasking system. Multiple threads can be working on
+tasks and waiting for input or output at the same time, so we cannot simply
+define input and output (I/O) as lisp functions calling the corresponding
+operating system code via the VM.
+
+There are a few ways how I/O could work in a multithreaded setting. Having a
+lot of I/O code in the thread scheduler is convenient to use, but results in an
+ugly thread scheduler. Having separate threads for each file descriptor and
+using only message passing for I/O is elegant, but turned out to be somewhat
+cumbersome to use. The current version is something in between. One thread,
+called iomux, handles port blocking and timers. Threads attempt to do I/O
+directly when calling e.g. print or read, but if the operation would require
+waiting for input or output, then the thread sends a synchronous message to
+iomux and gets a response when the task can be completed without blocking.
+
+Notice that the I/O defined in this library cannot in general be used unless
+iomux is running. This may happen when working with code that has not called
+(start-muxer), and when trying to debug the thread scheduler.
 |#
 
 (define-library (owl io)
@@ -45,9 +64,11 @@ Simple direct blocking IO (replaces the old thread-based one)
       port->byte-stream       ;; fd → (byte ...) | thunk
       port->tail-byte-stream  ;; fd → (byte ...) | thunk
       byte-stream->port       ;; bs fd → bool
+      byte-stream->block-stream ;; bs size -> (bvec ...)
       port->block-stream      ;; fd → (bvec ...)
       block-stream->port      ;; (bvec ...) fd → bool
-
+      copy-port               ;; from-fd to-fd
+      copy-file               ;; from-path to-path
       display-to        ;; port val → bool
       print-to          ;; port val → bool
       print
@@ -89,8 +110,7 @@ Simple direct blocking IO (replaces the old thread-based one)
       (owl unicode)
       (owl fasl)
       (owl tuple)
-      (owl lcd ff)
-      (only (owl primop) set-ticker wait)
+      (owl ff)
       (owl port)
       (owl lazy)
       (only (owl vector) merge-chunks vec-leaves))
@@ -265,6 +285,29 @@ Simple direct blocking IO (replaces the old thread-based one)
          (sys-prim 29 #f #f socket-type-udp))
 
       (define close-port sys-close)
+
+      (define (copy-port in out)
+         (let ((data (try-get-block in #x8000 #t)))
+            (cond
+               ((not data) ;; read error
+                  #false)
+               ((eof-object? data)
+                  #true)
+               ((write-really data out)
+                  (copy-port in out))
+               (else
+                  #false))))
+
+      (define (copy-file from to)
+         (lets
+            ((in (open-input-file from))
+             (out (open-output-file to)))
+            (if (and in out)
+               (let ((result (copy-port in out)))
+                  (close-port in)
+                  (close-port out)
+                  result)
+               #false)))
 
 
       ;;;
@@ -575,21 +618,26 @@ Simple direct blocking IO (replaces the old thread-based one)
             (else
                (block-stream->port (bs) fd))))
 
+      (define (byte-stream->block-stream bs size)
+         (lambda ()
+            (let loop ((bs bs) (n size) (out #n))
+               (cond
+                  ((eq? n 0)
+                     (pair (list->bytevector (reverse out))
+                        (loop bs size null)))
+                  ((pair? bs)
+                     (loop (cdr bs) (- n 1) (cons (car bs) out)))
+                  ((null? bs)
+                     (if (null? out)
+                        null
+                        (loop bs 0 out)))
+                  (else
+                     (loop (bs) n out))))))
+
       (define (byte-stream->port bs fd)
-         (let loop ((bs bs) (n stream-block-size) (out #n))
-            (cond
-               ((eq? n 0)
-                  (if (write-really (list->bytevector (reverse out)) fd)
-                     (loop bs stream-block-size #n)
-                     #false))
-               ((pair? bs)
-                  (loop (cdr bs) (- n 1) (cons (car bs) out)))
-               ((null? bs)
-                  (if (null? out)
-                     #true
-                     (loop bs 0 out)))
-               (else
-                  (loop (bs) n out)))))
+         (block-stream->port
+            (byte-stream->block-stream bs stream-block-size)
+            fd))
 
       (define (byte-stream->lines ll)
          (let loop ((ll ll) (out #n))
@@ -734,7 +782,10 @@ Simple direct blocking IO (replaces the old thread-based one)
          (quotient (sys-clock_gettime (sys-CLOCK_REALTIME)) 1000000))
 
       (define (_poll2 rs ws timeout)
-         (sys-prim 43 rs ws timeout))
+         (lets
+             ((res (sys-prim 43 rs ws timeout))
+              (waked x res))
+             (values waked x)))
 
       (define (muxer-add rs ws alarms mail)
          (tuple-case (ref mail 2)
@@ -760,7 +811,7 @@ Simple direct blocking IO (replaces the old thread-based one)
                      (muxer rs ws alarms))
                   (lets
                      ((timeout (if (single-thread?) #false 0))
-                      ((waked x) <= (_poll2 rs ws timeout)))
+                      (waked x (_poll2 rs ws timeout)))
                      (cond
                         (waked
                            (lets ((rs ws alarms (wakeup rs ws alarms waked x)))
@@ -779,7 +830,7 @@ Simple direct blocking IO (replaces the old thread-based one)
                         (lets
                            ((timeout
                               (if (single-thread?) (min fx-greatest (- (caar alarms) now)) 0))
-                            ((waked x) <= (_poll2 rs ws timeout)))
+                            (waked x (_poll2 rs ws timeout)))
                            (cond
                               (waked
                                  (lets ((rs ws alarms (wakeup rs ws alarms waked x)))

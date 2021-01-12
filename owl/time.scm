@@ -2,7 +2,6 @@
 
    (export
       elapsed-real-time
-      timed
       time
       time-ms
       time-ns)
@@ -27,18 +26,6 @@
              (res (thunk)))
             (print (quotient (- (time-ns) ns) 1000000) "ms")
             res))
-
-      (define-syntax timed
-         (syntax-rules ()
-            ((timed exp)
-               (timed exp (quote exp)))
-            ((timed exp comment)
-               (lets
-                  ((ns (time-ns))
-                   (res exp))
-                  (print*-to stderr
-                     (list comment ": " (quotient (- (time-ns) ns) 1000000) "ms"))
-                  res))))
 
       (define (time)
          (quotient (time-ns) 1000000000))

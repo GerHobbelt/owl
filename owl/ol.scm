@@ -1,8 +1,32 @@
-;;;
-;;; ol.scm: an Owl read-eval-print loop.
-;;;
+#| Owl Entry
 
-#| Copyright (c) 2012-2019 Aki Helin
+This file is the program that ends up being the ol binary. 
+
+Typically such simple command line program would consist of a few definitions 
+and library imports, eventually followed by the function of command line
+arguments that is the actual entry to the program.
+
+A few complications arise from the fact that we are dealing with a compiler
+intended to compile itself.Most essentially, any regular dependencies left from
+the existing compiler to the next version of itself will cause a snowballing
+effect. Each new version of the compiler would have a larger proportion of old
+legacy code with it, leading to increasingly large compilers. Such dependencies 
+typically include things like addition, which would bring in the previous version 
+of bignum arithmetic.
+
+This, and some other selfcompilation issues, are mostly avoided or detected
+by dropping most definitions and existing libraries at the beginning of this
+file. This way most code must be freshly loaded.
+
+Each compilation of a new version of owl will additionally use new version to
+repeatedly compile itself until a version is reached which compiles an exact
+replica of itself from the same source code. This ensures that all changes have
+propagated everywhere and there cannot be any snowballing effects due to
+accidental dependencies.
+
+|#
+
+#| Copyright (c) Aki Helin
  |
  | Permission is hereby granted, free of charge, to any person obtaining a
  | copy of this software and associated documentation files (the "Software"),
@@ -23,25 +47,34 @@
  | DEALINGS IN THE SOFTWARE.
  |#
 
+;; ------------------------------- 8< -------------------------------
+
+;; Cleanup phase
+
+;; reload owl/core.scm to replace (owl core) of the current version
+
 ,load "owl/core.scm"
 
-(mail 'intern (tuple 'flush)) ;; ask symbol interner to forget all symbols it knows
+(mail 'intern (tuple 'flush)) ;; ask symbol interner to forget everything
 
 (define *libraries* #n) ;; clear loaded libraries
 
 (import (owl core))   ;; reload default macros needed for defining libraries etc
 
-;; forget everhything except these and core values (later list also them explicitly)
+;; forget everything except these and core values (later list also them explicitly)
+
 ,forget-all-but (quote *libraries* _branch _define rlambda)
 
 ;; --------------------------------------------------------------------------------
 
-(import (owl core))   ;; get define, define-library, import, ... from the just loaded (owl core)
+;; Reload phase
+
+;; get define, define-library, etc from the new (owl core)
+(import (owl core))
 
 (define *interactive* #false)  ;; be silent
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
-;(define *owl-names* #empty) ;; default is empty, so safe to remove jh
-(define *owl-version* "0.1.23")
+(define *owl-version* "0.2")
 
 (import
    (owl intern)
@@ -49,28 +82,21 @@
    (owl eval ast)
    (owl thread)
    (owl args)
-   (only (owl dump) make-compiler load-fasl)
-   (only (owl primop) bind mkt)
+   (owl alist)
+   (only (owl compile) make-compiler load-fasl)
    (owl eval)
    (owl eval data)
    (owl repl)
-   (owl base)
-   (owl variable))
-
-
-(import (owl lcd ff))
+   (owl toplevel)
+   (owl variable)
+   (owl ff)
+   (prefix (owl sys) sys-))
 
 ;; implementation features, used by cond-expand
 (define *features*
    (cons
       (string->symbol (string-append "owl-lisp-" *owl-version*))
       '(owl-lisp r7rs exact-closed ratios exact-complex full-unicode immutable)))
-
-(define initial-environment
-   (bind-toplevel
-      (env-fold env-put-raw
-         *owl-kernel*
-         (cdr (assoc '(owl base) *libraries*)))))
 
 (define (path->string path)
    (let ((data (file->vector path)))
@@ -84,7 +110,6 @@
       ((equal? s "library") 'library) ;; threads and IO, nothing else
       ((equal? s "plain")   'plain)   ;; just the program
       (else #false)))
-
 
 (define command-line-rules
    (cl-rules
@@ -123,25 +148,22 @@
          (string-append path ".c")
          new)))
 
+;; outcome args path -> program-exit-value | nonzero-on-error
 (define (owl-run outcome args path)
-   (if outcome
-      (tuple-case outcome
-         ((ok val env)
-            ;; be silent when all is ok
-            ;; exit with 126 and have error message go to stderr when the run crashes
-            (try (λ () (val args)) 126))
-         ((error reason env input)
-            (print-repl-error
-               (list "ol: cannot run" path "because there was an error during loading:" reason))
-            2))
-      1))
+   (success outcome
+      ((ok val env)
+         ;; be silent when all is ok
+         ;; exit with 126 and have error message go to stderr when the run crashes
+         (try (λ () (val args)) 126))
+      ((fail why)
+         (print-repl-error
+            (list "ol: cannot run" path "because there was an error during loading:" why))
+         2)))
 
 (define about-owl
 "Owl Lisp -- a functional scheme
 Copyright (c) Aki Helin
-Check out https://haltp.org/posts/owl.html for more information.")
-
-
+Check out https://haltp.org/owl for more information.")
 
 (define usual-suspects
    (list
@@ -164,14 +186,13 @@ Check out https://haltp.org/posts/owl.html for more information.")
          (fold (λ (ff x) (put ff x x)) empty (iota 0 1 100)) ;; all kinds of nodes
          ))
 
-
 ;; handles $ ol -c stuff
 (define (repl-compile compiler env path opts)
    (try
       (λ ()
          ;; evaluate in a thread to catch error messages here
          (let ((outcome (if (equal? path "-") (repl-port env stdin) (repl-file env path))))
-            (tuple-case outcome
+            (success outcome
                ((ok val env)
                   (if (function? val)
                      (begin
@@ -198,13 +219,10 @@ Check out https://haltp.org/posts/owl.html for more information.")
                      (begin
                         (print "The last value should be a function of one value (the command line arguments), but it is instead " val)
                         2)))
-               ((error reason env input)
+               ((fail reason)
                   (print-repl-error
                      (list "Cannot compile" path "because " reason))
-                  2)
-               (else
-                  (print-repl-error "Weird eval outcome.")
-                  3))))
+                  2))))
       #false))
 
 (define (try-load-state path args)
@@ -248,9 +266,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
             (display "> "))
          (halt 126))))
 
-(import (prefix (owl sys) sys-))
 
-;; todo: this should probly be wrapped in a separate try to catch them all
 ; ... → program rval going to exit-owl
 (define (repl-start vm-args repl compiler env)
    (or
@@ -287,12 +303,14 @@ Check out https://haltp.org/posts/owl.html for more information.")
                            1)))
                   ((get dict 'run) =>
                      (λ (path)
-                        (owl-run (try (λ () (repl-file env path)) #false) (cons "ol" others) path)))
-                  ((get dict 'evaluate) => (H try-repl-string env)) ;; FIXME: no error reporting
+                        (owl-run
+                           (try (λ () (repl-file env path)) (fail "crash"))
+                           (cons "ol" others) path)))
+                  ((get dict 'evaluate) => (H try-repl-string env))
                   ((get dict 'test) => (H try-test-string env))
                   ((null? others)
                      (greeting env)
-                     (repl-trampoline repl
+                     (repl-ui
                         (env-set env '*readline*
                            (if (get dict 'no-readline)
                               #false
@@ -301,15 +319,13 @@ Check out https://haltp.org/posts/owl.html for more information.")
                      ;; load the given files
                      (define input
                         (foldr (λ (path tail) (ilist ',load path tail)) #n others))
-                     (tuple-case (repl (env-set env '*interactive* #false) input)
+                     (success (repl (env-set env '*interactive* #false) input)
                         ((ok val env)
                            0)
-                        ((error reason partial-env input)
+                        ((fail reason)
                            (print-repl-error reason)
                            1)))))))
       2))
-
-(import (owl lcd ff))
 
 (define (directory-of path)
    (runes->string
@@ -321,11 +337,16 @@ Check out https://haltp.org/posts/owl.html for more information.")
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
    (make-compiler empty))
 
+(define initial-environment
+   (bind-toplevel
+      (env-fold env-put-raw
+         *owl-kernel*
+         (alget *libraries* '(owl toplevel) #f))))
+
 (define (heap-entry symbol-list)
    (λ (codes) ;; all my codes are belong to codes
       (lets
-         ((initial-names *owl-names*)
-          (interner-thunk (initialize-interner symbol-list codes)))
+         ((interner-thunk (initialize-interner symbol-list codes)))
          (λ (vm-special-ops)
             (let ((compiler (make-compiler vm-special-ops)))
                ;; still running in the boostrapping system
@@ -344,7 +365,7 @@ Check out https://haltp.org/posts/owl.html for more information.")
                                     ;; store initial state values
                                     (state 'call
                                        (λ (st)
-                                          (-> st
+                                          (pipe st
                                              (put 'command-line-arguments vm-args)
                                              (put 'features *features*)
                                              )))
@@ -371,7 +392,6 @@ Check out https://haltp.org/posts/owl.html for more information.")
                                                 (cons '*libraries* *libraries*)
                                                 (cons 'dump compiler)
                                                 (cons '*owl-version* *owl-version*)
-                                                (cons '*owl-names* initial-names)
                                                 (cons 'eval exported-eval)
                                                 (cons 'render render)
                                                 (cons '*vm-special-ops* vm-special-ops)
@@ -390,9 +410,6 @@ Check out https://haltp.org/posts/owl.html for more information.")
       ((equal? str "some") usual-suspects)
       ((equal? str "all") all)
       (else (print "Bad native selection: " str))))
-
-(print-to stderr "writes: " (>> (sys-get-heap-bytes-written) 20) "MWords")
-(print-to stderr "max live: " (>> (sys-get-heap-max-live) 10) "KB")
 
 (λ (args)
    (process-arguments (cdr args) command-line-rules "you lose"

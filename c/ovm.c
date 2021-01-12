@@ -312,15 +312,15 @@ static word *gc(int size, word *regs) {
       if (heapsize / (1024 * 1024) > max_heap_mb)
          catch_signal(SIGGC);
       nfree -= size*W + MEMPAD; /* how much really could be snipped off */
-      if (nfree < (heapsize / 5) || nfree < 0) {
-         /* increase heap size if less than 20% is free by ~10% of heap size (growth usually implies more growth) */
+      if (nfree < (heapsize / 3) || nfree < 0) {
+         /* increase heap size if less than 33% is free by ~10% of heap size (growth usually implies more growth) */
          regs[objsize(*regs)] = 0; /* use an invalid descriptor to denote end live heap data */
          regs = (word *) ((word)regs + adjust_heap(size*W + nused/10 + 4096));
          nfree = memend - regs;
          if (nfree <= size)
             catch_signal(SIGGC);
-      } else if (nfree > (heapsize/3)) {
-         /* decrease heap size if more than 33% is free by 10% of the free space */
+      } else if (nfree > (heapsize/2)) {
+         /* decrease heap size if more than 50% is free by 10% of the free space */
          wdiff dec = -(nfree / 10);
          wdiff new = nfree - dec;
          if (new > size*W*2 + MEMPAD) {
@@ -1266,7 +1266,7 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             NEXT(1);
          } else {
             word *t;
-            allocate(acc + 1, t);
+            allocate(acc + 1, t); // todo: also include lower registers for debugging
             *t = make_header(acc + 1, TTUPLE);
             memcpy(t + 1, R + 3, acc * W);
             error(60, ob, t);

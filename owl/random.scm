@@ -1,4 +1,6 @@
 #| doc
+Random Numbers
+
 Randomness is an interesting thing to work with in a purely
 functional setting. Owl builds randomness around streams of
 typically deterministically generated 24-bit fixnums. These
@@ -11,7 +13,6 @@ or monadic code, but Owl generally strives to be explicit and
 simple, so the rand streams are handled just like any other
 value.
 
-```
   > (define rs (seed->rands 9))
   > (rand rs 10000)
   '(values #<function> 3942) ;; the new rand stream and 3942
@@ -25,7 +26,7 @@ value.
   '(g e c b d a f)
   > (lets ((rs ns (random-numbers rs 100 10))) ns)
   '(95 39 69 99 2 98 56 85 77 39)
-```
+
 |#
 
 (define-library (owl random)

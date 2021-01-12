@@ -1,13 +1,15 @@
 #| doc
-This library exports some read-eval-print-loop functions, such as evaluate.
-It is typically called through eval. The `*toplevel*` variable is updated
-after each definition, so it can be used to evaluate a term in the corresponding
-environment.
 
-```
-  (eval (list '+ 1 2) *toplevel*) → 3
-  (eval '(/ 1 0) *toplevel*) → #false
-```
+Evaluation
+
+Evaluation ties together all the separate compiler passes. Each pass is a function of
+the environment in which the evaluation occurs and the current version of the expression
+to be evaluated, and returns either an error or next versions of the environment and
+expression. In the final step the expression has been converted to a thunk, meaning a
+function of zero arguments, which when called gives the value(s) of the expression.
+
+Evaluate returns the success/failure data structure used in the compiler. Exported-eval
+is the function typically found at toplevel as eval.
 |#
 
 
@@ -22,8 +24,6 @@ environment.
       (owl list)
       (owl macro)
       (owl thread)
-      (only (owl primop) lets/cc)
-      (only (owl primop) call/cc)
       (only (owl syscall) error)
       (owl eval data)
       (owl eval env)
@@ -33,8 +33,9 @@ environment.
       (owl eval cps)
       (only (owl tuple) tuple?) ;; temp
       (owl eval closure)
-      (owl eval compile)
+      (owl eval rtl)
       (only (owl io) print)
+      (owl proof)
       )
 
    (begin
@@ -62,9 +63,8 @@ environment.
             compile         ;; translate and flatten to bytecode
             execute))       ;; call the resulting code
 
-      ;; -> old-success, internal ones can return a new one
       (define (try-evaluate exp env fail-val)
-         (try ;; return fail-val in case of error
+         (try-thunk ;; return fail-val in case of error
             (λ ()
                (call/cc
                   (λ (exit)
@@ -77,7 +77,8 @@ environment.
                                  (exit (fail why)))))
                         (ok exp env)
                         compiler-passes))))
-            fail-val))
+            (report-failure env fail-val)
+            (list 'repl-eval)))
 
       (define (evaluate exp env)
          (try-evaluate exp env
@@ -89,6 +90,13 @@ environment.
              (env exp (macro-expand exp env abort)))
             (success (evaluate exp env)
                ((ok value env) value)
-               ((fail why) #f))))
+               ((fail why)
+                  (print why)
+                  #f))))
+
+      (example
+         (evaluate '(car '(11 22)) *toplevel*) = (ok 11 *toplevel*)
+         (exported-eval '(car '(11 . 22)) *toplevel*) = 11
+      )
 
 ))

@@ -1,3 +1,17 @@
+#| doc
+Automatic Tests & Documentation
+
+The goal of this library is to make writing software tests and documenting functionality 
+as simple as possible. The operation is as follows:
+ - Tests run automatically when a program or library is loaded. Failure aborts the load via an error.
+ - Tests can be collected from code automatically for documentation.
+ - To add tests, import (owl proof) and write an example.
+ 
+    > (import (owl proof))
+    > (example
+         (+ 1 2) = (+ 2 1)
+         (car (cons 1 2)) = 1)
+|#
 (define-library (owl proof)
 
    (export
@@ -76,7 +90,10 @@
 
       ;; equal has to be defined in the context where example is used
       (define-syntax example
-         (syntax-rules (theorem-equal? = receive)
+         (syntax-rules (theorem-equal? = receive let)
+            ((example let a = b . rest)
+               (let ((a b))
+                  (example . rest)))
             ((example term-a = term-b . rest)
                (let ((eva (λ () term-a))
                      (evb (λ () term-b)))

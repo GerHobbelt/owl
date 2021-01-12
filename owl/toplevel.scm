@@ -1,15 +1,19 @@
 #| doc
-This library defines the default toplevel.
+Default Toplevel
+
+Values exported in this library are available when starting owl interactively. The form
+(exports ...) allows exporting all values exported by another library.
 |#
 
-(define-library (owl base)
+(define-library (owl toplevel)
 
    (export
       (exports (owl core))
       (exports (owl list))
+      (exports (owl boolean))
       (exports (owl rlist))
       (exports (owl list-extra))
-      (exports (owl lcd ff))
+      (exports (owl ff))
       (exports (owl io))
       (exports (owl lazy))
       (exports (owl string))
@@ -30,6 +34,9 @@ This library defines the default toplevel.
       (exports (owl math))
       (exports (owl tuple))
       (exports (owl digest))
+      (exports (owl syntax-rules))
+
+
       halt
       lets/cc
       read
@@ -43,11 +50,13 @@ This library defines the default toplevel.
 
    (import
       (owl core)
+      (owl boolean)
       (owl list)
+      (owl alist)
       (owl rlist)
       (owl list-extra)
       (owl tuple)
-      (owl lcd ff)
+      (owl ff)
       (owl io)
       (owl port)
       (owl time)
@@ -67,15 +76,14 @@ This library defines the default toplevel.
       (owl syscall)
       (owl math)
       (owl digest)
-      (only (owl dump) suspend)
-      (only (owl primop) halt lets/cc ref wait)
+      (owl syntax-rules)
+      (only (owl compile) suspend)
       (only (owl sexp) read read-ll)
       (scheme base)
       (scheme cxr)
       (scheme write)
 
       ;; just pull into the fasl
-      (owl codec)
       (owl date)
       (scheme case-lambda)
       (scheme complex)

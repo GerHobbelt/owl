@@ -10,8 +10,7 @@
 
    (import
       (owl core)
-      (only (owl list) memq)
-      (only (owl primop) create-type))
+      (only (owl list) memq))
 
    (begin
 

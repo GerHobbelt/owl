@@ -1,6 +1,8 @@
-;;;
-;;; Strings
-;;;
+#| doc
+Strings
+
+|#
+
 
 (define-library (owl string)
 
@@ -253,10 +255,6 @@
       (define bytes->string
          (B runes->string utf8-decode))
 
-      ;;; temps
-
-      ; FIXME: string-append is VERY temporary
-      ; figure out how to handle balancing. 234-trees with occasional rebalance?
       (define (string-concatenate lst)
          (bytes->string (foldr render-string #n lst)))
 

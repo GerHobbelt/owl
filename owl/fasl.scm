@@ -1,19 +1,12 @@
 #| doc
+Data Serialization
+
 This library implements serialization of objects to byte
 lists, and parsing of the byte lists to corresponding
 objects. The format is used internally for storing memory
 images to disk. Files with .fasl suffix used in booting
 up Owl are just fasl-encoded functions.
 
-```
-  (fasl-encode 42) → '(0 0 42)
-  (fasl-encode 42) → '(0 0 42)
-  (fasl-encode 1/4+i) → '(1 42 2 0 0 1 0 0 4 1 43 2 1 0 0 1 0)
-  (fasl-encode (lambda (x) x)) → '(2 16 7 2 2 0 2 24 4 61 0)
-  (fasl-decode '(0 0 0 0) 'bad) → 'bad
-  ((fasl-decode (fasl-encode prime?) 'bad) 13337) → #true
-  (eq? 'foo (fasl-decode (fasl-encode 'foo) #false)) → #true
-```
 |#
 
 ; protocol
@@ -47,14 +40,12 @@ up Owl are just fasl-encoded functions.
       (owl core)
       (owl bytevector)
       (owl math)
-      (owl primop)
-      (owl lcd ff)
+      (owl ff)
       (owl symbol)
       (owl lazy)
       (only (owl syscall) error)
       (owl proof)
       (owl list)
-      (owl tuple)
       (owl rlist))
 
    (begin
@@ -95,7 +86,7 @@ up Owl are just fasl-encoded functions.
                   (if (raw? obj)
                      seen
                      (fold partial-object-closure seen
-                        (tuple->list obj)))))))
+                        (object->list obj)))))))
 
       (define (sub-objects root pred)
          (ff->list
@@ -154,13 +145,13 @@ up Owl are just fasl-encoded functions.
                            (copy-bytes out val (- bs 1)))))
                   (lets
                      ((t (type-byte-of val))
-                      (s (tuple-length val)))
+                      (s (object-size val)))
                      ; options for optimization
                      ; t and s fit in 6 bits -> pack (seems to be only about 1/20 compression)
                      ; t fits in 6 bits -> (+ (<< t 2) 3) (ditto)
                      (ilist 1 t
-                        (send-number s
-                           (render-fields out (tuple->list val) pos clos))))))))
+                        (send-number (- s 1)
+                           (render-fields out (object->list val) pos clos))))))))
 
       (define fasl-finale (list 0)) ; stream end marker
 
@@ -370,5 +361,11 @@ up Owl are just fasl-encoded functions.
       (example
          (fasl-decode '() 'x) = 'x
          (fasl-decode (fasl-encode 42) 'x) = 42
-         (fasl-decode (fasl-encode '(1 2)) 'x) = '(1 2))
+         (fasl-decode (fasl-encode '(1 2)) 'x) = '(1 2)
+         (fasl-encode 42) = '(0 0 42)
+         (fasl-encode 1/4+i) = '(1 42 2 0 0 1 0 0 4 1 43 2 1 0 0 1 0)
+         (fasl-decode '(0 0 0 0) 'bad) = 'bad
+         ((fasl-decode (fasl-encode prime?) 'bad) 13337) = #true
+         ; (eq? 'foo (fasl-decode (fasl-encode 'foo) #false)) = #false
+         )
 ))

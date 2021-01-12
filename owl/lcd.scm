@@ -1,14 +1,24 @@
-(define-library (owl sum)
+#| doc
+Lambda Calculus Data
+
+This library defines macros for using functions (which are lambda expressions) as data
+structures.
+
+|#
+
+(define-library (owl lcd)
 
    (import
-      (owl core)
-      (owl syntax-rules))
+      (owl core))
 
-   (export define-sum-type)
+   (export
+      define-sum-type
+      ;prod
+      trod)
 
    (begin
 
-      (define-syntax-ng define-sum-type
+      (define-syntax define-sum-type
          (syntax-rules (__repl_begin __options __names __expected define define-syntax syntax-rules syntax-error)
             ((define-sum-type name
                __options ((body option (arg fresh) ...) ...)
@@ -35,7 +45,23 @@
                   __names (option ...)
                   __expected ((option arg ...) ...)))
 
-            ))))
+            ))
+
+      ;; prod is now in (owl core), since it is also related to lets
+      ;(define-syntax prod
+      ;   (syntax-rules ()
+      ;      ((prod val ...)
+      ;         (lambda (c) (c val ...)))))
+
+
+      (define-syntax trod
+         (syntax-rules ()
+            ((trod tag val ...)
+               (lambda (c)
+                  ((c tag) val ...)))))
+
+
+))
 
 
 

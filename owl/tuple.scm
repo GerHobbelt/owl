@@ -1,9 +1,9 @@
 #| doc
-Tuples are an early simple data structure for holding multiple values.
-Values are indexed from 1 and there is little error detection
-   apart from range checks.
+Tuples
 
-```
+Tuples are an early simple data structure for holding multiple values. Values
+are indexed from 1 and there is little error detection apart from range checks.
+
   > (define x (list->tuple '(a b c)))
   > (ref x 1)
   'a
@@ -11,7 +11,7 @@ Values are indexed from 1 and there is little error detection
   3
   > (equal? x (tuple 'a 'b 'c))
   #true
-```
+
 |#
 
 (define-library (owl tuple)
@@ -25,7 +25,6 @@ Values are indexed from 1 and there is little error detection
    (import
       (owl core)
       (owl list)
-      (only (owl primop) len object-size)
       (only (owl syscall) error))
 
    (begin
@@ -42,13 +41,7 @@ Values are indexed from 1 and there is little error detection
                (listuple 2 l lst)
                (error "list does not fit a tuple: length " l))))
 
-      (define (read-tuple tuple pos lst)
-         (if (eq? pos 0)
-            lst
-            (read-tuple tuple
-               (lets ((d _ (fx- pos 1))) d)
-               (cons (ref tuple pos) lst))))
-
-      (define (tuple->list tuple)
-         (read-tuple tuple (tuple-length tuple) #n))
+      (define tuple->list
+         object->list)
+      
 ))

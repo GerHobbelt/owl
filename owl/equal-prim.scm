@@ -5,8 +5,7 @@
       simple-equal?)
 
    (import
-      (owl core)
-      (only (owl primop) object-size))
+      (owl core))
 
    (begin
 

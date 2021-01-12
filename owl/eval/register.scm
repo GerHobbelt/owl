@@ -1,11 +1,12 @@
 #| doc
 Register allocation
-|#
 
-; Earlier compilation steps produce RTL that has an unbounded set
-; of registers. Register allocation handles limiting them to the
-; number available in VM, while also trying to retarget operations
-; to more sensible registers.
+The VM has only a finite number of registers. This library attempts to reduce
+the number of registers needed by the RTL, and choose better registers for
+values to avoid unnecessary shuffling of values.
+
+Old code. Scheduled for a rewrite.
+|#
 
 (define-library (owl eval register)
 
@@ -15,12 +16,12 @@ Register allocation
 
    (import
       (owl core)
-      (owl lcd ff)
+      (owl ff)
       (owl math)
       (owl list-extra)
-      (owl primop)
       (owl io)
       (owl equal)
+      (owl eval data)
       (only (owl syscall) error)
       (owl list)
       (scheme base))
@@ -66,17 +67,15 @@ Register allocation
                   a))
             a b))
 
-      ; FIXME, switch op and target to just (old . new)
-
       (define (bad? to target op)
          (or (eq? to target) (not (eq? to (op to)))))
 
       ; try to rename the register and exit via fail if the values are disturbed
 
       (define (rtl-rename code op target fail)
-         (tuple-case code
+         (rtl-case code
             ((ret a)
-               (tuple 'ret (op a)))
+               (ret (op a)))
             ((move a b more)
                (cond
                   ((eq? b target)
@@ -91,43 +90,35 @@ Register allocation
                      (let ((a (op a)))
                         (if (eq? a b)
                            (rtl-rename more op target fail)
-                           (tuple 'move a b (rtl-rename more op target fail)))))))
+                           (move a b (rtl-rename more op target fail)))))))
             ((prim opcode args to more)
                (if (fixnum? to)
                   (if (bad? to target op)
                      (fail)
-                     (tuple 'prim opcode
+                     (prim opcode
                         (map op args)
                         to (rtl-rename more op target fail)))
                   (if (bad? to target op)
                      (fail)
-                     (tuple 'prim opcode (map op args) to (rtl-rename more op target fail)))))
+                     (prim opcode (map op args) to (rtl-rename more op target fail)))))
             ((cons-close clos? lp off env to more)
                (if (bad? to target op)
                   (fail)
-                  (tuple 'cons-close clos? (op lp) off (map op env) to (rtl-rename more op target fail))))
+                  (cons-close clos? (op lp) off (map op env) to (rtl-rename more op target fail))))
             ((ld val to cont)
                (if (bad? to target op)
                   (fail)
-                  (tuple 'ld val to (rtl-rename cont op target fail))))
+                  (ld val to (rtl-rename cont op target fail))))
             ((refi from offset to more)
                (if (bad? to target op)
                   (fail)
-                  (tuple 'refi (op from) offset to (rtl-rename more op target fail))))
+                  (refi (op from) offset to (rtl-rename more op target fail))))
             ((goto fn nargs)
-               (tuple 'goto (op fn) nargs))
-            ((goto-code fn nargs)
-               (tuple 'goto-code (op fn) nargs))
-            ((goto-proc fn nargs)
-               (tuple 'goto-proc (op fn) nargs))
-            ((goto-clos fn nargs)
-               (tuple 'goto-clos (op fn) nargs))
+               (goto (op fn) nargs))
             ((jeqi i a then else)
-               (tuple 'jeqi i (op a) (rtl-rename then op target fail) (rtl-rename else op target fail)))
+               (jeqi i (op a) (rtl-rename then op target fail) (rtl-rename else op target fail)))
             ((jeq a b then else)
-               (tuple 'jeq (op a) (op b) (rtl-rename then op target fail) (rtl-rename else op target fail)))
-            (else
-               (error "rtl-rename: what is this: " code))))
+               (jeq (op a) (op b) (rtl-rename then op target fail) (rtl-rename else op target fail)))))
 
 
       ;; try to remap the register to each known good alternative
@@ -156,27 +147,26 @@ Register allocation
              (else else-uses (proc else))
              (uses (merge-usages then-uses else-uses)))
             (values
-               (tuple op a b then else)
-               (reg-touch (if (eq? op 'jeq) (reg-touch uses a) uses) b))))
+               (op a b then else)
+               (reg-touch (if (eq? op jeq) (reg-touch uses a) uses) b))))
 
-      (define (rtl-retard-closure rtl-retard code)
+      (define (rtl-retard-closure rtl-retard clos-type lpos offset env to more)
          (lets
-            ((_ clos-type lpos offset env to more code)
-             (more uses (rtl-retard more))
+            ((more uses (rtl-retard more))
              (good (use-list uses to))
              (uses (del uses to))
-             (pass (λ () (values (tuple 'cons-close clos-type lpos offset env to more) (fold reg-touch uses (cons lpos env))))))
+             (pass (λ () (values (cons-close clos-type lpos offset env to more) (fold reg-touch uses (cons lpos env))))))
             (retarget-first more to good uses
                (λ (to-new more-new)
                   (if (eq? to to-new)
                      (pass)
-                     (rtl-retard (tuple 'cons-close clos-type lpos offset env to-new more-new)))))))
+                     (rtl-retard (cons-close clos-type lpos offset env to-new more-new)))))))
 
       ; retarget register saves to registers where they are moved
       ; where possible (register retargeting level 1)
 
       (define (rtl-retard code)
-         (tuple-case code
+         (rtl-case code
             ((ret a)
                ;; needs R3=cont and Ra
                (if (> a highest-register)
@@ -199,16 +189,16 @@ Register allocation
                          (targets (use-list uses a)))
                         (if (memq b targets)
                            ; moved to a useful target
-                           (values (tuple 'move a b more) uses)
+                           (values (move a b more) uses)
                            ; leave a wish that the value at a could already be in b
-                           (values (tuple 'move a b more) (put uses a (cons b targets))))))))
+                           (values (move a b more) (put uses a (cons b targets))))))))
 
             ((prim op args to more)
                (lets
                   ((more uses (rtl-retard more))
                    (pass
                      (λ () (values
-                        (tuple 'prim op args to more)
+                        (prim op args to more)
                         (fold reg-touch (del uses to) args)))))
                   (cond
                      ((fixnum? to)
@@ -219,40 +209,25 @@ Register allocation
                                  (if (eq? to to-new)
                                     (pass)
                                     (rtl-retard
-                                       (tuple 'prim op args to-new more-new)))))))
-                     ;; fixme: no register retargeting for multiple-return-value primops
+                                       (prim op args to-new more-new)))))))
+                     ;; todo: no register retargeting for multiple-return-value primops
                      (else
-                        '(call/cc
-                           (λ (ret)
-                              (fold
-                                 (λ (pass ato)
-                                    (let ((good (use-list uses ato)))
-                                       (retarget-first more ato good uses
-                                          (λ (ato-new more-new)
-                                             (if (eq? ato ato-new)
-                                                pass
-                                                (ret
-                                                   (rtl-retard
-                                                      (tuple 'prim op args
-                                                         (map (λ (to) (if (eq? to ato) ato-new to)) to)
-                                                         more-new))))))))
-                                 pass to)))
                         (pass)))))
+
+            ((cons-close clos? lpos offset env to more)
+               (rtl-retard-closure rtl-retard clos? lpos offset env to more))
 
             ((ld val to cont)
                (lets
                   ((cont uses (rtl-retard cont))
                    (good (use-list uses to))
                    (good (if (> to highest-register) (append good (iota 0 1 highest-register)) good))
-                   (pass (λ () (values (tuple 'ld val to cont) (del uses to)))))
+                   (pass (λ () (values (ld val to cont) (del uses to)))))
                   (retarget-first cont to good uses
                      (λ (to-new cont-new)
                         (if (eq? to to-new)
                            (pass)
-                           (rtl-retard (tuple 'ld val to-new cont-new)))))))
-
-            ((cons-close clos? lpos offset env to more)
-               (rtl-retard-closure rtl-retard code))
+                           (rtl-retard (ld val to-new cont-new)))))))
 
             ((refi from offset to more)
                (lets
@@ -261,30 +236,20 @@ Register allocation
                    (good (use-list uses to))
                    (uses (del uses to))
                    (pass
-                     (λ () (values (tuple 'refi from offset to more)
+                     (λ () (values (refi from offset to more)
                         (reg-touch uses from)))))
                   (retarget-first more to good uses
                      (λ (to-new more-new)
                         (if (eq? to to-new)
                            (pass)
                            (rtl-retard
-                              (tuple 'refi from offset to-new more-new)))))))
+                              (refi from offset to-new more-new)))))))
             ((goto op nargs)
                (values code (fold reg-root empty (cons op (iota 3 1 (+ 4 nargs))))))
-            ((goto-code op nargs)
-               (values code (fold reg-root empty (cons op (iota 3 1 (+ 4 nargs))))))
-            ((goto-proc op nargs)
-               (values code (fold reg-root empty (cons op (iota 3 1 (+ 4 nargs))))))
-            ((goto-clos op nargs)
-               (values code (fold reg-root empty (cons op (iota 3 1 (+ 4 nargs))))))
             ((jeqi i a then else)
-               (rtl-retard-jump rtl-retard 'jeqi i a then else))
+               (rtl-retard-jump rtl-retard jeqi i a then else))
             ((jeq a b then else)
-               (rtl-retard-jump rtl-retard 'jeq a b then else))
-            ((jab a type then else)
-               (rtl-retard-jump rtl-retard 'jab type a then else))
-            (else
-               (error "rtl-retard: unknown code: " code))))
+               (rtl-retard-jump rtl-retard jeq a b then else))))
 
       (define (allocate-registers rtl)
          (lets ((rtl usages (rtl-retard rtl)))

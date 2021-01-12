@@ -1,8 +1,9 @@
 #| doc
-You cannot mutate values, 
-  but threads can also be used to encapsulate state.
-This library introduces seemingly variable values 
-  implemented threads which allow setting and getting a value.
+Storing Values in Threads
+
+You cannot mutate values, but threads can also be used to encapsulate state.
+This library introduces seemingly variable values implemented threads which
+allow setting and getting a value.
 |#
 
 (define-library (owl variable)
@@ -16,7 +17,7 @@ This library introduces seemingly variable values
       (owl list)
       (owl io)
       (only (owl syscall) mail interact wait-mail thread thunk->thread link)
-      (owl lcd ff))
+      (owl ff))
 
    (begin
 
