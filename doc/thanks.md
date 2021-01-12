@@ -1,6 +1,8 @@
+# Thanks
+
 Owl Lisp is being written mainly as a standalone pet project, but it
 has gotten many useful bug reports, suggestions and patches during the
-course of development. Here is a partial list of people who have helped
+course of its development. Here is a partial list of people who have helped
 in the development:
 
    Jo Henke           A ton of improvements

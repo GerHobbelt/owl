@@ -1,30 +1,30 @@
 #| Owl Entry
 
-This file is the program that ends up being the ol binary. Typically
-such a program would consist of a few definitions and library imports,
-eventually followed by the function of command line arguments that is
-the actual program.
+This file is the program that ends up being the ol binary. 
 
-A few complications arise from the fact that we are compiling the compiler
-itself. Most essentially, any dependencies left from the existing compiler to the
-next version of itself will cause a snowball effect. Each new version of the
-compiler would have a larger proportion of old legacy code with it. Such
-dependencies could be things like an old version of bignum library, because
-the previous parser used unicode decoding where addition defined by the
-previous version was used.
+Typically such simple command line program would consist of a few definitions 
+and library imports, eventually followed by the function of command line
+arguments that is the actual entry to the program.
 
-This and some other selfcompilation issues are mostly avoided or detected
+A few complications arise from the fact that we are dealing with a compiler
+intended to compile itself.Most essentially, any regular dependencies left from
+the existing compiler to the next version of itself will cause a snowballing
+effect. Each new version of the compiler would have a larger proportion of old
+legacy code with it, leading to increasingly large compilers. Such dependencies 
+typically include things like addition, which would bring in the previous version 
+of bignum arithmetic.
+
+This, and some other selfcompilation issues, are mostly avoided or detected
 by dropping most definitions and existing libraries at the beginning of this
-file. This way almose all code must be freshly loaded. Each compilation of
-a new version of owl will then use new version to repeatedly compile itself
-until a version is reached which compiles an exact replica of itself from the
-same source code. This ensures that all changes have propagated everywhere and
-there cannot be any snowballing effects due to accidental dependencies.
+file. This way most code must be freshly loaded.
+
+Each compilation of a new version of owl will additionally use new version to
+repeatedly compile itself until a version is reached which compiles an exact
+replica of itself from the same source code. This ensures that all changes have
+propagated everywhere and there cannot be any snowballing effects due to
+accidental dependencies.
 
 |#
-;;;
-;;; ol.scm: an Owl read-eval-print loop.
-;;;
 
 #| Copyright (c) Aki Helin
  |
@@ -74,7 +74,7 @@ there cannot be any snowballing effects due to accidental dependencies.
 
 (define *interactive* #false)  ;; be silent
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
-(define *owl-version* "0.2a")
+(define *owl-version* "0.2")
 
 (import
    (owl intern)
@@ -89,7 +89,8 @@ there cannot be any snowballing effects due to accidental dependencies.
    (owl repl)
    (owl toplevel)
    (owl variable)
-   (owl ff))
+   (owl ff)
+   (prefix (owl sys) sys-))
 
 ;; implementation features, used by cond-expand
 (define *features*
@@ -265,7 +266,6 @@ Check out https://haltp.org/owl for more information.")
             (display "> "))
          (halt 126))))
 
-(import (prefix (owl sys) sys-))
 
 ; ... → program rval going to exit-owl
 (define (repl-start vm-args repl compiler env)
@@ -410,9 +410,6 @@ Check out https://haltp.org/owl for more information.")
       ((equal? str "some") usual-suspects)
       ((equal? str "all") all)
       (else (print "Bad native selection: " str))))
-
-; (print-to stderr "writes: " (>> (sys-get-heap-bytes-written) 20) "MWords")
-; (print-to stderr "max live: " (>> (sys-get-heap-max-live) 10) "KB")
 
 (λ (args)
    (process-arguments (cdr args) command-line-rules "you lose"

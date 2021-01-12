@@ -1,13 +1,7 @@
-Owl Lisp is a simple programming language. It is essentially a dialect of R7RS
-Scheme, in case you happen to be familiar with it, but follows its tradition of
-simplicity and orthoganility even further at the expense of some standards
-compatiblity.
-
-Owl exist mainly to provide a simple and portable runtime for writing various
-small and medium standalone programs. For example the text editor used write
-this documentation, and tools to build this website, are owl programs. Some
-Owl programs are also packaged in various operating systems.
-
+Owl Lisp is a simple programming language. The main motivation for writing it
+was to get a portable system for writing standalone programs in a subjectively
+pleasant dialect of LISP, which in this case means a minimal core language and
+runtime, purely functional operation and support for asynchronous evaluation.
 
 #index
 
