@@ -26,7 +26,7 @@ The easiest option is to download the current precompiled C-version of #{ol},
 and compile with with a C-compiler. Ol is the standalone repl and compiler,
 which also has the builtin libraries described in this manual.
 
-   $ curl https://haltp.org/files/ol-0.1.23.c.gz \
+   $ curl https://haltp.org/files/ol-0.2.c.gz \
       | gzip -d \
       | gcc -x c -O2 -o ol -
    $ ./ol
