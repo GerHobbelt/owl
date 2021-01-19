@@ -27,9 +27,10 @@ The performance characteristics of this random access list library are:
    fold → O(n)
    foldr → O(n)
    map → O(n)
-   append → O(n log n)
-   list->rlist → O(n log n)
    rlist->list → O(n)
+   append → O(n log n)
+   del → O(n log n)
+   list->rlist → O(n log n)
 
 The operation is based on two ideas. Firstly, a random access list consists of
 a sequence of complete binary trees. The binary trees are built out of cons
@@ -61,7 +62,8 @@ update.
       (only (owl syscall) error)
       (owl lcd)
       (owl proof)
-      (owl list))
+      (owl list)
+      (only (owl list-extra) ldel))
 
    (export
       rnull
@@ -72,6 +74,7 @@ update.
       rset
       rlen
       rmap
+      rdel
       rlist
       rfold
       rfoldr
@@ -319,6 +322,13 @@ update.
       (define (rappend ra rb)
          (rfoldr rcons rb ra))
 
+      ;; An asymptotically faster deletion would likely require a tweak to
+      ;; to the data structure.
+
+      (define (rdel rl pos)
+         (list->rlist
+            (ldel (rlist->list rl) pos)))
+
       (example
          let rla = (rlist 1 2)
          let rlb = (rlist 3 4 5)
@@ -330,4 +340,6 @@ update.
          (rlen (rcons 11 rnull)) = 1
          (rlist->list (rlist 11 22 33)) = '(11 22 33)
          (rmap dup (rlist 10 20 30)) = (rlist 20 40 60)
-         (rappend rla rlb) = (rlist 1 2 3 4 5))))
+         (rappend rla rlb) = (rlist 1 2 3 4 5)
+         (rdel rlb 0) = (rlist 4 5)
+         (rdel rlb 2) = (rlist 3 4))))
