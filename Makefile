@@ -158,7 +158,7 @@ tarball: c/ol.c bin/ol
 	mkdir owl-${VERSION}
 	cp -va bin owl-${VERSION} # keep times
 	-rm owl-${VERSION}/bin/vm owl-${VERSION}/bin/ol owl-${VERSION}/bin/ol-old
-	cp -va Makefile c fasl LICENCE README.md THANKS owl scheme tests doc owl-${VERSION}
+	cp -va Makefile c fasl LICENCE README.md owl scheme tests doc owl-${VERSION}
 	tar -f - -c owl-${VERSION} | gzip -9 > owl-${VERSION}.tar.gz
 	# check that build of the contents succeeds
 	find owl-${VERSION}
