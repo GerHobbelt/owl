@@ -1,5 +1,6 @@
 #!/bin/sh
 
-$@ -e '(import (scheme base)) (char-ready?)'
+# below does not work in background subshell
+# $@ -e '(import (scheme base)) (char-ready?)'
 echo a | $@ -e '(import (scheme base)) (char-ready?)'
 
