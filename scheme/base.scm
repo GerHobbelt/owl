@@ -241,6 +241,7 @@
 
    (import
       (owl core)
+      (owl syscall)
       (owl eof)
       (owl equal)
       (owl list)
@@ -399,6 +400,12 @@
          (syntax-rules ()
             ((let* . stuff) (lets . stuff))))
 
+      (define (char-ready? . port)
+         (lets
+            ((port (if (null? port) stdin (car port)))
+             (result (interact 'iomux (tuple 'read-timeout port 1))))
+            (not (eq? result 'timeout))))
+
       (define-missing-bad write-u8)
       (define-missing-bad write-string)
       (define-missing-bad write-char)
@@ -458,7 +465,6 @@
       (define-missing-bad dynamic-wind)
       (define-missing-bad close-output-port)
       (define-missing-bad close-input-port)
-      (define-missing-bad char-ready?)
       (define-missing-bad call-with-port)
       (define-missing-bad bytevector-u8-set!)
       (define-missing-bad bytevector-copy!)
