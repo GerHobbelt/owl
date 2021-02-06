@@ -441,7 +441,7 @@
          (get-try-parse get-padded-sexps lst #false errmsg #false))
 
       (define (read-port port)
-         (get-fd->exp-stream port sexp-parser (get-silent-syntax-fail (list #false))))
+         (get-fd->exp-stream port sexp-parser (get-silent-syntax-fail null)))
 
       (define read-ll
          (case-lambda
