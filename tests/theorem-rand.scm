@@ -398,6 +398,18 @@
             (and (< a 10) (< b 10))  ⇒
                (sqrt-n (expt a b) b) = a
 
+      theorem rat-expt-sqrt
+         ∀ a ∊ Byte
+            (expt a 1/2) = (isqrt a)
+
+      theorem expt-rat
+         ∀ a ∊ Byte
+            ∀ b ∊ Byte
+               ∀ c ∊ Byte
+                  ∀ x ∊ Byte
+                     (and (nonzero? b) (< x 10)) ⇒
+                       (expt (expt x c) (/ b c)) = (expt x b)
+
 
       theorem totient-1
          ∀ a ∊ Nat
