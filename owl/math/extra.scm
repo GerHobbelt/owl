@@ -11,6 +11,7 @@ Extra Math Functions
       exact-integer-sqrt ;; n → m r, m^2 + r = n
       isqrt              ;; n → (floor (sqrt n))
       sqrt               ;; n → m, m^2 = n
+      sqrt-n             ;; n p → m, where m^p >= n
       expt expt-mod round
       ncr npr truncate
       modulo remainder
@@ -411,6 +412,17 @@ Extra Math Functions
             (else
                (expt-loop (* ap ap) (>> p 1) (* out ap)))))
 
+      ;; naive version to get the functionality
+      (define (sqrt-n-loop a p x)
+         (if (< (expt-loop x (- p 1) x) a)
+            (sqrt-n-loop a p (+ x 1))
+            x))
+
+      (define (sqrt-n a p)
+         (if (negative? a)
+            (complex 0 (sqrt-n (* a -1) p))
+            (sqrt-n-loop a p 1)))
+
       (define (expt a b)
          (cond
             ((eq? b 0) 1)
@@ -421,7 +433,13 @@ Extra Math Functions
             ;; could generate the rational directly
             ((eq? (type b) type-fix-) (/ 1 (expt a (negate b))))
             ((eq? (type b) type-int-) (/ 1 (expt a (negate b))))
+            ((eq? (type b) type-rational)
+               (expt (sqrt-n a (ref b 2)) (ref b 1)))
             (else (big-bad-args 'expt a b))))
+
+      (example
+         (expt 27 -2/3) = 1/9
+         (expt 27  2/3) = 9)
 
       ; (modulo (expt a b) m) = (expt-mod a b m)
 

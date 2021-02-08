@@ -393,6 +393,12 @@
             (and (< 0 p) (< p 10)) ⇒
                (expt a p) = (* a (expt a (- p 1)))
 
+      theorem expt-sqrt-n
+         ∀ a ∊ Byte ∀ b ∊ Byte
+            (and (< a 10) (< b 10))  ⇒
+               (sqrt-n (expt a b) b) = a
+
+
       theorem totient-1
          ∀ a ∊ Nat
             (and (< 1 a) (< a 100000)) ⇒
