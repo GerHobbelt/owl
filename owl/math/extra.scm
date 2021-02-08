@@ -414,9 +414,12 @@ Extra Math Functions
 
       ;; naive version to get the functionality
       (define (sqrt-n-loop a p x)
-         (if (< (expt-loop x (- p 1) x) a)
-            (sqrt-n-loop a p (+ x 1))
-            x))
+         (let ((try (expt-loop x (- p 1) x)))
+            (cond
+               ((= try a) x)
+               ((< try a)
+                  (sqrt-n-loop a p (+ x 1)))
+               (else (- x 1)))))
 
       (define (sqrt-n a p)
          (if (negative? a)
@@ -434,6 +437,7 @@ Extra Math Functions
             ((eq? (type b) type-fix-) (/ 1 (expt a (negate b))))
             ((eq? (type b) type-int-) (/ 1 (expt a (negate b))))
             ((eq? (type b) type-rational)
+               ;; inexact if cannot be solved exactly
                (expt (sqrt-n a (ref b 2)) (ref b 1)))
             (else (big-bad-args 'expt a b))))
 
