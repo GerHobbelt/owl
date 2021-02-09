@@ -26,6 +26,7 @@ Extra Math Functions
       min max minl maxl
       < > >= <=
       + - * /
+      bisect
       ; inv-mod mod-solve
       )
 
@@ -336,6 +337,7 @@ Extra Math Functions
       ;;;
       ;;; SQUARE ROOTS (stub)
       ;;;
+
       ; fixme, did not find a good integer sqrt algorithm which would
       ; work with these numerals, so i rolled my own as a quick substitute
       ; bench later
@@ -400,6 +402,55 @@ Extra Math Functions
             (else
                (error "sqrt: math too high: " n))))
 
+      ;;; Bisect
+
+      (define (bisect-fini op lo hi pos last)
+         (cond
+            ((= pos hi) last)
+            ((op pos)
+               (let ((next (+ pos 1)))
+                  (cond
+                     ((= next hi) pos)
+                     ((op next)
+                        (bisect-fini op lo hi (+ next 1) pos))
+                     (else
+                        pos))))
+            ((= pos lo)
+               #false)
+            (else
+               (bisect-fini op lo hi (- pos 1) last))))
+
+      ; find the match or it's close neighbour by halving jump to correct direction
+      (define (bisect-seek op lo hi pos step last)
+         (if (eq? step 1)
+            (bisect-fini op lo hi pos last)
+            (if (op pos)
+               (bisect-seek op lo hi (+ pos step) (>> step 1) pos)
+               (bisect-seek op lo hi (- pos step) (>> step 1) last)
+               )))
+
+      ; search the last position in [lo ... hi-1] where op(x) is true
+      (define (bisect op lo hi)
+         (if (< lo hi)
+            (lets
+               ((range (- hi lo))
+                (step (max 1 (>> range 1))))
+               (bisect-seek op lo hi
+                  (+ lo step) ;; move to middle of range
+                  (max 1 (>> step 1)) ;; quarter step
+                  #false))
+            #false))
+
+      (example
+
+         (bisect (lambda (x) (< x 0))   0 10) = #false  ;; nowhere -> #false
+         (bisect (lambda (x) (< x 4))   0 10) = 3       ;; change in range -> index
+         (bisect (lambda (x) (< x 100)) 0 10) = 9       ;; everywhere -> high
+
+         (bisect (lambda (x) (< (* x 13) 123456789)) 0 123456789)
+            = (quotient 123456789 13))
+
+
       ;;; exponentiation
 
       ; the usual O(lg n) exponentiation
@@ -412,19 +463,26 @@ Extra Math Functions
             (else
                (expt-loop (* ap ap) (>> p 1) (* out ap)))))
 
-      ;; naive version to get the functionality
-      (define (sqrt-n-loop a p x)
-         (let ((try (expt-loop x (- p 1) x)))
-            (cond
-               ((= try a) x)
-               ((< try a)
-                  (sqrt-n-loop a p (+ x 1)))
-               (else (- x 1)))))
+      (define (iexpt a p)
+         (cond
+            ((eq? p 0) 1)
+            ((eq? a 1) 1)
+            (else
+               (expt-loop a (- p 1) a))))
 
-      (define (sqrt-n a p)
-         (if (negative? a)
-            (complex 0 (sqrt-n (* a -1) p))
-            (sqrt-n-loop a p 1)))
+      (define (sqrt-n i n)
+         (cond
+            ((eq? i 0) 0)
+            ((eq? i 1) 1)
+            ((eq? n 1) i)
+            ((negative? i)
+               (complex 0 (sqrt-n (* i -1) n)))
+            (else
+               (or
+                  (bisect
+                     (lambda (q) (<= (iexpt q n) i))
+                     1 i)
+                  1))))
 
       (define (expt a b)
          (cond
@@ -442,8 +500,10 @@ Extra Math Functions
             (else (big-bad-args 'expt a b))))
 
       (example
+         (sqrt-n (expt 8 5) 5) = 8
          (expt 27 -2/3) = 1/9
-         (expt 27  2/3) = 9)
+         (expt 27  2/3) = 9
+         (expt 1283918464548864 1/2) = 35831808)
 
       ; (modulo (expt a b) m) = (expt-mod a b m)
 

@@ -124,6 +124,10 @@
       ;; get one rand, pick low bit
       (values rs (eq? 1 (band d 1)))))
 
+(define (Nibble rs)
+   (lets ((d rs (uncons rs 0)))
+      (values rs (band d #b1111))))
+
 (define Byte
    (C rand 256))
 
@@ -373,6 +377,10 @@
          ∀ a ∊ Nat
             a = (sqrt (* a a))
 
+      theorem sqrt-square-2
+         ∀ a ∊ Nat
+            #true = (> (expt (+ (isqrt a) 1) 2) a)
+
       theorem sqrt-exact
          ∀ a ∊ Int
             a = (lets ((b r (exact-integer-sqrt a))) (+ (* b b) r))
@@ -394,8 +402,8 @@
                (expt a p) = (* a (expt a (- p 1)))
 
       theorem expt-sqrt-n
-         ∀ a ∊ Byte ∀ b ∊ Byte
-            (and (< a 10) (< b 10))  ⇒
+         ∀ a ∊ Byte ∀ b ∊ Nibble
+            (nonzero? b) ⇒
                (sqrt-n (expt a b) b) = a
 
       theorem rat-expt-sqrt
@@ -403,13 +411,9 @@
             (expt a 1/2) = (isqrt a)
 
       theorem expt-rat
-         ∀ a ∊ Byte
-            ∀ b ∊ Byte
-               ∀ c ∊ Byte
-                  ∀ x ∊ Byte
-                     (and (nonzero? b) (< x 10)) ⇒
-                       (expt (expt x c) (/ b c)) = (expt x b)
-
+         ∀ a ∊ Nibble ∀ b ∊ Nibble ∀ c ∊ Nibble ∀ x ∊ Nibble
+            (nonzero? c) ⇒
+               (expt (expt x c) (/ b c)) = (expt x b)
 
       theorem totient-1
          ∀ a ∊ Nat
