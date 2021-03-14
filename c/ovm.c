@@ -1266,9 +1266,12 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             NEXT(1);
          } else {
             word *t;
-            allocate(acc + 1, t); // todo: also include lower registers for debugging
-            *t = make_header(acc + 1, TTUPLE);
-            memcpy(t + 1, R + 3, acc * W);
+            // [func desired-arity given-arity a0 .. an]
+            allocate(acc + 6, t);
+            *t = make_header(acc + 6, TTUPLE);
+            t[1] = F(*ip);
+            t[2] = F(acc);
+            memcpy(t + 3, R, (acc + 3) * W);
             error(60, ob, t);
          }
       case 61: { /* arity error */

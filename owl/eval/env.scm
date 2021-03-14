@@ -29,6 +29,7 @@ defines operations on the environment structure used by the compiler.
       (owl ff)
       (owl function)
       (owl list)
+      (owl list-extra)
       (owl tuple)
       (owl symbol)
       (owl string)
@@ -201,7 +202,7 @@ defines operations on the environment structure used by the compiler.
          (ff-fold o s ff))
 
 
-      ;; Functions can be bytecode, procedures or closures, where in the latter 
+      ;; Functions can be bytecode, procedures or closures, where in the latter
       ;; two cases the first field contains the underlying bytecode/procedure.
       (define (subfunction-of? val sub)
          (cond
@@ -209,7 +210,7 @@ defines operations on the environment structure used by the compiler.
             ((function? val)
                (subfunction-of? (ref val 1) sub))
             (else #false)))
-            
+
       (define (maybe-names env x)
                (ff-fold
                   (lambda (found key val)
@@ -218,12 +219,68 @@ defines operations on the environment structure used by the compiler.
                               (if (subfunction-of? value x)
                                  (cons key found)
                                  found))
-                           found)) 
+                           found))
                   '() env))
-         
-      ;; fixme: move elsewhere 
+
+
+      (define max-arg-length 80)
+
+      (define (bounded-render x)
+         (let ((res (render x null)))
+            (list->string
+               (if (> (length res) max-arg-length)
+                  (append (take res (- max-arg-length 3)) (list #\. #\. #\.))
+                  res))))
+
+      (define (find-name env fn r1)
+         (let ((names ;; can be many, up to nine billion
+            (if (subfunction-of? r1 fn)
+               (maybe-names env r1)
+               (maybe-names env fn))))
+            (cond
+               ((null? names)
+                  "#<anonymous>")
+               ((null? (cdr names))
+                  (car names))
+               (else
+                  (str "One of the functions " names)))))
+
+
+      ;; fixme: move elsewhere
       (define (verbose-vm-error env opcode a b)
          (case opcode
+            ((60)
+               (lets
+                  ((fn a)
+                   (required (ref b 1))
+                   (given (ref b 2))
+                   (regs (cddr (tuple->list b)))
+                   (r1 (cadr regs))
+                   (args (cdddr regs)))
+                  (cond
+                     ((null? args)
+                        "no arguments")
+                     ((function? (car args))
+                        ;; most likely a regular function call with a continuation argument,
+                        ;; but can also be a return with arity error to continuation where the first
+                        ;; argument just happens to be a function
+                        (foldr str ""
+                           (list
+                              (find-name env fn r1) " was called with " (- given 1) " instead of " (- required 1) " arguments.\n"
+                              "Arguments:\n"
+                                 (foldr
+                                    (lambda (a b) (str " - " (bounded-render a) "\n" b))
+                                    ""
+                                     (cdr args)))))
+                     (else
+                        (foldr str ""
+                           (list
+                              "Returning with " given " instead of " required " arguments.\n"
+                              "Arguments: "
+                                 (foldr
+                                    (lambda (a b) (str " - " a "\n" b))
+                                    ""
+                                     args)))))))
             ((0)
                `("error: bad call: operator" ,a "- args w/ cont" ,b))
             ((105)
@@ -233,7 +290,7 @@ defines operations on the environment structure used by the compiler.
             ((256)
                `("error: hit unimplemented opcode" ,a))
             (else
-               `("error: " ,(primop-name opcode) "reported error:" 
+               `("error: " ,(primop-name opcode) "reported error:"
                    ,a ,(maybe-names env a) ,b))))
 
       ;; ff of wrapper-fn → opcode
