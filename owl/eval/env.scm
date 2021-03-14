@@ -276,9 +276,9 @@ defines operations on the environment structure used by the compiler.
                         (foldr str ""
                            (list
                               "Returning with " given " instead of " required " arguments.\n"
-                              "Arguments: "
+                              "Arguments:\n"
                                  (foldr
-                                    (lambda (a b) (str " - " a "\n" b))
+                                    (lambda (a b) (str " - " (bounded-render a) "\n" b))
                                     ""
                                      args)))))))
             ((0)

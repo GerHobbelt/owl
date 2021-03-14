@@ -1,0 +1,8 @@
+Returning with 3 instead of 1 arguments.
+Arguments:
+ - 2
+ - 2
+ - 2
+
+Could not load tests/arity-error-return.scm because 
+  Failed to evaluate  (+ 1 (foo 2))  because  an error occurred 
