@@ -250,37 +250,39 @@ defines operations on the environment structure used by the compiler.
       (define (verbose-vm-error env opcode a b)
          (case opcode
             ((60)
-               (lets
-                  ((fn a)
-                   (required (ref b 1))
-                   (given (ref b 2))
-                   (regs (cddr (tuple->list b)))
-                   (r1 (cadr regs))
-                   (args (cdddr regs)))
-                  (cond
-                     ((null? args)
-                        "no arguments")
-                     ((function? (car args))
-                        ;; most likely a regular function call with a continuation argument,
-                        ;; but can also be a return with arity error to continuation where the first
-                        ;; argument just happens to be a function
-                        (foldr str ""
-                           (list
-                              (find-name env fn r1) " was called with " (- given 1) " instead of " (- required 1) " arguments.\n"
-                              "Arguments:\n"
-                                 (foldr
-                                    (lambda (a b) (str " - " (bounded-render a) "\n" b))
-                                    ""
-                                     (cdr args)))))
-                     (else
-                        (foldr str ""
-                           (list
-                              "Returning with " given " instead of " required " arguments.\n"
-                              "Arguments:\n"
-                                 (foldr
-                                    (lambda (a b) (str " - " (bounded-render a) "\n" b))
-                                    ""
-                                     args)))))))
+               (if (null? b)
+                  `("arity error")
+                  (lets
+                     ((fn a)
+                      (required (ref b 1))
+                      (given (ref b 2))
+                      (regs (cddr (tuple->list b)))
+                      (r1 (cadr regs))
+                      (args (cdddr regs)))
+                     (cond
+                        ((null? args)
+                           "no arguments")
+                        ((function? (car args))
+                           ;; most likely a regular function call with a continuation argument,
+                           ;; but can also be a return with arity error to continuation where the first
+                           ;; argument just happens to be a function
+                           (foldr str ""
+                              (list
+                                 (find-name env fn r1) " was called with " (- given 1) " instead of " (- required 1) " arguments.\n"
+                                 "Arguments:\n"
+                                    (foldr
+                                       (lambda (a b) (str " - " (bounded-render a) "\n" b))
+                                       ""
+                                        (cdr args)))))
+                        (else
+                           (foldr str ""
+                              (list
+                                 "Returning with " given " instead of " required " arguments.\n"
+                                 "Arguments:\n"
+                                    (foldr
+                                       (lambda (a b) (str " - " (bounded-render a) "\n" b))
+                                       ""
+                                        args))))))))
             ((0)
                `("error: bad call: operator" ,a "- args w/ cont" ,b))
             ((105)
