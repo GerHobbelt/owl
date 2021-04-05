@@ -64,6 +64,7 @@ standard, or otherwise portable enough to be available in most systems these day
       fcntl
       open
       dupfd
+      dup2
       read
       write
       port->non-blocking
@@ -326,6 +327,9 @@ standard, or otherwise portable enough to be available in most systems these day
             (if (stdio-port? port)
                (toggle-file-status-flag port (O_NONBLOCK) #f))
             port))
+
+      (define (dup2 old new)
+         (dupfd old new #t))
 
       (define (read port len)
          (or
@@ -676,4 +680,5 @@ standard, or otherwise portable enough to be available in most systems these day
 
       (define (isatty fd)
          (sys 47 fd 0 0))
+
 ))
