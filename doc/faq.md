@@ -1,6 +1,6 @@
 # FAQ
 
-#*Q: Where can I get help?*: You can stop by at ##owl-lisp on freenode, file tickets to #[https://labhub.com/owl-lisp/owl,gitlab] or send email to aki.helin@iki.fi.
+#*Q: Where can I get help?*: You can stop by at ##owl-lisp on libera.chat, file tickets to #[https://labhub.com/owl-lisp/owl,gitlab] or send email to aki.helin@iki.fi.
 
 #*Q: How can I use third party libraries?*: Grab them to source directory and include them. `(import (foo bar))` attempts to load #{./foo/bar.scm}, which should have #{(define-library (foo bar) ...)}
 
