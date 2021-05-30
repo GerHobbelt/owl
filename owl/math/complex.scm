@@ -6,13 +6,14 @@ This library defines complex arbitrary precision math functions.
 
 (define-library (owl math complex)
 
-   (export + - * / = complex negate)
+   (export + - * / = complex negate conjugate)
 
    (import
 
       (owl core)
       (owl list)
       (owl syscall)
+      (owl proof)
 
       (prefix ;; prefix integer operations with i
          (only (owl math integer) + - * = << >> rem mod negate)
@@ -213,6 +214,13 @@ This library defines complex arbitrary precision math functions.
             (else
                (divide a b))))
 
+   (define (conjugate a)
+      (if (eq? (type a) type-complex)
+         (complex
+            (ref a 1)
+            (mul -1 (ref a 2)))
+         a))
+
    (define / div)
 
    (define * mul)
@@ -222,4 +230,9 @@ This library defines complex arbitrary precision math functions.
          (inegate a)
          (rnegate a)
          (* a -1)))
+
+   (example
+      (conjugate 1+2/3i) = 1-2/3i
+      (+ 0.5+0.1i 1/2+9/10i) = 1+i)
+
 ))
