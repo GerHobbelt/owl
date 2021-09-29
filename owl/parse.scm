@@ -46,6 +46,8 @@ operation is traditional top down backtracking parsing.
       (owl function)
       (owl lazy)
       (owl list)
+      (owl port)
+      (owl list-extra)
       (owl string)
       (owl math)
       (owl unicode)
@@ -67,9 +69,17 @@ operation is traditional top down backtracking parsing.
          (if (null? l)
             (values #f r p why) ;; final outcome if error
             (let ((hd (car l)))
-               (if (eq? (type hd) type-fix+)
-                  (backtrack (cdr l) (cons hd r) p why)
-                  (hd (cdr l) r p why)))))
+               (cond
+                  ((eq? (type hd) type-fix+)
+                     (backtrack (cdr l) (cons hd r) p why))
+                  ((pair? hd)
+                     ;; (failure-pos . failure-msg)
+                     (if (> (car hd) p)
+                        ;; grab a parse error that managed to get deeper
+                        (backtrack (cdr l) r (car hd) (cdr hd))
+                        (backtrack (cdr l) r p why)))
+                  (else
+                     (hd (cdr l) r p why))))))
 
       (define (input-ready? port)
          (λ (l r p ok)
@@ -144,7 +154,12 @@ operation is traditional top down backtracking parsing.
 
       (define (either a b)
          (λ (l r p ok)
-            (a (cons (λ (l r fp why) (b l r p ok)) l) r p ok)))
+            (a
+               (cons
+                  (λ (l r fp why)
+                     (b (cons (cons fp why) l) r p ok))
+                  l)
+               r p ok)))
 
       (define (either! a b)
          (λ (l r p ok)
@@ -176,8 +191,7 @@ operation is traditional top down backtracking parsing.
             (a
                (cons
                   (λ (l r fp why)
-                     ; (print (list 'star-backtrack l r fp why))
-                      (ok l r p (reverse vals)))
+                     (ok (cons (cons fp why) l) r p (reverse vals)))
                   l)
                r
                p
@@ -199,7 +213,7 @@ operation is traditional top down backtracking parsing.
 
       (define (greedy-star-vals a vals)
          (λ (l r p ok)
-            (let ((bt (λ (l r fp why) (ok l r p (reverse vals)))))
+            (let ((bt (λ (l r fp why) (ok (cons (cons fp why) l) r p (reverse vals)))))
                (a
                   (cons bt l)
                   r
@@ -223,6 +237,10 @@ operation is traditional top down backtracking parsing.
                (if term
                   (parses 42 l r p ok rest body)
                   (backtrack l r p msg)))
+            ((parses 42 l r p ok ((verify term) . rest) body)
+               (if term
+                  (parses 42 l r p ok rest body)
+                  (backtrack l r p "verify failed")))
             ((parses ((a . b) ...) body)
                (λ (l r p ok)
                   (parses 42 l r p ok ((a . b) ...) body)))
@@ -298,14 +316,14 @@ operation is traditional top down backtracking parsing.
                (two-byte-point a b))
             (parses
                ((a (byte-between 223 240))
-                (b extension-byte) 
+                (b extension-byte)
                 (c extension-byte)
                 (verify (not (< (three-byte-point a b c) min-3byte)) "invalid 3-byte utf-8"))
                (three-byte-point a b c))
             (parses
                ((a (byte-between 239 280))
-                (b extension-byte) 
-                (c extension-byte) 
+                (b extension-byte)
+                (c extension-byte)
                 (d extension-byte)
                 (verify (not (< (four-byte-point a b c d) min-3byte)) "invalid 4-byte utf-8"))
                (four-byte-point a b c d))))
@@ -352,14 +370,37 @@ operation is traditional top down backtracking parsing.
                      (error-reporter msg)
                      (cont rest))))))
 
-      (define (stopping-syntax-fail error-reporter)
-         (λ (cont ll msg)
-            (let ((rest (fast-forward ll)))
-               (if (and (null? rest) (whitespace? ll))
-                  (cont #n)
-                  (begin
-                     (error-reporter msg)
-                     (cont rest))))))
+      (define (seek-line data pos)
+         (let loop ((rl '()) (pos pos) (data data))
+            (cond
+               ((= pos 0)
+                  (lets
+                     ((prefix (reverse (take rl 80)))
+                      (suffix rest (break (lambda (x) (eq? x #\newline)) data))
+                      (suffix (take suffix 80))
+                      (error-position (length prefix)))
+                     (values
+                        (list->string (append prefix suffix))
+                        error-position)))
+               ((null? data)
+                  (values
+                     "end of input"
+                     0))
+               ((eq? (car data) #\newline)
+                  (loop '() (- pos 1) (cdr data)))
+               (else
+                  (loop
+                     (cons (car data) rl)
+                     (- pos 1)
+                     (cdr data))))))
+
+
+      (define (verbose-error msg data pos val)
+         (lets ((line pos (seek-line data pos)))
+            (print-to stderr (or msg "Syntax error"))
+            (print-to stderr "  " line)
+            (print-to stderr (list->string (map (lambda (x) #\space) (iota 0 1 (+ pos 1)))) "^")))
+
 
       ;; ll parser (ll r val → ?) → ll
       (define (byte-stream->exp-stream ll parser fail)
@@ -368,14 +409,16 @@ operation is traditional top down backtracking parsing.
                (cond
                   (lp ;; something parsed successfully
                      (pair val (byte-stream->exp-stream r parser fail)))
-                  ((null? r) ;; end of input
+                  ((null? r) ;; end of input, note that may also be
                      ;; typically there is whitespace, so this does not happen
                      #n)
                   ((function? fail)
+                     ;(verbose-error "Stream parse error" r p val)
                      (fail
                         (λ (ll) (byte-stream->exp-stream ll parser fail))
-                         r val))
+                        r val))
                   (else
+                     ;(verbose-error "stream parse error" r p val)
                      #n)))))
 
       (define (fd->exp-stream fd parser fail)
@@ -389,13 +432,13 @@ operation is traditional top down backtracking parsing.
                (fd->exp-stream fd parser fail)
                #false)))
 
-      ;; this api is kind of ugly, simplify
-      ;; this is badly named when prefixed as usual. parse?
+
       (define (try-parse parser data maybe-path maybe-error-msg fail-fn)
          (let loop ((try (λ () (parser #n data 0 parser-succ))))
             (lets ((l r p val (try)))
                 (cond
                   ((not l)
+                     (verbose-error maybe-error-msg r p val)
                      (if fail-fn
                         (loop (λ () (fail-fn 0 #n)))
                         #false))
@@ -406,28 +449,29 @@ operation is traditional top down backtracking parsing.
                      ;; full match
                      val)))))
 
+      ;; error is printed to stderr
       (define (parse parser data fail-val)
-         (let loop ((try (λ () (parser #n data 0 parser-succ))))
-            (lets ((l r p val (try)))
-                (cond
-                  ((not l)
-                     fail-val)
-                  ((lpair? r) =>
-                     (λ (r)
-                        ;; trailing garbage
-                        fail-val))
-                  (else
-                     ;; full match
-                     val)))))
+         (lets ((l r p val (parser #n data 0 parser-succ)))
+             (cond
+               ((not l)
+                  (verbose-error #f r p val)
+                  fail-val)
+               ((lpair? r) =>
+                  (λ (r)
+                     ;; trailing garbage
+                     fail-val))
+               (else
+                  ;; full match
+                  val))))
 
       (define (first-match parser data fail-val)
-         (let loop ((try (λ () (parser #n data 0 parser-succ))))
-            (lets ((l r p val (try)))
-                (cond
-                  ((not l)
-                     (values fail-val r p))
-                  (else
-                     (values val r p))))))
+         (lets ((l r p val (parser #n data 0 parser-succ)))
+             (cond
+               ((not l)
+                  ;; p = point of failure
+                  (values fail-val r p))
+               (else
+                  (values val r p)))))
 
       (example
          (first-match byte '(1 2) 'x) = (values 1 '(2) 1)
@@ -439,14 +483,22 @@ operation is traditional top down backtracking parsing.
          (first-match (plus (one-of (imm 1) (imm 2))) '(1 2 3 4) 'x) = (values '(1 2) '(3 4) 2)
          (first-match (either (seq (imm 1) (imm 1)) (seq (imm 1) (imm 2))) '(1 2 3) 'x) =
             (values '(1 . 2) '(3) 2)
+         (first-match (either (seq (imm 1) (imm 1)) (seq (imm 1) (imm 2))) '(1 3 4) 'x) =
+            (values 'x '(1 3 4) 1)
+         (first-match (either (seq (imm 1) (imm 2)) (seq (imm 3) (imm 4))) '(1 3 4) 'x) =
+            (values 'x '(1 3 4) 1)
          (first-match (either! (seq (imm 1) (imm 1)) (seq (imm 1) (imm 2))) '(1 2 3) 'x) =
-            (values 'x '(1 2 3) 1)
+            (values 'x '(1 2 3) 1) ;; first one matched something, so second must not be tried
          (first-match (either! (seq (imm 2) (imm 1)) (seq (imm 1) (imm 2))) '(1 2 3) 'x) =
             (values '(1 . 2) '(3) 2)
+         (first-match (either! (seq (imm 2) (imm 1)) (seq (imm 1) (imm 2))) '(2 2 3) 'x) =
+            (values 'x '(2 2 3) 1)
          (first-match (seq (imm 1) (peek-byte (λ (x) (eq? x 2)))) '(1 2 3) 'x)
             = (values '(1 . 2) '(2 3) 1)
          (first-match (seq (imm 1) (peek-byte (λ (x) (eq? x 2)))) '(1 3 3) 'x)
             = (values 'x '(1 3 3) 1)
          )
+
+
 ))
 
