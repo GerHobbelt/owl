@@ -274,17 +274,15 @@ static wdiff adjust_heap(wdiff cells) {
    if (((cells > 0) && (new_words*W < nwords*W)) || ((cells < 0) && (new_words*W > nwords*W)))
       return 0; /* don't try to adjust heap, if the size_t would overflow in realloc */
    memstart = realloc(memstart, new_words*W);
-   if (memstart == old) { /* whee, no heap slide \o/ */
-      memend = memstart + new_words - MEMPAD; /* leave MEMPAD words alone */
-      return 0;
-   } else if (memstart) { /* d'oh! we need to O(n) all the pointers... */
-      wdiff delta = (word)memstart - (word)old;
-      memend = memstart + new_words - MEMPAD; /* leave MEMPAD words alone */
-      fix_pointers(memstart, delta);
-      return delta;
-   } else {
+   if (!memstart) {
       catch_signal(SIGGC);
       return 0;
+   } else {
+      wdiff delta = (word)memstart - (word)old;
+      memend = memstart + new_words - MEMPAD; /* leave MEMPAD words alone */
+      if (delta)
+         fix_pointers(memstart, delta); /* d'oh! we need to O(n) all the pointers... */
+      return delta;
    }
 }
 
