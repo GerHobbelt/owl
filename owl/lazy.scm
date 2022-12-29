@@ -216,6 +216,17 @@ lists do not cache their results.
             ((null? l) l)
             (else (ldrop (l) n))))
 
+      ;; l n → l | Null (if out of list)
+      (define (lfind-tail pred l)
+         (cond
+            ((null? l) #f)
+            ((pair? l)
+               (if (pred (car l))
+                  l
+                  (lfind-tail pred (cdr l))))
+            (else
+               (lfind-tail pred (l)))))
+
       (define blank '(blank))
 
       (define (llref ll p)
