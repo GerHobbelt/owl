@@ -90,7 +90,8 @@ operation is traditional top down backtracking parsing.
                (cond
                   ((null? r) #false)
                   ((pair? r) #true)
-                  ((eq? 'timeout (interact 'iomux (tuple 'read-timeout port 100)))
+                  ((pair? (interact 'iomux (tuple 'read-timeout port 100)))
+                     ;; returns (timeout . message) on timeout
                      #false)
                   (else #true)))))
 
