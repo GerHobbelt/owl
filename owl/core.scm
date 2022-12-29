@@ -54,6 +54,7 @@
       ;; primop wrapper functions
       run
       set-ticker
+      next-thread
       bind
       mkt
       halt
@@ -629,6 +630,10 @@
       (define fxxor       (func '(3 33 4 5 6 24 6)))
       (define type        (func '(2 15 4 5 24 5)))
       (define ref         (func '(3 47 4 5 6 24 6)))
+
+      ;; set thread scheduler runtime to 0, which triggers a thread change
+      (define next-thread
+         (λ () (set-ticker 0)))
 
       ;; make thread sleep for a few thread scheduler rounds
       (define (wait n)
