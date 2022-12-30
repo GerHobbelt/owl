@@ -403,8 +403,9 @@
       (define (char-ready? . port)
          (lets
             ((port (if (null? port) stdin (car port)))
-             (result (interact 'iomux (tuple 'read-timeout port 1))))
-            (not (eq? result 'timeout))))
+             (req (tuple 'read-timeout port 1))
+             (result (interact 'iomux req)))
+            (eq? result req)))
 
       (define-missing-bad write-u8)
       (define-missing-bad write-string)

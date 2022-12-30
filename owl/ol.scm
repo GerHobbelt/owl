@@ -74,7 +74,7 @@ accidental dependencies.
 
 (define *interactive* #false)  ;; be silent
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
-(define *owl-version* "0.2.1a")
+(define *owl-version* "0.2.1b")
 
 (import
    (owl intern)

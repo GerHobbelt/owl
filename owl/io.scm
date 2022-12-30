@@ -40,6 +40,8 @@ iomux is running. This may happen when working with code that has not called
       start-base-threads      ;; start stdio and sleeper threads
       wait-write              ;; fd → ? (no failure handling yet)
       when-readable           ;; fd → fd, block thread until readable
+      readable?               ;; fd → bool
+      writeable?              ;; fd → bool
 
       ;; stream-oriented blocking (for the writing thread) io
       blocks->port            ;; ll fd → ll' n-bytes-written, don't close fd
@@ -81,6 +83,7 @@ iomux is running. This may happen when working with code that has not called
       write-bytevector  ;; bytevector port → bool
       read-bytevector   ;; n port → bvec | eof | #false
       try-get-block     ;; fd n block? → bvec | eof | #false=error | #true=block
+      try-write-block
       byte-stream->lines ;; (byte ...) → null | ll of string, read error is just null, each [\r]\n removed
       lines              ;; fd → null | ll of string, read error is just null, each [\r]\n removed
 
@@ -170,9 +173,20 @@ iomux is running. This may happen when working with code that has not called
       (define stream-block-size
          #x8000)
 
+      ;; block until readable (for data, error or eof)
       (define (when-readable port)
          (interact 'iomux (tuple 'read port))
          port)
+
+      ;; would a read block
+      (define (readable? fd)
+         (let ((req (tuple 'read-timeout fd 1))) ;; <- todo: check if muxer always polls before alarms ring, and if not, convert
+            (eq? req (interact 'iomux req))))
+
+      ;; would a write block
+      (define (writeable? fd)
+         (let ((req (tuple 'write-timeout fd 1)))
+            (eq? req (interact 'iomux req))))
 
       (define (try-get-block fd block-size block?)
          ;; stdio ports are in blocking mode, so poll always
@@ -229,7 +243,6 @@ iomux is running. This may happen when working with code that has not called
                      (mail thread (sys-port->non-blocking fd))
                      #true)
                   (begin
-                     ;(interact sid 5) ;; delay rounds
                      (when-readable fd)
                      (loop rounds))))))
 
