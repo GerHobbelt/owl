@@ -200,12 +200,10 @@ iomux is running. This may happen when working with code that has not called
                res))) ;; is #false, eof or bvec
 
       ;; get a block of size up to block size
-      (define read-bytevector
-         (case-lambda
-            ((size)
-               (try-get-block stdin size #t))
-            ((size port)
-               (try-get-block port size #t))))
+      (define (read-bytevector size . fdp)
+         (if (null? fdp)
+            (try-get-block stdin size #t)
+            (try-get-block (car fdp) size #t)))
 
       (define (maybe-get-block fd block-size)
          (try-get-block fd block-size #false))
@@ -435,10 +433,8 @@ iomux is running. This may happen when working with code that has not called
       (define (display-to to obj)
          (printer (render obj '()) 0 #n to))
 
-      (define print
-         (case-lambda
-            ((obj) (print-to stdout obj))
-            (xs (printer (foldr render '(#\newline) xs) 0 #n stdout))))
+      (define (print . xs)
+         (printer (foldr render '(#\newline) xs) 0 #n stdout))
 
       (define write
          (H write-to stdout))
