@@ -482,8 +482,11 @@
                      (lets ((status env (try-autoload env repl lib)))
                         (cond
                            ((eq? status 'ok)
-                              ;; env now contains the library
-                              ((import-iset repl ret) env iset))
+                              ;; file loaded, did we get the library?
+                              (lets ((status msg (import-set->library iset (env-get env library-key #n) (lambda (a b) (values a b)))))
+                                 (if (eq? status 'needed)
+                                    (ret (fail (list "Found file, but no library definition in it for" (str iset) ".")))
+                                    ((import-iset repl ret) env iset))))
                            ((eq? status 'error)
                               (ret (fail (list "Failed to load" lib "because" env))))
                            (else
@@ -608,8 +611,7 @@
                   (success (evaluate (caddr exp) env)
                      ((ok value env2)
                         (lets
-                           ((env (env-set env (cadr exp) value))
-                            )
+                           ((env (env-set env (cadr exp) value)))
                            (ok
                               (repl-message
                                  (bytes->string (render ";; Defined " (render (cadr exp) #n))))
