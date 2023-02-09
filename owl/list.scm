@@ -21,7 +21,8 @@ implemented in (owl math).
       reverse
       filter remove separate
       keep
-      every any
+      all every
+      any
       unfold
       first find find-tail
       take-while                ;; pred, lst -> as, bs
@@ -295,8 +296,10 @@ implemented in (owl math).
          let l = '(#t (1 2) #f (3))
          (separate l pair?) = (values '((1 2) (3)) '(#t #f)))
 
-      (define (every pred lst)
-         (or (null? lst) (and (pred (car lst)) (every pred (cdr lst)))))
+      (define (all pred lst)
+         (or (null? lst) (and (pred (car lst)) (all pred (cdr lst)))))
+
+      (define every all)
 
       (define (any pred lst)
          (and (pair? lst) (or (pred (car lst)) (any pred (cdr lst)))))
