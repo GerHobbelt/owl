@@ -11,18 +11,18 @@ runtime, purely functional operation and support for asynchronous evaluation.
 
 It should be easy to get owl up and running on most somewhat POSIX-compliant
 systems, such as Linux, any BSD. Owl is mainly developed on OpenBSD and Linux.
-You should have #{make} and a working C-compiler installed. For example in
+You should have `make` and a working C-compiler installed. For example in
 Debian-based Linux distributions you can use:
 
    $ sudo apt-get install gcc
 
-You may also need #{git} and #{make} if you download the sources from git or
+You may also need `git` and `make` if you download the sources from git or
 want to build the full source package.
 
 
 ## Building
 
-The easiest option is to download the current precompiled C-version of #{ol},
+The easiest option is to download the current precompiled C-version of `ol`,
 and compile with with a C-compiler. Ol is the standalone repl and compiler,
 which also has the builtin libraries described in this manual.
 
@@ -51,7 +51,7 @@ install.
 If you just built ol, you can use it from wherever convenient. Usually it is
 convenient to put such binaries to your home directory under bin/ -directory.
 
-You can install owl and the manual pages with #{sudo make install} after building
+You can install owl and the manual pages with `sudo make install` after building
 the sources or a release tarball.
 
 
@@ -70,8 +70,8 @@ programming languages.
    >
 
 You can exit owl by pressing Ctrl-d, denoting end of input in UNIX, asking the
-REPL to exit via #{,quit}, or by asking the thread scheduler to stop everything with
-#{(halt 1)}.
+REPL to exit via `,quit`, or by asking the thread scheduler to stop everything with
+`(halt 1)`.
 
 Compiler mode can be tested for example by doing
 
