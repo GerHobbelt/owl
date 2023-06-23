@@ -51,7 +51,7 @@ raw data.
 
 Owl uses a single continuous chunk of memory. Originally only the sbrk() system
 call was needed to adjust the size of the memory, but this was converted to more
-complex malloc/resize because it turned out OSX does not support is properly.
+complex malloc/resize because it turned out OSX does not support this properly.
 
 The GC is order preserving. Objects are in general
 allocated in the same or reverse order to how they are later read. Moving objects
