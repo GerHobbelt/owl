@@ -34,10 +34,14 @@ operation is traditional top down backtracking parsing.
       word
       maybe
 
+      syntax-error?                ;; val -> bool
+      report-syntax-error          ;; val -> _ + side-effects
+
       byte-stream->exp-stream
       fd->exp-stream
       file->exp-stream
-      silent-syntax-fail
+      silent-syntax-fail           ;; stream-val
+      syntax-errors-as-values
       resuming-syntax-fail ;; error-msg → _
       )
 
@@ -98,6 +102,7 @@ operation is traditional top down backtracking parsing.
       (define eof-error "end of input")
 
       (define wrong-char "syntax error")
+
 
       (define (fail-expected byte)
          (list 'expected byte))
@@ -344,7 +349,7 @@ operation is traditional top down backtracking parsing.
 
       ;; computes rest of parser stream
       (define (silent-syntax-fail val)
-         (λ (cont ll msg) val))
+         (λ (cont ll pos msg) val))
 
       (define (fast-forward ll)
          (if (pair? ll)
@@ -358,18 +363,6 @@ operation is traditional top down backtracking parsing.
             ((memq (car ll) '(#\newline #\space #\return #\tab))
                (whitespace? (cdr ll)))
             (else #f)))
-
-      (define (resuming-syntax-fail error-reporter)
-         (λ (cont ll msg)
-            ;; this is a bit of a hack
-            ;; allow common whitespace at end of input, because parsers typically define structure
-            ;; only up to last byte byte needed for recognition in order to avoid blocking
-            (let ((rest (fast-forward ll)))
-               (if (and (null? rest) (whitespace? ll))
-                  (cont #n)
-                  (begin
-                     (error-reporter msg)
-                     (cont rest))))))
 
       (define (seek-line data pos)
          (let loop ((rl '()) (pos pos) (data data))
@@ -395,6 +388,13 @@ operation is traditional top down backtracking parsing.
                      (- pos 1)
                      (cdr data))))))
 
+      ;; syntax error values
+      (define *syntax-error-tag* "syntax-error") ;; any unique value
+
+      (define (syntax-error data pos msg)
+         (list *syntax-error-tag* data pos msg))
+
+      (define (syntax-error? x) (and (pair? x) (eq? (car x) *syntax-error-tag*)))
 
       (define (verbose-error msg data pos val)
          (lets ((line pos (seek-line data pos)))
@@ -402,6 +402,51 @@ operation is traditional top down backtracking parsing.
             (print-to stderr "  " line)
             (print-to stderr (list->string (map (lambda (x) #\space) (iota 0 1 (+ pos 1)))) "^")))
 
+      (define (report-syntax-error e)
+         (let ((e (cdr e)))
+            (verbose-error #f (car e) (cadr e) (caddr e))))
+
+      ;; todo: rename to silent-fail-at-trailing-whitespace or something
+      (define (resuming-syntax-fail error-msg thunk)
+         (λ (cont ll pos msg)
+            ;; this is a bit of a hack
+            ;; allow common whitespace at end of input, because parsers typically define structure
+            ;; only up to last byte byte needed for recognition in order to avoid blocking
+            (let ((rest (fast-forward ll)))
+               (if (and (null? rest) (whitespace? ll))
+                  (cont #n)
+                  (begin
+                     (verbose-error error-msg ll pos #f)
+                     (thunk)
+                     (cont rest))))))
+
+      (define syntax-errors-as-values
+         (λ (cont ll pos msg)
+            ;; this is a bit of a hack
+            ;; allow common whitespace at end of input, because parsers typically define structure
+            ;; only up to last byte byte needed for recognition in order to avoid blocking
+            (cons
+               (syntax-error ll pos msg)
+               (lambda ()
+                  (cont (fast-forward ll))))))
+
+      ;; computes rest of parser stream
+      (define (silent-syntax-fail-at-end error-msg val)
+         (λ (cont ll pos msg)
+            (if (not (whitespace? ll))
+               (begin
+                  (print "Not whitespace: " ll)
+                  (verbose-error error-msg ll pos #f)))
+            val))
+
+      ;; report only if resuming data is not totally whitespace
+      (define (verbose-syntax-fail-sans-eof error-val whitespace-val)
+         (λ (cont ll pos msg)
+            (if (whitespace? ll)
+               whitespace-val
+               (begin
+                  (verbose-error #f ll pos #f)
+                  error-val))))
 
       ;; ll parser (ll r val → ?) → ll
       (define (byte-stream->exp-stream ll parser fail)
@@ -415,9 +460,10 @@ operation is traditional top down backtracking parsing.
                      #n)
                   ((function? fail)
                      ;(verbose-error "Stream parse error" r p val)
+                     ;(verbose-error #f r p val)
                      (fail
                         (λ (ll) (byte-stream->exp-stream ll parser fail))
-                        r val))
+                        r p val))
                   (else
                      ;(verbose-error "stream parse error" r p val)
                      #n)))))
@@ -432,7 +478,6 @@ operation is traditional top down backtracking parsing.
             (if fd
                (fd->exp-stream fd parser fail)
                #false)))
-
 
       (define (try-parse parser data maybe-path maybe-error-msg fail-fn)
          (let loop ((try (λ () (parser #n data 0 parser-succ))))

@@ -32,7 +32,12 @@
       (owl syntax-rules)
       (only (owl sys) get-heap-bytes-written) ;; <- could be moved to some profiling
       (only (owl readline) port->readline-byte-stream)
-      (only (owl parse) fd->exp-stream byte-stream->exp-stream file->exp-stream try-parse silent-syntax-fail resuming-syntax-fail)
+      (only (owl parse) fd->exp-stream fd->sexp-stream byte-stream->exp-stream file->exp-stream try-parse
+         silent-syntax-fail
+         silent-syntax-fail-at-end
+         syntax-error? report-syntax-error syntax-errors-as-values
+         resuming-syntax-fail
+         )
       (prefix (only (owl parse) plus) get-kleene-)
       (owl function)
       (owl lazy)
@@ -167,16 +172,28 @@
       (define (symbols? exp)
          (and (list? exp) (every symbol? exp)))
 
+      (define (stdin-sexp-stream env)
+         (byte-stream->sexp-stream
+            (if (env-get env '*readline* #f)
+               (port->readline-byte-stream stdin)
+               (port->byte-stream stdin))))
+
+      (define (fd-sexp-stream port)
+         (byte-stream->sexp-stream
+            (port->byte-stream port)))
+
+      (define (file-sexp-stream path)
+         (let ((fd (open-input-file path)))
+            (and fd
+               (fd-sexp-stream fd))))
+
       ;; repl-cont is env, input -> program-exit, directly or via tail call to repl-cont
       (define (repl-load repl-cont repl-exps path in env)
          (lets
             ((exps ;; find the file to read
                (or
-                  (file->exp-stream path sexp-parser (silent-syntax-fail #n))
-                  (file->exp-stream
-                     (string-append (env-get env '*owl* "NA") path)
-                     sexp-parser
-                     (silent-syntax-fail #n)))))
+                  (file-sexp-stream path)
+                  (file-sexp-stream (string-append (env-get env '*owl* "NA") path)))))
             (if exps
                (lets
                   ((interactive? (env-get env '*interactive* #false)) ; <- switch prompt during loading
@@ -600,6 +617,9 @@
             ((abort (λ (why) (ret (fail (list "Macro expansion of " exp " failed: " why)))))
              (env exp (macro-expand exp env abort)))
             (cond
+               ((syntax-error? exp)
+                  (report-syntax-error exp)
+                  (fail (list "syntax errors")))
                ((import? exp)
                   (success (toplevel-library-import env (cdr exp) repl)
                      ((ok value env)
@@ -713,6 +733,9 @@
                            (ok last env))
                         ((repl-op? this)
                            (repl-op repl repl (cadr this) in env))
+                        ((syntax-error? this)
+                           (report-syntax-error this)
+                           (fail (list "syntax error")))
                         (else
                            (success (eval-repl this env repl)
                               ((ok result env)
@@ -726,18 +749,6 @@
 
       ;; run the repl on a fresh input stream, report errors and catch exit
 
-      (define (stdin-sexp-stream env)
-         (byte-stream->exp-stream
-            (if (env-get env '*readline* #f)
-               (port->readline-byte-stream stdin)
-               (port->byte-stream stdin))
-            sexp-parser
-            (resuming-syntax-fail
-               (λ (x)
-                  ;; x is not typically a useful error message yet
-                  (print ";; syntax error")
-                  (if (env-get env '*interactive* #false)
-                     (display "> "))))))  ;; reprint prompt
 
       (define eof '(eof))
 
@@ -747,13 +758,21 @@
 
       (define (repl-port env fd)
          (repl env
-            (fd->exp-stream fd sexp-parser (silent-syntax-fail #n))))
+            (fd-sexp-stream fd)))
 
       ;; env -> program exit value (unsigned byte)
+      ;; interactive repl. unlike other versions, here this:
+      ;;  - handles interactive line editing if necessary
+      ;;  - parse errors do not stop processing
       (define (repl-ui env)
          (let loop ((env env) (input (stdin-sexp-stream env)))
             (lets ((exp input (uncons input eof)))
                (cond
+                  ((syntax-error? exp)
+                     (report-syntax-error exp)
+                     (maybe-prompt env)
+                     (loop env input)
+                     #t)
                   ((eq? exp eof)
                      (if (env-get env '*interactive* #false)
                         (print "bye bye _o/~"))
