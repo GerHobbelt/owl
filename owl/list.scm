@@ -11,6 +11,8 @@ implemented in (owl math).
    (export
       pair? null null?
       caar cadr cdar cddr
+      cdddr cddar cdadr cdaar caddr cadar caadr caaar
+
       car* cdr*
       list?
       zip foldl foldr fold map for-each
@@ -63,6 +65,15 @@ implemented in (owl math).
       (define cdar (B cdr car))
       ;; '(a . (b . c)) -> c
       (define cddr (B cdr cdr))
+
+      (define cdddr (lambda (x) (cdr (cdr (cdr x)))))
+      (define cddar (lambda (x) (cdr (cdr (car x)))))
+      (define cdadr (lambda (x) (cdr (car (cdr x)))))
+      (define cdaar (lambda (x) (cdr (car (car x)))))
+      (define caddr (lambda (x) (car (cdr (cdr x)))))
+      (define cadar (lambda (x) (car (cdr (car x)))))
+      (define caadr (lambda (x) (car (car (cdr x)))))
+      (define caaar (lambda (x) (car (car (car x)))))
 
       ;; any -> bool, check if a thing is a linked list, O(n)
       (define (list? l)
