@@ -51,7 +51,7 @@ raw data.
 
 Owl uses a single continuous chunk of memory. Originally only the sbrk() system
 call was needed to adjust the size of the memory, but this was converted to more
-complex malloc/resize because it turned out OSX does not support is properly.
+complex malloc/resize because it turned out OSX does not support this properly.
 
 The GC is order preserving. Objects are in general
 allocated in the same or reverse order to how they are later read. Moving objects
@@ -98,8 +98,8 @@ number to call and three arbitrary lisp values. prim_sys() is then expected to d
 thing and return one lisp value.
 
 New calls can be added by placing them to the switch statement in ovm.c, recompiling the vm
-with #{make bin/vm}, starting it with #{bin/vm fasl/init.fasl} and calling the newly added
-primitive with something like #{(sys-prim 42 1 2 3)}.
+with `make bin/vm`, starting it with `bin/vm fasl/init.fasl` and calling the newly added
+primitive with something like `(sys-prim 42 1 2 3)`.
 
 Ideally we would like to just call the kernel just like done in assembly, but there are
 no sufficiently portable ways to do this from C, so we use the standard library functions
