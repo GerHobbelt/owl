@@ -5,7 +5,7 @@ PREFIX  := /usr
 BINDIR  := /bin
 MANDIR  := /share/man
 INSTALL := install
-CFLAGS  := -Wall -O2
+CFLAGS  := -O2
 
 CC      := gcc
 MAKE	:= make
