@@ -360,7 +360,7 @@ Check out https://haltp.org/owl for more information.")
                               (thread 'repl
                                  (let ((state (make-variable '*state* empty)))
                                     ;; get basic io running
-                                    (start-base-threads)
+                                    (start-io-threads)
 
                                     ;; store initial state values
                                     (state 'call

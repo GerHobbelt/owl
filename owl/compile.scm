@@ -35,6 +35,7 @@ of C and FASL when compiling to C.
       (owl render)
       (owl lazy)
       (owl regex)
+      (owl intern)
       (only (owl fasl) objects-below)
       (owl eval cgen)
       (only (owl sys) mem-strings)
@@ -49,29 +50,15 @@ of C and FASL when compiling to C.
       ;;; Symbols must be properly interned in a repl.
       ;;;
 
+
       (define (symbols-of node)
-
-         (define tag (list 'syms))
-
-         (define (walk trail node)
-            (cond
-               ((immediate? node) trail)
-               ((get trail node #false) trail)
-               ((symbol? node)
-                  (let ((trail (put trail node 1)))
-                     (put trail tag
-                        (cons node (get trail tag #n)))))
-               ((raw? node) trail)
-               (else
-                  (fold walk
-                     (put trail node #true)
-                     (object->list node)))))
-         (define trail
-            (walk (put empty tag #n) node))
-
-         (get
-            (walk (put empty tag #n) node)
-            tag #n))
+         (ff-fold
+            (lambda (out object count)
+               (if (symbol? object)
+                  (cons object out)
+                  out))
+            '()
+            (object-closure node)))
 
       (define (file->string path)
          (bytes->string
@@ -251,17 +238,19 @@ of C and FASL when compiling to C.
             (keep bytecode?
                (objects-below obj))))
 
-      ;; todo: move with-threading to lib-threads and import from there
       (define (with-threading ob)
-         (λ (args)
-            (start-thread-controller
-               (list
-                  (tuple 'root
-                     (λ ()
-                        (start-base-threads)    ;; get basic io running
-                        (exit-owl (ob args))))) ;; exit thread scheduler with exit value of this thread (if it doesn't crash)
-               (list
-                  (cons 'root qnull)))))   ;; the init thread usually needs a mailbox
+         (lets ((symbols (symbols-of (list start-io-threads ob)))
+                (interner-thunk (initialize-interner symbols null)))
+            (λ (args)
+               (start-thread-controller
+                  (list
+                     (tuple 'root
+                        (λ ()
+                           (start-io-threads)      ;; get basic io running
+                           (thunk->thread 'intern interner-thunk) ;; start symbol interning (needed by anything using string->symbol)
+                           (exit-owl (ob args))))) ;; exit thread scheduler with exit value of this thread (if it doesn't crash)
+                  (list
+                     (cons 'root qnull))))))   ;; the init thread usually needs a mailbox
 
       (define (cook-format str)
          (cond

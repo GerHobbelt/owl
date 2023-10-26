@@ -32,6 +32,7 @@ up Owl are just fasl-encoded functions.
       decode-or            ; (byte ...) fail → object | (fail reason)
       encode               ; obj -> (byte ... 0), n-alloc-objs (mainly for bootstrapping)
       objects-below        ; obj -> (obj ...), all allocated objects below obj
+      object-closure       ; any -> ff of allocated objects reachable from it with link counts
       decode-stream        ; ll failval → (ob ...) | (ob .. failval)
       sub-objects          ; obj wanted? -> ((obj . n-occurrences) ...)
       )

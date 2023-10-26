@@ -69,6 +69,8 @@
       (define library-key '*libraries*)     ;; list of loaded libraries
       (define features-key '*features*)     ;; list of implementation feature symbols
       (define includes-key '*include-dirs*) ;; paths where to try to load includes from
+      (define libraries-var '*libs*)        ;; toplevel variable which holds currently loaded (r7rs-style) libraries
+      (define loaded-key    '*loaded*)      ;; loaded paths
 
       (define definition?
          (H match (list '_define symbol? ?)))
@@ -78,9 +80,6 @@
 
       (define multi-definition?
          (H match (list '_define list? ?)))
-
-      ;; toplevel variable which holds currently loaded (r7rs-style) libraries
-      (define libraries-var '*libs*)
 
       (define error-port stderr)
 
@@ -104,10 +103,10 @@
          (H match (list 'unquote symbol?)))
 
       (define (mark-loaded env path)
-         (let ((loaded (env-get env '*loaded* #n)))
+         (let ((loaded (env-get env loaded-key #n)))
             (if (member path loaded)
                env
-               (env-set env '*loaded*
+               (env-set env loaded-key
                   (cons path loaded)))))
 
       ;; values used by the repl to signal they should be printed as such, not rendered as a value
@@ -140,8 +139,8 @@
                   ((now (time-ns))
                    (alloc-pre (get-heap-bytes-written))
                    (val (thunk)) ;; <- assumes just one returned value for now
-                   (elapsed-ns (- (time-ns) now))
-                   (alloc-post (get-heap-bytes-written)))
+                   (alloc-post (get-heap-bytes-written))
+                   (elapsed-ns (- (time-ns) now)))
                   (print ";; heap " (format-number (- alloc-post alloc-pre)))
                   (print ";; time " (format-time elapsed-ns))))
             (lambda (error)

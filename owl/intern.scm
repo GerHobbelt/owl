@@ -13,6 +13,8 @@ Value interning and conversions
       initialize-interner
       string->uninterned-symbol
       string->interned-symbol       ;; tree string → tree' symbol
+      strings->symbol-tree
+      set-symbol-tree!              ;; symbol-tree -> updated
       put-symbol                    ;; tree sym → tree'
       empty-symbol-tree
       intern-symbols
@@ -104,6 +106,15 @@ Value interning and conversions
                (values root old)
                (let ((new (string->uninterned-symbol str)))
                   (values (put-symbol root new) new)))))
+
+      ;; for preconstructing symbol trees
+      (define (strings->symbol-tree strs)
+         (fold
+            (lambda (root s)
+               (put-symbol root (string->uninterned-symbol s)))
+            empty-symbol-tree
+            strs))
+
 
       ;;;
       ;;; BYTECODE INTERNING
@@ -215,6 +226,9 @@ Value interning and conversions
                   (tuple-case msg
                      ;((flush) ;; clear names before boot (deprecated)
                      ;   (interner root codes))
+                     ((set-symbols! root)
+                        (mail sender 'updating-symbols)
+                        (interner root codes))
                      (else
                         ;(print "unknown interner op: " msg)
                         (interner root codes))))
@@ -227,6 +241,10 @@ Value interning and conversions
                   (mail sender 'bad-kitty)
                   (interner root codes)))))
 
+      ;; start using a given symbol tree for interning
+      (define (set-symbol-tree! root)
+         (interact 'intern
+            (tuple 'set-symbols! root)))
 
       ;; make a thunk to be forked as the thread
       ;; (sym ...)  ((bcode . value) ...) → thunk

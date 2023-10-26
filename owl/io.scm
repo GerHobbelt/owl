@@ -37,7 +37,7 @@ iomux is running. This may happen when working with code that has not called
       fd->port                ;; fixnum → port
       port?                   ;; _ → bool
       close-port              ;; fd → _
-      start-base-threads      ;; start stdio and sleeper threads
+      start-io-threads      ;; start threads required for basic operation (stdio, timers)
       wait-write              ;; fd → ? (no failure handling yet)
       when-readable           ;; fd → fd, block thread until readable
       readable?               ;; fd → bool
@@ -869,7 +869,7 @@ iomux is running. This may happen when working with code that has not called
             (muxer #n #n #n)))
 
       ;; start normally mandatory threads (apart form meta which will be removed later)
-      (define (start-base-threads)
+      (define (start-io-threads)
          (start-muxer)
          (wait 1))
 
