@@ -93,6 +93,8 @@ iomux is running. This may happen when working with code that has not called
 
       start-muxer       ;; new io muxer
       sleep             ;; sleep ms -> sleep at least for ms
+
+      popen             ;; lst → (read . write)
    )
 
    (import
@@ -880,4 +882,30 @@ iomux is running. This may happen when working with code that has not called
                   (close-port port)
                   end)
                port)))
-))
+
+      (define (lpipe)
+         (let ((p (sys-pipe)))
+            (values (car p) (cdr p))))
+
+      ; lst → (read . write)
+      (define (popen lst)
+         (cond
+            ((null? lst) #f)
+            (else
+               (lets ((stdin-read stdin-write (lpipe))
+                      (stdout-read stdout-write (lpipe))
+                      (pid (sys-fork)))
+                  (cond
+                     ((eq? pid #t) ;; child proces
+                      (sys-dup2 stdin-read stdin)
+                      (close-port stdin-write)
+                      (sys-dup2 stdout-write stdout)
+                      (close-port stdout-read)
+                      (sys-execvp (append '("sh" "-c") (list lst)))
+                      (halt 127))
+                     (pid
+                      (close-port stdin-read)
+                      (close-port stdout-write)
+                      (values stdout-read stdin-write))
+                     (else #f))))))
+      ))

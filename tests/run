@@ -13,9 +13,9 @@ waitnjobs() {
 difflog() {
    if diff "$1.ok" - >>"$LOG"
    then
-      echo '.\c'
+      printf '.'
    else
-      echo '|\c'
+      printf '|'
       echo "ERROR: $file" >>"$LOG"
    fi
    kill -USR1 $PID # job done
@@ -42,7 +42,7 @@ test -x "$1" || {
 test -d tmp && rm -rf tmp # don't want old files screwing up tests
 mkdir tmp
 
-echo "Running tests/ against $@: \\c"
+printf "Running tests/ against %s: " "$@"
 trap 'CURJOBS=$((CURJOBS - 1))' USR1
 
 for file in tests/*$SUFFIX.scm
