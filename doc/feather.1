@@ -1,0 +1,60 @@
+.TH ol 1 "Dec 08, 2023"
+.SH NAME
+feather \- documentation generator for owl lisp
+.SH SYNOPSIS
+.B feather
+.RI [ options ] " " [ path ] " ..."
+.SH DESCRIPTION
+Feather is a documentation generator for owl lisp.
+It can be called with scheme and markdown source files, that it will
+then convert to a single markdown file.
+It extracts library names and exports along with the first long comment
+(\fI#| doc\fR) that gets treated as the library's description.
+It also extracts \fI(owl proof)\fR examples that can help understand the library.
+.PP
+.SH OPTIONS
+This program follows the usual GNU command line syntax, with long
+options starting with two dashes (`-').
+.TP
+.B \-h, \-\-help
+Show summary of options.
+.TP
+.B \-o <file>, \-\-output <file>
+Set the output file (by default, it's manual.md)
+.TP
+.B \-t <text>, \-\-title <text>
+Set the title (by default it's Owl Lisp \fIversion\fR).
+.SH EXAMPLES
+.B a simple library definition with all the possible documentation.
+.EX
+#| doc
+Foo Bar Baz
+\&
+a great library for foobaring.
+|#
+\&
+(define-library (owl foobar)
+  (import
+    (owl core)
+    (owl equal)
+    (owl proof))
+  (export
+    foo)
+  (begin
+    (define (foo v)
+      (cond
+        ((eqv? v 'bar) 'baz)
+        (else 'bzzt)))
+    (example
+      (foo 'bar) = 'baz
+      (foo 'notbar) = 'bzzt
+      let x = 'brr
+      (foo x) = 'bzzt)))
+.EE
+.SH SEE ALSO
+.BR ol (1),
+.SH AUTHOR
+.TP
+Owl Lisp and Feather were written by Aki Helin <aki.helin@iki.fi>.
+.TP
+This manual page was written by Krzysztof Michałczyk <kpm@linux.pl>.
