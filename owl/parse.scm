@@ -11,7 +11,8 @@ operation is traditional top down backtracking parsing.
    (export
       parses
       byte
-      imm
+      imm                       ;; byte
+      imm-or                    ;; byte error-msg
       input-ready?              ;; parser, receives fd
       seq
       epsilon ε
@@ -139,18 +140,21 @@ operation is traditional top down backtracking parsing.
                (else
                   ((peek-byte pred) l (r) p ok)))))
 
-      (define (imm x)
+      (define (imm-or x why)
          (λ (l r p ok)
             ;(print (list 'imm l r p 'want x))
             (cond
                ((null? r)
-                  (backtrack l r p eof-error))
+                  (backtrack l r p why))
                ((pair? r)
                   (if (eq? (car r) x)
                      (ok (cons x l) (cdr r) (+ p 1) x)
                      (backtrack l r p (fail-expected x))))
                (else
-                  ((imm x) l (r) p ok)))))
+                  ((imm-or x why) l (r) p ok)))))
+
+      (define (imm x)
+         (imm-or x eof-error))
 
       (define (ε val)
          (λ (l r p ok)
@@ -398,7 +402,7 @@ operation is traditional top down backtracking parsing.
 
       (define (verbose-error msg data pos val)
          (lets ((line pos (seek-line data pos)))
-            (print-to stderr (or msg "Syntax error"))
+            (print-to stderr (or msg (or val "Syntax error")))
             (print-to stderr "  " line)
             (print-to stderr (list->string (map (lambda (x) #\space) (iota 0 1 (+ pos 1)))) "^")))
 

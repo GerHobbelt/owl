@@ -32,12 +32,7 @@
       (owl syntax-rules)
       (only (owl sys) get-heap-bytes-written) ;; <- could be moved to some profiling
       (only (owl readline) port->readline-byte-stream)
-      (only (owl parse) fd->exp-stream fd->sexp-stream byte-stream->exp-stream file->exp-stream try-parse
-         silent-syntax-fail
-         silent-syntax-fail-at-end
-         syntax-error? report-syntax-error syntax-errors-as-values
-         resuming-syntax-fail
-         )
+      (only (owl parse) report-syntax-error syntax-error? try-parse silent-syntax-fail)
       (prefix (only (owl parse) plus) get-kleene-)
       (owl function)
       (owl lazy)

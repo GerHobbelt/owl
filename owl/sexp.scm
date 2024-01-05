@@ -289,7 +289,7 @@
              (chars
                (get-greedy-star
                   (get-transparent-break (get-sequence-char #\"))))
-             (skip (get-transparent-break (get-imm #\"))))
+             (skip (get-transparent-break (get-imm-or #\" "Unclosed string"))))
             (runes->string chars)))
 
       (define get-identifier
@@ -453,7 +453,6 @@
                   (else
                      #t)))
             (get-byte-stream->exp-stream ll sexp-stream-parser syntax-errors-as-values)))
-
 
       (define (read-port port)
          (get-fd->exp-stream port sexp-parser (get-silent-syntax-fail null)))
