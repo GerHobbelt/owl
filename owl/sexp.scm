@@ -227,25 +227,29 @@
       (define maybe-whitespace (get-star! get-a-whitespace))
 
 
-      ; (
+      (define lp #\()
+      (define rp #\))
+
       (define (get-list-of parser)
-         (get-parses
-            ((lp (get-imm #\())
-             (things
-               (get-star! parser))
-             (skip maybe-whitespace)
-             (tail
-               (get-either
-                  (get-parses ((rp (get-imm #\)))) #n)
-                  (get-parses
-                     ((dot (get-imm #\.))
-                      (fini parser)
-                      (skip maybe-whitespace)
-                      (skip (get-imm #\))))
-                     fini))))
-            (if (null? tail)
-               things
-               (append things tail))))
+         (let ((error (list "Unterminated list")))
+            (get-parses
+               ((lp (get-imm lp))
+                (skip (get-error-context error))
+                (things
+                  (get-star! parser))
+                (skip maybe-whitespace)
+                (tail
+                  (get-either
+                     (get-parses ((skip (get-imm-or rp error))) #n)
+                     (get-parses
+                        ((dot (get-imm-or #\. error))
+                         (fini parser)
+                         (skip maybe-whitespace)
+                         (skip (get-imm-or rp error)))
+                        fini))))
+               (if (null? tail)
+                  things
+                  (append things tail)))))
 
       (define mnemonic-escape
          (list->ff
@@ -283,13 +287,16 @@
              (data parser))
             data))
 
+      (define *unclosed-string-error* "Unclosed string")
+
       (define get-string
          (get-parses
             ((skip (get-imm #\"))
+             (skip (get-error-context *unclosed-string-error*))
              (chars
                (get-greedy-star
                   (get-transparent-break (get-sequence-char #\"))))
-             (skip (get-transparent-break (get-imm-or #\" "Unclosed string"))))
+             (skip (get-transparent-break (get-imm-or #\" *unclosed-string-error*))))
             (runes->string chars)))
 
       (define get-identifier
