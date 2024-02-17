@@ -80,7 +80,7 @@
                (cons out
                   (chunker op (cdr l) (list (car l)) 1)))
             (else
-               (lets ((n o (fx+ n 1)))
+               (lets ((n _ (fx+ n 1)))
                   (chunker op (cdr l) (insert out (car l) op) n)))))
 
       (define (merge-pairs op l)

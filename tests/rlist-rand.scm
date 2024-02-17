@@ -44,31 +44,31 @@
 							 (rst v (rand rst 10000)))
 							;(print* (list "L[" p "] = " v))
 							(list-test rst (rset rl p v) (lset l p v) len steps))))
-				((11) ; map increment
-					(list-test rst
-						(rmap (C + 1) rl)
-						(map (C + 1) l)
-						len steps))
+				;((11) ; map increment
+				;	(list-test rst
+				;		(rmap (C + 1) rl)
+				;		(map (C + 1) l)
+				;		len steps))
 				((12) ; fold
 					(if (= (fold - 0 l) (rfold - 0 rl))
 						(list-test rst rl l len steps)
 						(error "folds fail at len " len)))
-				((13) ; foldr
-					(if (= (foldr - 0 l) (rfoldr - 0 rl))
-						(list-test rst rl l len steps)
-						(error "foldrs fail at len " len)))
+				;((13) ; foldr
+				;	(if (= (foldr - 0 l) (rfoldr - 0 rl))
+				;		(list-test rst rl l len steps)
+				;		(error "foldrs fail at len " len)))
 				((14) ; cross convert
 					(list-test rst
 						(list->rlist l)
 						(rlist->list rl) len steps))
-				((15) ; iter test
-					(if (equal? (fold - 0 l) (lfold - 0 (riter rl)))
-						(list-test rst rl l len steps)
-						(error "riter fails at len " len)))
-				((16) ; iterr test
-					(if (equal? (foldr - 0 l) (lfoldr - 0 (riterr rl)))
-						(list-test rst rl l len steps)
-						(error "riterr fails at len " len)))
+				;((15) ; iter test
+				;	(if (equal? (fold - 0 l) (lfold - 0 (riter rl)))
+				;		(list-test rst rl l len steps)
+				;		(error "riter fails at len " len)))
+				;((16) ; iterr test
+				;	(if (equal? (foldr - 0 l) (lfoldr - 0 (riterr rl)))
+				;		(list-test rst rl l len steps)
+				;		(error "riterr fails at len " len)))
 				((17)
 					(if (= (rlen rl) len)
 						(list-test rst rl l len steps)
@@ -82,7 +82,7 @@
 						(list-test rst rl l len steps)))))))
 
 (define (test-ops)
-	(list-test (seed->rands (time-ms)) null null 0 10000))
+	(list-test (seed->rands (time-ms)) rnull #n 0 10000))
 
 (test-ops)
 

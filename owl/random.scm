@@ -152,7 +152,7 @@
             out
             (lets
                ((lo hi (fx* (ncar seed) rand-mult))
-                (this over (fx+ lo acc)))
+                (this _ (fx+ lo acc)))
                (rand-walk hi (ncdr seed) (ncons this out)))))
 
       (define (rand-succ seed)
@@ -319,11 +319,11 @@
                (lets ((rs n (rand rs (length obj))))
                   (values rs (list-ref obj n))))
             ((tuple? obj)
-               (lets ((rs n (rand rs (size obj))))
+               (lets ((rs n (rand rs (tuple-length obj))))
                   (values rs (ref obj (+ n 1)))))
             ((vector? obj)
-               (lets ((rs n (rand rs (vec-len obj))))
-                  (values rs (vec-ref obj n))))
+               (lets ((rs n (rand rs (vector-length obj))))
+                  (values rs (vector-ref obj n))))
             (else
                (error "rand-elem: what be " obj))))
 
@@ -390,9 +390,7 @@
 
       ;; rs ll n → rs' lst
       (define (reservoir-sample rs ll n)
-         (reservoir-init rs ll n 0 null))
-
-
+         (reservoir-init rs ll n 0 rnull))
 
       ; rs lst → rs' sublist, each element having 50% chance of being in the sublist
       (define (rand-subset rs l)
@@ -476,7 +474,7 @@
       (define (random-bvec rs n)
          (let loop ((rs rs) (out null) (n n))
             (if (eq? n 0)
-               (values rs (raw (reverse out) type-vector-raw)) ; reverses to keep order
+               (values rs (raw (reverse out) type-bytevector)) ; reverses to keep order
                (lets
                   ((d rs (uncons rs 0))
                    (n _ (fx- n 1)))
@@ -493,7 +491,7 @@
                   (if (eq? n 0)
                      (close-port port)
                      (lets ((rs bytes (random-bvec rs block)))
-                        (if (write-byte-vector port bytes)
+                        (if (write-bytevector bytes port)
                            (loop rs (- n block))
                            #false))))
                (begin
@@ -570,11 +568,11 @@
 ;(define blocksize 4096)
 
 ;(λ (args)
-;   (let loop ((rs (rands->bytes (seed->rands (time-ms)))) (out null) (n 0))
+;   (let loop ((rs (rands->bytes (seed->rands (time-ms)))) (out #n) (n 0))
 ;      (cond
 ;         ((eq? n blocksize)
-;            (if (write-byte-vector stdout (list->byte-vector (reverse out))) ;; keep order
-;               (loop rs null 0)))
+;            (if (write-bytevector (list->byte-vector (reverse out))) ;; keep order
+;               (loop rs #n 0)))
 ;         (else
 ;            (lets
 ;               ((byte rs (uncons rs 0))

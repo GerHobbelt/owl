@@ -616,7 +616,7 @@ static word prim_sys(word op, word a, word b, word c) {
       case 9: /* return process variables */
          return onum(
             a == F(0) ? errno :
-            a == F(1) ? (word)environ :
+            a == F(1) ? (uintptr_t)environ :
             a == F(8) ? nalloc + fp - memstart : /* total allocated objects so far */
             a == F(9) ? maxheap : /* maximum heap size in a major gc */
             max_heap_mb, 0);
@@ -643,11 +643,11 @@ static word prim_sys(word op, word a, word b, word c) {
          struct dirent *ent;
          errno = 0;
          ent = readdir((DIR *)(intptr_t)cnum(a));
-         return onum(ent != NULL ? (word)&ent->d_name : 0, 0); }
+         return onum(ent != NULL ? (uintptr_t)&ent->d_name : 0, 0); }
       case 13: /* close-dir dirp → bool */
          return BOOL(closedir((DIR *)(intptr_t)cnum(a)) == 0);
       case 14: /* strerror errnum → pointer */
-         return onum((word)strerror(immval(a)), 0);
+         return onum((uintptr_t)strerror(immval(a)), 0);
       case 15: /* fcntl port cmd arg → integer | #f */
          if (is_type(a, TPORT)) {
             int res = fcntl(immval(a), cnum(b), (intptr_t)cnum(c));
@@ -656,7 +656,7 @@ static word prim_sys(word op, word a, word b, word c) {
          }
          return IFALSE;
       case 16: /* getenv key → pointer */
-         return onum(stringp(a) ? (word)getenv((const char *)a + W) : 0, 0);
+         return onum(stringp(a) ? (uintptr_t)getenv((const char *)a + W) : 0, 0);
       case 17: { /* exec[v] path argl ret */
          char *path = (char *)a + W;
          int nargs = llen((word *)b);
@@ -1077,7 +1077,8 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
       case 1:
          A2 = G(A0, ip[1]);
          NEXT(3);
-      case 2:
+      case 2: /* FIXME: move op34 here after fasl update */
+      case 3: /* goto */
          ob = (word *)A0;
          acc = ip[1];
          goto apply;
@@ -1101,10 +1102,13 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             ip += ip[3] << 8 | ip[2];
          NEXT(4);
       case 9: A1 = A0; NEXT(2);
+      case 10: /* ldfix n to, encoding: nnnnnnnn nsoooooo (num-1/sign/op) */
+         A1 = ((hval)*ip << 9) + (op << 1) + F(1) - 20;
+         NEXT(2);
       case 13: /* ldi{2bit what} [to] */
          A0 = load_imms[op >> 6];
          NEXT(1);
-      case 14:
+      case 14: /* FIXME: remove after fasl update */
          A1 = onum((int8_t)*ip, 1);
          NEXT(2);
       case 15: { /* type o r */
@@ -1123,6 +1127,16 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          *t = make_header(acc+1, TTUPLE);
          memcpy(t + 1, R + 3, acc * W);
          error(17, ob, t); }
+      case 21: { /* fx- a b r u, types prechecked, signs ignored */
+         hval r = immval(A0) - immval(A1);
+         A3 = F(r >> FBITS & 1);
+         A2 = F(r);
+         NEXT(4); }
+      case 22: { /* fx+ a b r o, types prechecked, signs ignored */
+         hval r = immval(A0) + immval(A1);
+         A3 = F(r >> FBITS);
+         A2 = F(r);
+         NEXT(4); }
       case 23: { /* mkt t s f1 .. fs r */
          word t = *ip++;
          word s = *ip++ + 1; /* the argument is n-1 to allow making a 256-tuple with 255, and avoid 0-tuples */
@@ -1208,11 +1222,11 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             lst = (word *) lst[2];
          }
          NEXT(4); }
-      case 36: { /* size o r */
+      case 36: { /* FIXME: remove after fasl update */
          word *ob = (word *)A0;
          A1 = immediatep(ob) ? IFALSE : F(objsize(*ob) - 1);
          NEXT(2); }
-      case 38: { /* fx+ a b r o, types prechecked, signs ignored */
+      case 38: { /* FIXME: remove after fasl update */
          hval res = immval(A0) + immval(A1);
          A3 = BOOL(1 << FBITS & res);
          A2 = F(res);
@@ -1222,7 +1236,7 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          A3 = F(res >> FBITS);
          A2 = F(res);
          NEXT(4); }
-      case 40: { /* fx- a b r u, args prechecked, signs ignored */
+      case 40: { /* FIXME: remove after fasl update */
          hval r = immval(A0) - immval(A1);
          A3 = BOOL(1 << FBITS & r);
          A2 = F(r);

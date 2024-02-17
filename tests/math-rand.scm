@@ -5,7 +5,7 @@
 ;; todo: factor this to smaller tests
 
 (import (owl math))
-(import (owl math-extra))
+(import (owl math extra))
 
 ; fixme, put abs to math
 

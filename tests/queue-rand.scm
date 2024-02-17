@@ -41,5 +41,5 @@
                   (error "queues are unreliable: " (list 'l l 'cl cl))
                   (test rst cl l (- i 1))))))))
 
-(test (seed->rands (time-ms)) qnull null 1000)
+(test (seed->rands (time-ms)) qnull #n 1000)
 

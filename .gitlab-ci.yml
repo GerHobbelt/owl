@@ -1,0 +1,14 @@
+image: gcc
+
+stages:
+  - everything
+
+build and test:
+  stage: everything
+  script:
+    - make
+  artifacts:
+    paths:
+      - bin/vm
+      - bin/ol
+      - fasl/ol.fasl

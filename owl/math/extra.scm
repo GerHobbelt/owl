@@ -2,9 +2,9 @@
 ;;; Owl math module, things after basic arithmetic
 ;;;
 
-; todo - http://www.math.dartmouth.edu/~carlp/PDF/complexity12.pdf
+;; todo: split this to integer-extra and complex-extra
 
-(define-library (owl math-extra)
+(define-library (owl math extra)
 
    (export
       exact-integer-sqrt ;; n → m r, m^2 + r = n
@@ -23,7 +23,7 @@
 
    (import
       (owl defmac)
-      (owl math)
+      (owl math complex)
       (owl iff)
       (owl list)
       (owl list-extra)

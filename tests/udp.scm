@@ -16,5 +16,5 @@
 
 (for-each
    (λ (n)
-      (send-udp-packet sock (vector 127 0 0 1) 31337 (vector 42 42 42 n)))
+      (send-udp-packet sock #u8(127 0 0 1) 31337 (bytevector 42 42 42 n)))
    (iota 240 5 255))

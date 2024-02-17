@@ -33,8 +33,7 @@
       type-pair
       type-vector-dispatch
       type-vector-leaf
-      type-vector-raw
-      type-ff-black-leaf
+      type-bytevector
       type-tuple
       type-symbol
       type-const
@@ -409,8 +408,7 @@
       (define type-pair              1)
       (define type-vector-dispatch  15)
       (define type-vector-leaf      11)
-      (define type-vector-raw       19) ;; see also TBVEC in c/ovm.c
-      (define type-ff-black-leaf     8)
+      (define type-bytevector       19) ;; see also TBVEC in c/ovm.c
       (define type-symbol            4)
       (define type-tuple             2)
       (define type-rlist-node       14)
@@ -442,8 +440,8 @@
       ;; (size  x)         n                       n               #false
       ;; (sizeb x)       #false                    n               #false
 
-      (define (immediate? obj) (eq? (size obj) #f))
-      (define allocated? size)
+      (define (immediate? obj) (eq? (fxband obj 0) 0))
+      (define (allocated? obj) (lesser? (fxbor 0 obj) obj))
       (define raw? sizeb)
       (define (record? x) (eq? type-record (type x)))
 

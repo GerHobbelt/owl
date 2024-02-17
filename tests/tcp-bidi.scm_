@@ -19,20 +19,20 @@
 (define d (vector 20 30 40 50))
 
 (define (push x tl)
-   (append (if (vector? x) (vec->list x) x) tl))
+   (append (if (vector? x) (vector->list x) x) tl))
 
 ;; separate writes
 (define elems (list a b c d))
 
 ;; all that should be received
-(define all-data (foldr push null elems))
+(define all-data (foldr push #n elems))
 
 ;; read until all-data comes out
 (define (reader fd)
-   (let loop ((read null))
+   (let loop ((read #n))
       (if (equal? read all-data)
          (print "That's all folks.")
-         (loop (append read (vec->list (interact fd 'input)))))))
+         (loop (append read (vector->list (interact fd 'input)))))))
 
 ;; send chunks and drop read requests
 (define (sender fd)

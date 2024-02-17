@@ -27,7 +27,8 @@
       (owl render)
       (owl string)
       (owl sexp)
-      (owl parse)
+      (only (owl parse) fd->exp-stream file->exp-stream resuming-syntax-fail silent-syntax-fail try-parse)
+      (prefix (only (owl parse) plus) get-kleene-)
       (owl function)
       (scheme base)
       (owl lazy)
@@ -755,7 +756,7 @@
                (tuple 'error "cannot open file" env))))
 
       (define (repl-string env str)
-         (lets ((exps (try-parse (get-kleene+ sexp-parser) (str-iter str) #false syntax-fail #false)))
+         (lets ((exps (try-parse (get-kleene-plus sexp-parser) (str-iter str) #false syntax-fail #false)))
             (if exps
                (repl env exps)
                (tuple 'error "not parseable" env))))

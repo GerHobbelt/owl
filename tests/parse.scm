@@ -36,7 +36,7 @@
          (list a b))))
 
 (define (seq pa pb)
-   (let-parses
+   (parses
       ((a pa)
        (b pb))
       (cat a b)))
@@ -89,7 +89,7 @@
 
 (try "abc"
    (either
-      (let-parses
+      (parses
          ((a (imm #\a))
           (b (imm #\b))
           (d (imm #\d)))
@@ -99,7 +99,7 @@
    "bc")
 
 (try "aaaax"
-   (let-parses
+   (parses
       ((as1 (plus (imm #\a)))
        (as2 (plus (imm #\a)))
        (as3 (plus (imm #\a))))
@@ -108,7 +108,7 @@
    "x")
 
 (define get-num
-   (let-parses
+   (parses
       ((digits
          (plus
             (byte-between 47 58))))
@@ -127,13 +127,13 @@
          (C memq '(#\space #\tab #\newline #\return)))))
 
 (define get-exp
-   (let-parses
+   (parses
       ((drop ws)
        (exp get-num))
       exp))
 
 (define get-list
-   (let-parses
+   (parses
       ((drop ws)
        (left (imm #\{))
        (ns

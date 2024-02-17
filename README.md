@@ -1,8 +1,7 @@
 # Owl Lisp
 
 Builds:
-master [![Build Status](https://travis-ci.org/owl-lisp/owl.svg?branch=master)](https://travis-ci.org/owl-lisp/owl),
-dev [![Build Status](https://travis-ci.org/owl-lisp/owl.svg?branch=develop)](https://travis-ci.org/owl-lisp/owl)
+[![pipeline status](https://gitlab.com/owl-lisp/owl/badges/develop/pipeline.svg)](https://gitlab.com/owl-lisp/owl/commits/develop)
 
 ## Overview
 

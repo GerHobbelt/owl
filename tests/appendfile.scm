@@ -1,7 +1,7 @@
 
 (import (owl sys))
 
-(print "init -> " (vector->file #(42 42 42) "tmp/app"))
+(print "init -> " (vector->file #u8(42 42 42) "tmp/app"))
 
 (print "start -> " (file->vector "tmp/app"))
 
@@ -21,4 +21,3 @@
 (print "truncate + bbb -> " (file->vector "tmp/app"))
 
 (print "remove -> " (unlink "tmp/app"))
-

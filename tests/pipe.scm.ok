@@ -1,7 +1,7 @@
 nothing
-#(1 2 3 4)
+#u8(1 2 3 4)
 nothing
-#(11 22 33 44)
+#u8(11 22 33 44)
 nothing
 #eof
 #false
