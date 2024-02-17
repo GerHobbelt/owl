@@ -1,8 +1,10 @@
 #!/usr/bin/ol --run
 
-;; todo: move to (owl proof) after dust settles
+;; This file will run some tests when loaded, but can also be
+;; used as a program by issuing e.g.
+;;   bin/vm fasl/boot.fasl --run tests/theorem-rand.scm --seed 42
 
-;; DSL - still being prototyped
+;; DSL
 ;
 ;  Theorem = (∀ var ... ∊ set)* Term
 ;  Term = Term ⇒ Term                    -- implies
@@ -20,28 +22,24 @@
 ;; Params
 
 (define elem-ip 20) ;; inverse probability of stopping element addition for linear random data structures
-(define max-bits 128)
+(define max-bits 256)
 
 ;; theorem :: rs → rs' bindings ok?
 
 ; f :: ? → _, keys
 (define (domain x)
    (cond
-      ;((rlist? x)  (iota 0 1 (rlen x)))
       ((list? x)   (iota 0 1 (length x)))
       ((string? x) (iota 0 1 (string-length x)))
       ((vector? x) (iota 0 1 (vector-length x)))
-      ;((ff? x)     (keys x))
       (else (error "domain: what is " x))))
 
 ; f :: _ → ?, values
 (define (range x)
    (cond
-      ;((rlist? x)  (rlist->list x))
       ((list? x)   x)
       ((string? x) (string->list x))
       ((vector? x) (vector->list x))
-      ;((ff? x)     (ff-fold (λ (out k v) (cons v out)) #n x))
       (else (error "range: what is " x))))
 
 ;; rs (thing_1 ...) def → rs' thing_i | rs def
@@ -56,12 +54,6 @@
       (else
          (lets ((rs n (rand rs (length l))))
             (values rs (list-ref l n))))))
-
-;; todo: precedence: ¬ ∧ ∨ ∀ ∃ ⇒
-;; todo:
-;; todo: is the ∀ a ∊ A P == ∀ a (a ∊ A) ⇒ P worth having a nonstandard syntax?
-;; plan: (translate rs env thing ... OP . rst) -> translate left and right sides around op, convert to (OP-value first rest)
-;; type-specific translators to avoid extra checks?
 
 ;; node :: rs env → rs' env' result
 
@@ -108,12 +100,6 @@
       ((translate rs term)
          (values rs #n term))))
 
-#| theorem name:
- |   ...
- | proof:
- |   ...
- |#
-
 (define-syntax theorem
    (syntax-rules ()
       ((theorem name . stuff)
@@ -124,7 +110,7 @@
    (syntax-rules (theorem)
       ((theory theorem thing ... theorem . rest)
          ;; n>1 left
-         (cons (theorem thing ...) (theory theorem . rest)))
+         (cons (theorem . rest) (theory theorem thing ...)))
       ((theory . stuff)
          ;; last one
          (list stuff))))
@@ -142,7 +128,8 @@
    (C rand 256))
 
 (define (Short rs)
-   (lets ((digit rs (uncons rs 0)))
+   (lets
+      ((digit rs (uncons rs 0)))
       (values rs digit)))
 
 (define (Nat rs)
@@ -163,11 +150,9 @@
 (define (Rat rs)
    (lets
       ((rs a (Int rs))
-       (rs b (Nat rs)))
-      (values rs
-         (if (eq? b 0)
-            0
-            (/ a b))))) ; <- could also make explicitly one for which gcd(a,b) = 1
+       (rs b (Nat rs))
+       (r (/ a (+ b 1)))) ;; <- to avoid 0
+      (values rs r)))
 
 (define (Comp rs)
    (lets
@@ -207,9 +192,9 @@
                 (rs tail ((Rlist-of thing) rs)))
                (values rs (rcons head tail)))))))
 
-(define List (List-of Byte))
+(define List (List-of Short))
 
-(define Rlist (Rlist-of Byte))
+(define Rlist (Rlist-of Short))
 
 (define (Ff-of thing)
    (λ (rs)
@@ -366,6 +351,11 @@
          ∀ f ∊ (Ff-of Byte)
             empty = (ff-fold (λ (ff key val) (del ff key)) f f)
 
+      theorem ff-map
+         ∀ f ∊ (Ff-of Byte)
+            (map (partial * 2) (map cdr (ff->list f))) =
+               (map cdr (ff->list (ff-map (lambda (k v) (+ v v)) f)))
+
       theorem ff-put
          ∀ f ∊ (Ff-of Byte) ∀ a b ∊ Byte
             b = (get (put f a b) a #false)
@@ -421,25 +411,31 @@
          ∀ a ∊ Byte ∀ r ∊ Rlist
             a = (rcar (rcons a r))
 
-      ;theorem rlist-rfoldr-copy
-      ;   ∀ r ∊ Rlist
-      ;      r = (rfoldr rcons #n r)
+      theorem rlist-rfoldr-copy
+         ∀ r ∊ Rlist
+            r = (rfoldr rcons rnull r)
 
-      ;theorem rlist-rfold-reverse
-      ;   ∀ r ∊ Rlist
-      ;      r = (rrev (rfold (λ (o x) (rcons x o)) #n r))
+      theorem rlist-rfold-reverse
+         ∀ r ∊ Rlist
+            r = (rreverse (rfold (λ (o x) (rcons x o)) rnull r))
 
-      ;theorem rlist-set-get-map
-      ;   ∀ r ∊ (Rlist-of Byte)
-      ;      (rmap (λ (x) (+ x 1)) r)
-      ;       = (fold
-      ;            (lambda (rp i) (rset rp i (+ 1 (rget rp i 'bad))))
-      ;            r
-      ;            (iota 0 1 (rlen r)))
+      theorem rlist-set-get-map
+         ∀ r ∊ Rlist
+            (rmap (λ (x) (+ x 1)) r)
+             = (fold (lambda (rp i) (rset rp i (+ 1 (rget rp i 'bad)))) r (iota 0 1 (rlen r)))
+
+      theorem rlist-map
+          ∀ l ∊ (List-of Short)
+             l = (rlist->list (list->rlist l))
 
       theorem rlist-convert
          ∀ l ∊ List
             l = (rlist->list (list->rlist l))
+
+      theorem rlist-len
+         ∀ a ∊ Rlist
+            ∀ b ∊ Rlist
+               (rlen (rappend a b)) = (+ (rlen a) (rlen b))
 
       theorem rlist-cons-moves
          ∀ r ∊ Rlist
@@ -504,7 +500,28 @@
 
 ))
 
-(define tests (append tests-1 tests-2))
+(define tests-3
+   (theory
+
+      theorem round-half
+         ∀ a ∊ Nat
+            (round (+ a 0.5)) = (+ a 1)
+
+      theorem ceil-up
+         ∀ a ∊ Int
+            (ceiling (+ a 0.00001)) = (+ a 1)
+
+      theorem room-height
+         ∀ a ∊ Rat
+            (abs (- (ceiling a) (floor a))) = (if (integer? a) 0 1)
+
+      theorem round-sign
+         ∀ a ∊ Rat
+            (round a) = (* -1 (round (* -1 a)))
+
+))
+
+(define tests (append tests-1 tests-2 tests-3))
 
 
 ;; Practice
@@ -571,14 +588,19 @@
             (else
                (lets
                   ((seed (or (get dict 'seed)  (random-seed)))
-                   (end (get dict 'rounds))) ; #false if not given
+                   (end (get dict 'rounds))
+                   (start (time-ms)))
                   (print "Starting random continuous test, seed " seed)
                   (if end
                      (print "Will run up to " end)
                      (print "Will run forever"))
                   (let loop ((n 0) (rs (seed->rands seed)))
                      (if (eq? 0 (band n 31))
-                        (print " - " n))
+                        (lets
+                           ((elapsed (/ (- (time-ms) start) 1000))
+                            (rounds-per-sec (/ n (max elapsed 1)))
+                            (rounds-per-minute (* rounds-per-sec (* 60 1))))
+                           (print "round " n ", " (round rounds-per-minute) "rpm")))
                      (lets ((rs fails (failures rs)))
                         (if (null? fails)
                            (if (equal? n end)

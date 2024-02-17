@@ -17,11 +17,9 @@
 
       ;; raw bytecode vector, 1-level (proc) or 2-level (clos) function
       (define (function? x)
-         (or
-            (bytecode? x)
-            (eq? (type x) type-proc)
-            (eq? (type x) type-clos)))
+         (let ((t (type x)))
+            (or (eq? t type-bytecode)
+                (eq? t type-proc)
+                (eq? t type-clos))))
 
-      ;; something executable? being a function or a finite function
-      (define procedure? function?)
-))
+      (define procedure? function?)))

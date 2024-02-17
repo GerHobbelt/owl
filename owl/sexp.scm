@@ -22,12 +22,11 @@
       (owl math extra)
       (owl vector)
       (owl list-extra)
-      (owl lcd ff)
+      (owl ff)
       (owl lazy)
       (owl symbol)
       (owl io) ; testing
       (owl port)
-      (owl primop)
       (owl unicode)
       (only (owl syscall) error)
       (only (owl intern) intern-symbols string->uninterned-symbol))
@@ -225,7 +224,7 @@
          (get-parses
             ((lp (get-imm #\())
              (things
-               (get-star parser))
+               (get-star! parser))
              (skip maybe-whitespace)
              (tail
                (get-either
@@ -289,7 +288,7 @@
          (get-one-of
             (get-parses
                ((head (get-rune-if is-initial?))
-                (tail (get-star (get-rune-if is-subsequent?))))
+                (tail (get-star! (get-rune-if is-subsequent?))))
                (string->uninterned-symbol (runes->string (cons head tail))))
             (get-parses
                ((head (get-imm #\.))
@@ -394,7 +393,7 @@
             (intern-symbols sexp)))
 
       (define get-sexps
-         (get-greedy-star sexp-parser))
+         (get-star! sexp-parser))
 
       ;; whitespace at either end
       (define get-padded-sexps

@@ -1,3 +1,11 @@
+#| doc
+Basic List Functions
+
+Operations in this library depend only on primitive operations. The
+rest of the usual operations typically depend on numbers, which are
+implemented in (owl math).
+|#
+
 (define-library (owl list)
 
    (export
@@ -5,12 +13,13 @@
       caar cadr cdar cddr
       car* cdr*
       list?
-      zip fold foldr map for-each
-      memq assq getq last
+      zip foldl foldr fold map for-each
+      mem memq assq getq
+      last
       fold-map foldr-map
       append concatenate
       reverse
-      filter remove
+      filter remove separate
       keep
       every any
       unfold
@@ -21,7 +30,8 @@
       fold2
       halve
       interleave
-      diff union intersect)
+      diff union intersect
+      ╯°□°╯)
 
    (import
       (owl core)
@@ -70,12 +80,14 @@
                   (cons hd (zip op (cdr a) (cdr b)))))))
 
       ;; op state lst -> state', walk over a list from left and compute a value
-      (define (fold op state lst)
+      (define (foldl op state lst)
          (if (null? lst)
             state
-            (fold op
+            (foldl op
                (op state (car lst))
                (cdr lst))))
+
+      (define fold foldl)
 
       (example
          (zip cons '(1 2 3) '(a b c d)) = '((1 . a) (2 . b) (3 . c)))
@@ -83,7 +95,7 @@
       (define (unfold op st end?)
          (if (end? st)
             #n
-            (lets ((this st (op st)))
+            (lets ((st this (op st)))
                (cons this (unfold op st end?)))))
 
       ;; op s1 s2 lst -> s1' s2', fold with 2 states
@@ -123,6 +135,12 @@
                (op (car lst))
                (for-each op (cdr lst)))))
 
+      (define (mem pred lst x)
+         (cond
+            ((null? lst) #false)
+            ((pred x (car lst)) lst)
+            (else (mem pred (cdr lst) x))))
+
       (define (memq x lst)
          (cond
             ((null? lst) #false)
@@ -145,6 +163,7 @@
                (getq (cdr lst) k def))))
 
       (example
+         (mem eq? '(1 2 3) 2) = '(2 3)
          (assq 'a '((a . 1) (b . 2))) = '(a . 1)
          (assq 'c '((a . 1) (b . 2))) = #false)
 
@@ -255,10 +274,26 @@
       (define (remove pred lst)
          (filter (B not pred) lst))
 
-      (let ((l '(1 2 () 3 () 4)))
-         (example
-            (filter null? l) = '(() ())
-            (remove null? l) = '(1 2 3 4)))
+      (example
+         let l = '(1 2 () 3 () 4)
+         (filter null? l) = '(() ())
+         (remove null? l) = '(1 2 3 4))
+
+      (define (separate lst pred)
+         (let loop ((lst lst) (is '()) (isnt '()))
+            (cond
+               ((null? lst)
+                  (values
+                     (reverse is)
+                     (reverse isnt)))
+               ((pred (car lst))
+                  (loop (cdr lst) (cons (car lst) is) isnt))
+               (else
+                  (loop (cdr lst) is (cons (car lst) isnt))))))
+
+      (example
+         let l = '(#t (1 2) #f (3))
+         (separate l pair?) = (values '((1 2) (3)) '(#t #f)))
 
       (define (every pred lst)
          (or (null? lst) (and (pred (car lst)) (every pred (cdr lst)))))
@@ -337,13 +372,18 @@
                   (if (null? h)
                      (values (reverse (cons (car t) out)) (cdr t))
                      (walk (cdr t) (cdr h) (cons (car t) out)))))))
+
       (lets ((l '(a b c d e f)))
          (example
             l = (lets ((head tail (halve l))) (append head tail))))
+
+      (define ╯°□°╯ reverse)
 
       (example
          (interleave 'x '(a b c)) = '(a x b x c)
          (interleave 'x '()) = ()
          (halve '(a b c d)) = (values '(a b) '(c d))
          (halve '(a b c d e)) = (values '(a b c) '(d e)))
+
 ))
+

@@ -1,4 +1,5 @@
 #| doc
+Extra Math Functions
 |#
 
 (define-library (owl math extra)
@@ -34,14 +35,14 @@
       (owl list)
       (owl list-extra)
       (owl sort)
-      (owl primop)
       (only (owl syscall))
       (only (owl math integer) to-int+ to-fix+ quotient negate)
       (prefix (owl math integer) i)
       (prefix (owl math rational) r)
       (only (owl math rational) < > gcd rational)
       (only (owl math integer) << >> band bior ncar ncdr ediv fx-width big-bad-args truncate/ zero?)
-      (only (owl syscall) error))
+      (only (owl syscall) error)
+      (owl proof))
 
    (begin
 
@@ -93,17 +94,33 @@
 
       (define (round n)
          (if (eq? (type n) type-rational)
-            (lets ((a b n))
-               (if (eq? b 2)
-                  (if (negative? a)
-                     (i>> (- a 1) 1)
-                     (i>> (i+ a 1) 1))
-                  (quotient a b)))
+            (lets ((a b n)
+                   (q r (truncate/ a b)))
+               (+ q
+                  (if (i< (<< (abs r) 1) b)
+                     0
+                     (if (negative? a) -1 +1))))
             n))
 
-      (define (sum l) (fold + (car l) (cdr l)))
+      (example
+         (round 1.0000000000001) = 1
+         (round 1.4999999999999) = 1
+         (round 1.5) = 2
+         (round -1.4) = -1
+         (round -1.5) = -2
+         (round -0.5) = -1
+         (round 1234.56) = 1235
+         (round 1.8) = 2
+         (round -1.8) = -2
+         (round -1.49) = -1
+         (round 19.9999999999999999999999) = 20
+         (floor 1.99999999999999999999999) = 1
+         (ceiling  0.00000000000000000000001) = 1)
 
-      (define (product l) (fold * (car l) (cdr l)))
+
+      (define (sum l) (fold + 0 l))
+
+      (define (product l) (fold * 1 l))
 
       (define (min a b) (if (< a b) a b))
       (define (max a b) (if (< a b) b a))
@@ -196,7 +213,9 @@
 
       (define (render-digits num tl base)
          (fold (λ (a b) (cons b a)) tl
-            (unfold (λ (n) (lets ((q r (truncate/ n base))) (values (char-of r) q))) num zero?)))
+            (unfold
+               (λ (n) (lets ((q r (truncate/ n base))) (values q (char-of r))))
+               num zero?)))
 
       ;; move to math.scm
 

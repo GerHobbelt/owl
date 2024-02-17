@@ -1,3 +1,7 @@
+#| doc
+Sorting
+
+|#
 ; todo:
 ;   - the default sort could be stable
 

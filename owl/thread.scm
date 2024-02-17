@@ -1,7 +1,23 @@
 #| doc
+Thread Scheduler
+
 This library defines the thread controller. It handles activation, suspension
-and requested external actions of continuation-based threads.  It is much like
-a very small kernel.
+and requested external actions of continuation-based threads. It is much like a
+very small kernel.
+
+A thread is simply a function. Owl programs have two continuations, one for the
+regular one and one for the thread scheduler under which the function is
+running. Every function eventually calls its own final continuation, which
+results in the thread being removed from the thread scheduler. It can also call
+the second continuation and request operations from this thread scheduler.
+
+The task of the thread scheduler is to run each running thread for a while,
+suspend and activate them, and handle message passing.
+
+Threads have a primitive only for asynchronous message passing, but they can
+voluntarily wait for a specific kind of response, resulting in synchronous
+operation where desired.
+
 |#
 
 (define-library (owl thread)
@@ -12,15 +28,15 @@ a very small kernel.
       signal-handler/repl
       signal-handler/halt
       signal-handler/ignore
+      report-failure
       try-thunk try)
 
    (import
       (owl core)
       (owl queue)
       (owl syscall)
-      (owl lcd ff)
+      (owl ff)
       (owl function)
-      (owl primop)
       (owl list)
       (owl math)
       (owl tuple)
@@ -36,7 +52,7 @@ a very small kernel.
          (system-println "mcp: got bad syscall")
          (values todo done state))
 
-      ; -> state x #false|waked-thread
+      ; -> state (#false | waked-thread)
       (define (deliver-mail state to envelope)
          (let ((st (get state to #false)))
             (cond
@@ -44,7 +60,7 @@ a very small kernel.
                   (values
                      (fupd state to (qsnoc envelope st))
                      #false))
-               ((not st) ;; no current state, message to an inbox
+               ((not st) ;; no current state, message to a new inbox
                   (values
                      (put state to (qcons envelope qnull))
                      #false))
@@ -61,7 +77,8 @@ a very small kernel.
                   (deliver-messages (cons waked todo) done state (cdr subs) msg tc)
                   (deliver-messages todo done state (cdr subs) msg tc)))))
 
-      (define eval-break-message (tuple 'repl-eval (tuple 'breaked)))
+      (define (eval-break-message from)
+          (tuple from (tuple 'breaked)))
 
       (define (subscribers-of state id)
          (get (get state link-tag empty) id #n))
@@ -87,7 +104,7 @@ a very small kernel.
                (cons (car lst)
                   (drop-from-list (cdr lst) tid)))))
 
-      ; drop a possibly running thread and notify linked
+      ; drop a possibly running thread and notify linked ones with msg
       (define (drop-thread id todo done state msg tc) ; -> todo' x done' x state'
          (drop-delivering
             (drop-from-list todo id)
@@ -112,7 +129,6 @@ a very small kernel.
          (system-println "[signal-halt]")
          (halt 42)) ;; exit owl with a specific return value
 
-      ;; syscalls used when profiler is running
       (define mcp-syscalls
          (tuple
 
@@ -339,48 +355,6 @@ a very small kernel.
             ;; don't record anything for now for the rare thread starts and resumes with syscall results
             state))
 
-      ;; nested thread steps cause
-      ;;    - exit and false -> forget todo & done
-      ;;    - crash -> forget
-
-      ;; st=#(cont todo done) → finished? st'
-      ;; finished? = #f -> new state but no result yet, #t = result found and state is thunk, else error
-      ;; TODO: downgrade to single state and prune useless such nodes from tree whenever # of options is reduced down to 1
-      (define (step-parallel st)
-         (lets ((cont todo done st))
-            (if (null? todo)
-               (if (null? done)
-                  ;; no options left
-                  (values #true (λ () (cont #n)))
-                  ;; rewind the track, spin the record and take it back
-                  (step-parallel (tuple cont done #n)))
-               (lets ((state todo todo))
-                  (if (eq? (type state) type-tuple)
-                     (lets ((fini state (step-parallel state)))
-                        (if (null? fini)
-                           ;; crashed, propagate
-                           (values #n state)
-                           ;; either par->single or single->value state change,
-                           ;; but consumed a quantum already so handle it in next round
-                           (values #false (tuple cont todo (cons state done)))))
-                     (lets ((op a b c (run state thread-quantum)))
-                        (cond
-                           ((eq? op 1) ;; out of time, a is new state
-                              (values #false
-                                 (tuple cont todo (cons a done))))
-                           ((eq? op 2) ;; finished, return value and thunk to continue computation
-                              (values #true
-                                 (λ () (cont (cons a (λ () (syscall 22 todo done)))))))
-                           ((eq? op 22) ;; start nested parallel computation
-                              (lets ((contp a) (todop b) (donep c)
-                                     (por-state (tuple contp todop donep)))
-                                 (values #false
-                                    (tuple cont todo (cons por-state done)))))
-                           (else
-                              ;; treat all other reasons and syscalls as errors
-                              (print "bad syscall op within par: " op)
-                              (values #n (tuple op a b c))))))))))
-
       (define (thread-controller self todo done state)
          (if (null? todo)
             (if (null? done)
@@ -398,20 +372,20 @@ a very small kernel.
          (thread-controller thread-controller threads
             #n (list->ff state-alist)))
 
-      (define (try-thunk thunk fail-fn)
-         (let ((id (list 'thread)))
-            (link id)
-            (thunk->thread id thunk)
-            (let ((outcome (ref (accept-mail (λ (env) (eq? (ref env 1) id))) 2)))
-               (if (eq? (ref outcome 1) 'finished)
-                  (ref outcome 2)
-                  (fail-fn outcome)))))
+      (define (try-thunk thunk fail-fn id)
+         (link id)
+         (thunk->thread id thunk)
+         (let ((outcome (ref (accept-mail (λ (env) (eq? (ref env 1) id))) 2)))
+            (if (eq? (ref outcome 1) 'finished)
+               (ref outcome 2)
+               (fail-fn outcome))))
 
-      (define (default-failure retval)
+      ;; move elsewhere
+      (define (report-failure env retval)
          (λ (outcome)
             (tuple-case outcome
                ((crashed opcode a b)
-                  (print-to stderr (verbose-vm-error empty opcode a b))
+                  (print-to stderr (verbose-vm-error env opcode a b))
                   retval)
                ((error cont reason info)
                   ;; note: these could be restored via cont
@@ -419,25 +393,41 @@ a very small kernel.
                      (list->string
                         (foldr render '(10) (list "error: " reason info))))
                   retval)
+               ((breaked)
+                  (print-to stderr ";; stopped by signal")
+                  retval)
                (else
                   (print-to stderr (list "bug: " outcome))
                   retval))))
 
-      (define (try thunk retval)
-         (try-thunk thunk (default-failure retval)))
+      (define (try thunk retval . envp)
+         (try-thunk thunk 
+            (report-failure (if (null? envp) empty (car envp)) retval) 
+            (list 'try)))
+
+      ;; find a thread id that looks like one started via repl
+      (define (repl-eval-thread threads)
+         (fold
+            (lambda (found x)
+               (or found
+                  (if (and (pair? (ref x 1))
+                          (eq? (car (ref x 1)) 'repl-eval))
+                     (ref x 1)
+                     found)))
+            #f threads))
 
       ;; signal handler which kills the 'repl-eval thread if there, or repl
       ;; if not, meaning we are just at toplevel minding our own business.
       (define (signal-handler/repl signals threads state controller)
-         (system-println "[repl signal handler]")
-         (if (any (λ (x) (eq? (ref x 1) 'repl-eval)) threads)
-            ;; there is a thread evaling user input, linkely gone awry somehow
-            (drop-thread 'repl-eval threads #n state eval-break-message controller)
-            ;; nothing evaling atm, exit owl
-            (begin
-               (system-println "[no eval thread - stopping on signal]")
-               (signal-handler/halt signals threads state controller))))
-      
+         (let ((eval-thread (repl-eval-thread threads))) ;; warning: can be several
+            (if eval-thread
+               ;; there is a thread evaling user input, linkely gone awry somehow
+               (drop-thread eval-thread threads #n state (eval-break-message eval-thread) controller)
+               ;; nothing evaling atm, exit owl
+               (begin
+                  (system-println "[no eval thread - stopping on signal]")
+                  (signal-handler/halt signals threads state controller)))))
+
       (define (signal-handler/ignore signals threads state controller)
          (system-println "[ignoring signals]")
          (controller controller threads null state))

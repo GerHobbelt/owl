@@ -1,4 +1,6 @@
 #| doc
+Bignums
+
 This library defines arbitrary precision integer arithmetic. Some of the
 functions are only defined for integers, whereas others are typically
 extended to handle also more complex kinds of numbers.
@@ -28,7 +30,7 @@ negative type only at the root node.
    (export
       fixnum? integer?
       mk-add mk-sub
-      + - * =
+      + - * = /
       << < <= = >= > >>
       band bior bxor
       quotient ediv truncate/
@@ -51,7 +53,7 @@ negative type only at the root node.
       (owl core)
       (owl list)
       (owl syscall)
-      (only (owl primop) create-type))
+      )
 
    (begin
 
@@ -131,6 +133,46 @@ negative type only at the root node.
             (type-int- (to-int+ num)) ;; -A -> A
             (else #f)))
 
+      (define (right-out a b)
+         (error "bad math: " (list a b)))
+
+      (define (nrev-walk num to)
+         (if (null? num)
+            to
+            (nrev-walk
+               (ncdr num)
+               (ncons (ncar num) to))))
+
+      (define-syntax nrev
+         (syntax-rules ()
+            ((nrev num)
+               (nrev-walk num #n))))
+
+      (define (negative? a)
+         (case (type a)
+            (type-fix+ #false)
+            (type-fix- #true)
+            (type-int+ #false)
+            (type-int- #true)
+            (type-rational ;; fixme - move elsewhere
+               (case (type (ncar a))
+                  (type-fix+ #false)
+                  (type-fix- #true)
+                  (type-int+ #false)
+                  (type-int- #true)
+                  (else (error "Bad number: " a))))
+            (else (error 'negative? a))))
+
+      (define positive?
+         (B not negative?))
+
+      (define (integer? a)
+         (case (type a)
+            (type-fix+ #true)
+            (type-fix- #true)
+            (type-int+ #true)
+            (type-int- #true)
+            (else #false)))
 
 
       ;;;
@@ -191,12 +233,6 @@ negative type only at the root node.
             (else
                (big-bad-args '< a b))))
 
-      ;        =       (compare-numbers a b #false #true #false)
-      ;(define (> a b)  (compare-numbers a b #false #false #true))
-      ;(define (>= a b) (compare-numbers a b #false #true #true))
-      ;(define (< a b) (compare-numbers a b #true #false #false))
-      ;(define (<= a b) (compare-numbers a b #true #true #false))
-
       (define (= a b)
          (case (type a)
             (type-fix+ (eq? a b))
@@ -213,7 +249,6 @@ negative type only at the root node.
                (big-bad-args '= a b))))
 
 
-
       (define (> a b) (< b a))
 
       (define (<= a b)
@@ -221,13 +256,10 @@ negative type only at the root node.
 
       (define (>= a b) (<= b a))
 
-      (define (right-out a b)
-         (error "bad math: " (list a b)))
-
 
 
       ;;;
-      ;;; ADDITION
+      ;;; ADDITION AND SUBSTRACTION
       ;;;
 
       (define (nat-succ n)
@@ -282,10 +314,6 @@ negative type only at the root node.
                      (ncons r (add-big (ncdr a) (ncdr b) o))
                      (lets ((r o2 (fx+ r carry)))
                         (ncons r (add-big (ncdr a) (ncdr b) (fxior o o2)))))))))
-
-      ;;;
-      ;;; SUBSTRACTION
-      ;;;
 
       (define-syntax sub-small->pick-sign
          (syntax-rules ()
@@ -464,47 +492,8 @@ negative type only at the root node.
 
       (define + (mk-add right-out))
 
-      ;;;
-      ;;; DIVISION
-      ;;;
 
-      ; walk down a and compute each digit of quotient using the top 2 digits of a
-      (define (qr-bs-loop a1 as b out)
-         (if (null? as)
-            (if (null? (ncdr out))
-               (values (ncar out) a1)
-               (values out a1))
-            (lets
-               ((a2 as as)
-                (q1 q2 r (fxqr a1 a2 b)))
-               (if (eq? q1 0)
-                  (qr-bs-loop r as b (ncons q2 out))
-                  (qr-bs-loop r as b (ncons q2 (ncons q1 out)))))))
 
-      (define (nrev-walk num to)
-         (if (null? num)
-            to
-            (nrev-walk
-               (ncdr num)
-               (ncons (ncar num) to))))
-
-      (define-syntax nrev
-         (syntax-rules ()
-            ((nrev num)
-               (nrev-walk num #n))))
-
-      (define (qr-big-small a b) ; -> q r
-         (cond
-            ((eq? b 0)
-               (big-bad-args 'qr-big-small a b))
-            ;((null? (ncdr (ncdr a))) ; (al ah) b -> can use fxqr primop
-            ;   (let ((tl (ncdr a)))
-            ;      (fxqr (ncar tl) (ncar a) b)))
-            (else
-               (lets
-                  ((ra (nrev a))
-                   (a as ra))
-                  (qr-bs-loop a as b #n)))))
 
       ;;;
       ;;; BITWISE OPERATIONS
@@ -955,174 +944,12 @@ negative type only at the root node.
                         (else (muli b a))))                  ; otherwise use other branches
                   (else (big-bad-args 'mul a b))))))
 
-      ;;; comparison (rationals need mul)
 
-
-      ; decrease b
-      (define (shift-local-down a b n)
-         (cond
-            ((eq? n 0) 0)
-            ((eq? a b) (- n 1))
-            ((lesser? b a) n)
-            (else
-               (lets ((b over (fx>> b 1)))
-                  (shift-local-down a b (- n 1))))))
-
-      ; increase b
-      (define (shift-local-up a b n)
-         (cond
-            ((eq? a b) (- n 1))
-            ((lesser? a b) (- n 1))
-            (else
-               (lets ((b overflow (fx+ b b)))
-                  (if (eq? overflow 0)
-                     (shift-local-up a b (nat-succ n))
-                     (- n overflow))))))
-
-
-      (define (div-shift a b n)
-         (if (eq? (type a) type-fix+)
-            0
-            (let ((na (ncdr a)) (nb (ncdr b)))
-               (cond
-                  ((null? na)
-                     (if (null? nb)
-                        (let ((b-lead (ncar b)))
-                           (if (eq? b-lead fx-greatest)
-                              (if (eq? n 0)
-                                 0
-                                 (shift-local-down (ncar a) fx-greatest>>1 (- n 1)))
-                              (let ((aa (ncar a)) (bb (+ b-lead 1)))
-                                 ; increment b to ensure b'000.. > b....
-                                 (cond
-                                    ((lesser? aa bb)
-                                       (shift-local-down aa bb n))
-                                    (else
-                                       (shift-local-up aa bb n))))))
-                        ; divisor is larger
-                        0))
-                  ((null? nb)
-                     (div-shift (ncdr a) b (+ n fx-width)))
-                  (else
-                     (div-shift (ncdr a) (ncdr b) n))))))
-
-      (define (negative? a)
-         (case (type a)
-            (type-fix+ #false)
-            (type-fix- #true)
-            (type-int+ #false)
-            (type-int- #true)
-            (type-rational ;; fixme - move elsewhere
-               (case (type (ncar a))
-                  (type-fix+ #false)
-                  (type-fix- #true)
-                  (type-int+ #false)
-                  (type-int- #true)
-                  (else (error "Bad number: " a))))
-            (else (error 'negative? a))))
-
-      (define positive?
-         (B not negative?))
-
-      (define (integer? a)
-         (case (type a)
-            (type-fix+ #true)
-            (type-fix- #true)
-            (type-int+ #true)
-            (type-int- #true)
-            (else #false)))
-
-
-      (define (nat-quotrem-finish a b out)
-         (let ((next (- a b)))
-            (if (negative? next)
-               (values out a)
-               (nat-quotrem-finish next b (nat-succ out)))))
-
-      (define (nat-quotrem a b)
-         (let loop ((a a) (out 0))
-            (let ((s (div-shift a b 0)))
-               (cond
-                  ; hack warning, -1 0 1 are lesser of 2, but not -2
-                  ; (tag bits including sign are low)
-                  ((lesser? s 2)
-                     (nat-quotrem-finish a b out))
-                  (else
-                     (let ((this (<< b s)))
-                        (loop (- a this) (+ out (<< 1 s)))))))))
-
-      (define (div-big->negative a b)
-         (lets ((q r (nat-quotrem a b)))
-            (negate q)))
-
-      ;; fixme: big division is ugly and slow
-      (define (div-big-qr a b)
-         (lets ((q r (nat-quotrem a b))) q))
-
-      (define (truncate/ a b)
-         (if (eq? b 0)
-            (big-bad-args 'truncate/ a b)
-            (case (type a)
-               (type-fix+
-                  (case (type b)
-                     (type-fix+ (receive (fxqr 0 a b) (lambda (_ q r) (values q r))))
-                     (type-int+ (values 0 a))
-                     (type-fix- (receive (fxqr 0 a b) (lambda (_ q r) (values (negate q) r))))
-                     (type-int- (values 0 a))
-                     (else (big-bad-args 'truncate/ a b))))
-               (type-int+
-                  (case (type b)
-                     (type-fix+ (receive (qr-big-small a b) (lambda (q r) (values q r))))
-                     (type-int+ (nat-quotrem a b))
-                     (type-fix- (receive (qr-big-small a b) (lambda (q r) (values (negate q) r))))
-                     (type-int- (receive (nat-quotrem a (negate b))
-                              (lambda (q r) (values (negate q) r))))
-                     (else (big-bad-args 'truncate/ a b))))
-               (type-fix-
-                  (case (type b)
-                     (type-fix+
-                        (receive (fxqr 0 a b) (lambda (_ q r) (values (negate q) (negate r)))))
-                     (type-fix- (receive (fxqr 0 a b) (lambda (_ q r) (values q (negate r)))))
-                     (type-int+ (values 0 a))
-                     (type-int- (values 0 a))
-                     (else (big-bad-args 'truncate/ a b))))
-               (type-int-
-                  (case (type b)
-                     (type-fix+
-                        (lets ((q r (qr-big-small a b)))
-                           (values (negate q) (negate r))))
-                     (type-fix- (receive (qr-big-small a b) (lambda (q r) (values q (negate r)))))
-                     (type-int+ (receive (nat-quotrem (negate a) b)
-                              (lambda (q r) (values (negate q) (negate r)))))
-                     (type-int- (receive (nat-quotrem (negate a) (negate b))
-                              (lambda (q r) (values q (negate r)))))
-                     (else (big-bad-args 'truncate/ a b))))
-               (else
-                  (big-bad-args 'truncate/ a b)))))
 
       ;;;
       ;;; REMAINDER
       ;;;
 
-      (define (nat-rem-finish a b)
-         (let ((ap (- a b)))
-            (if (negative? ap)
-               a
-               (nat-rem-finish ap b))))
-
-      ;; substract large b*2^n's until a < b
-      (define (nat-rem-simple a b)
-         (let loop ((a a))
-            (let ((s (div-shift a b 0)))
-               (cond
-                  ; hack warning, -1 0 1 are lesser of 2, but not -2
-                  ; (tag bits including sign are low)
-                  ((lesser? s 2)
-                     (nat-rem-finish a b))
-                  (else
-                     (loop (- a (<< b s))))))))
-
-      ;; reverse number remainder
 
       (define (rsub a b) ; -> a' borrow|null
          (cond
@@ -1190,24 +1017,24 @@ negative type only at the root node.
                    (bp (rmul-digit b f))
                    (ap (rev-sub a bp)))
                   (if ap (rrem ap b) a)))
-            ((rev-sub a b) => (C rrem b))
+            ((rev-sub a b) => (C rrem b)) ; <- check later
             (else
                (lets
                   ((h _ (fx+ (ncar b) 1))
-                   (f r (qr-big-small (ncons (ncar (ncdr a)) (ncons (ncar a) #n)) h)) ; FIXME, use fxqr instead
+                   (fh fl r (fxqr (ncar a) (ncar (ncdr a)) h))
                    )
-                  (if (eq? (type f) type-fix+)
+                  (if (eq? fh 0)
                      (lets
-                        ((bp (rmul-digit b f))
+                        ((f fl)
+                         (bp (rmul-digit b f))
                          (ap (rev-sub a bp))
-                         (ap (or ap (rev-sub a (ncons 0 bp)))))
+                         (ap (or ap (rev-sub a (ncons 0 bp))))
+                         )
                         (if ap (rrem ap b) a))
                      (lets
-                        ((f (cadr f))
+                        ((f fh)
                          (bp (rmul-digit b f))
-                         ;(ap (rev-sub a bp))
-                         (ap #false)
-                         (ap (or ap (rev-sub a (ncons 0 bp)))))
+                         (ap (rev-sub a (ncons 0 bp))))
                         (if ap (rrem ap b) a)))))))
 
       (define (nat-rem-reverse a b)
@@ -1225,12 +1052,11 @@ negative type only at the root node.
                         (else (nrev r))))))))
 
 
-      (define nat-rem nat-rem-simple)    ; better for same sized numers
-      ;(define nat-rem nat-rem-reverse)    ; better when b is smaller ;; FIXME - not yet for variable sized fixnums
+      (define nat-rem nat-rem-reverse)    ; better when b is smaller ;; FIXME - not yet for variable sized fixnums
 
 
       ;;;
-      ;;; Exact division
+      ;;; EXACT DIVISION
       ;;;
 
       ;; this algorithm is based on the observation that the lowest digit of
@@ -1302,71 +1128,91 @@ negative type only at the root node.
       (define ediv divide-exact)
 
 
-      ;; the same can be generalized for base B, where 2^16 is convenient given that it is the
-      ;; base in which bignums are represented in owl. the lowest digit will have
 
-      ;; fixme, add ^
+      ;;;
+      ;;; INTEGER DIVISION
+      ;;;
 
+      (define (nat-quotrem a b)
+         (let ((r (nat-rem a b)))
+            (values (ediv (- a r) b) r)))
 
-      ;;; alternative division
+      (define (div-big->negative a b)
+         (lets ((q r (nat-quotrem a b)))
+            (negate q)))
 
-      (define (div-big-exact a b) (ediv (- a (nat-rem a b)) b))
+      ; walk down a and compute each digit of quotient using the top 2 digits of a
+      (define (qr-bs-loop a1 as b out)
+         (if (null? as)
+            (if (null? (ncdr out))
+               (values (ncar out) a1)
+               (values out a1))
+            (lets
+               ((a2 as as)
+                (q1 q2 r (fxqr a1 a2 b)))
+               (if (eq? q1 0)
+                  (qr-bs-loop r as b (ncons q2 out))
+                  (qr-bs-loop r as b (ncons q2 (ncons q1 out)))))))
 
-      (define div-big div-big-exact)
+      (define (qr-big-small a b) ; -> q r
+         (cond
+            ((eq? b 0)
+               (big-bad-args 'qr-big-small a b))
+            (else
+               (lets
+                  ((ra (nrev a))
+                   (a as ra))
+                  (qr-bs-loop a as b #n)))))
 
-      ;;; continue old general division
-
-      (define (div-fixnum->negative a b)
-         (lets ((_ q r (fxqr 0 a b)))
-            (if (eq? q 0)
-               q
-               (to-fix- q))))
-
-      (define (div-big-num->negative a b)
-         (lets ((q r (qr-big-small a b)))
-            (case (type q)
-               (type-fix+ (to-fix- q))
-               (else (to-int- q)))))
-
-      ; todo, drop this and use just truncate/
-      (define (quotient a b)
+      (define (truncate/ a b)
          (if (eq? b 0)
-            (big-bad-args 'quotient a b)
+            (big-bad-args 'truncate/ a b)
             (case (type a)
                (type-fix+
                   (case (type b)
-                     (type-fix+ (lets ((_ q r (fxqr 0 a b))) q))   ; +a / +b -> +c
-                     (type-fix- (div-fixnum->negative a b))                  ; +a / -b -> -c | 0
-                     (type-int+ 0)                                             ; +a / +B -> 0
-                     (type-int- 0)                                             ; +a / -B -> 0
-                     (else (big-bad-args 'quotient a b))))
-               (type-fix-
-                  (case (type b)
-                     (type-fix+ (div-fixnum->negative a b))                  ; -a / +b -> -c | 0
-                     (type-fix- (lets ((_ q r (fxqr 0 a b))) q))             ; -a / -b -> +c
-                     (type-int+ 0)                                           ; -a / +B -> 0
-                     (type-int- 0)                                             ; -a / -B -> 0
-                     (else (big-bad-args 'quotient a b))))
+                     (type-fix+ (receive (fxqr 0 a b) (lambda (_ q r) (values q r))))
+                     (type-int+ (values 0 a))
+                     (type-fix- (receive (fxqr 0 a b) (lambda (_ q r) (values (negate q) r))))
+                     (type-int- (values 0 a))
+                     (else (big-bad-args 'truncate/ a b))))
                (type-int+
                   (case (type b)
-                     (type-fix+ (lets ((q r (qr-big-small a b))) q))   ; +A / +b -> +c | +C
-                     (type-fix- (div-big-num->negative a b))            ; +A / -b -> -c | -C
-                     (type-int+ (div-big a b))                           ; +A / +B -> 0 | +c | +C
-                     (type-int- (div-big->negative a (negate b)))      ; +A / -B -> 0 | -c | -C
-                     (else (big-bad-args 'quotient a b))))
+                     (type-fix+ (receive (qr-big-small a b) (lambda (q r) (values q r))))
+                     (type-int+ (nat-quotrem a b))
+                     (type-fix- (receive (qr-big-small a b) (lambda (q r) (values (negate q) r))))
+                     (type-int- (receive (nat-quotrem a (negate b))
+                              (lambda (q r) (values (negate q) r))))
+                     (else (big-bad-args 'truncate/ a b))))
+               (type-fix-
+                  (case (type b)
+                     (type-fix+
+                        (receive (fxqr 0 a b) (lambda (_ q r) (values (negate q) (negate r)))))
+                     (type-fix- (receive (fxqr 0 a b) (lambda (_ q r) (values q (negate r)))))
+                     (type-int+ (values 0 a))
+                     (type-int- (values 0 a))
+                     (else (big-bad-args 'truncate/ a b))))
                (type-int-
                   (case (type b)
-                     (type-fix+ (div-big-num->negative a b))            ; -A / +b -> -c | -C
-                     (type-fix- (lets ((q r (qr-big-small a b))) q))    ; -A / -b -> +c | +C
-                     (type-int+ (div-big->negative (negate a) b))                     ; -A / +B -> 0 | -c | -C
-                     (type-int- (div-big (negate a) (negate b)))                              ; -A / -B -> 0 | +c | +C
-                     (else (big-bad-args 'quotient a b))))
-               (else (big-bad-args 'quotient a b)))))
+                     (type-fix+
+                        (lets ((q r (qr-big-small a b)))
+                           (values (negate q) (negate r))))
+                     (type-fix- (receive (qr-big-small a b) (lambda (q r) (values q (negate r)))))
+                     (type-int+ (receive (nat-quotrem (negate a) b)
+                              (lambda (q r) (values (negate q) (negate r)))))
+                     (type-int- (receive (nat-quotrem (negate a) (negate b))
+                              (lambda (q r) (values q (negate r)))))
+                     (else (big-bad-args 'truncate/ a b))))
+               (else
+                  (big-bad-args 'truncate/ a b)))))
+
+
+      (define (quotient a b)
+         (lets ((q r (truncate/ a b))) q))
 
       (define-syntax fx%
          (syntax-rules ()
             ((fx% a b)
-               (lets ((q1 q2 r (fxqr 0 a b))) r))))
+               (lets ((q1 a2 r (fxqr 0 a b))) r))))
 
       (define (rem a b)
          (case (type a)
@@ -1427,4 +1273,6 @@ negative type only at the root node.
                (rem a b))))
 
       (define * muli)
+
+      (define / quotient)
 ))

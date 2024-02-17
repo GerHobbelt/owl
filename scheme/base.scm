@@ -245,11 +245,10 @@
       (owl equal)
       (owl list)
       (only (owl function) procedure?)
-      (only (owl lcd ff) get)
+      (only (owl ff) get)
       (only (owl syscall) error)
       (only (owl variable) link-variable)
       (owl string)
-      (owl primop)
       (owl math)
       (owl math extra)
       (owl bytevector)
@@ -265,7 +264,7 @@
    (begin
 
       (define-syntax define-symbols
-         (syntax-rules ()
+         (syntax-rules (define-values values)
             ((define-symbols x ...)
                (define-values (x ...)
                   (values (quote x) ...)))))
@@ -463,5 +462,5 @@
       (define-missing-bad call-with-port)
       (define-missing-bad bytevector-u8-set!)
       (define-missing-bad bytevector-copy!)
-
+      (define-missing-bad define-record-type) ;; to be replaced
 ))

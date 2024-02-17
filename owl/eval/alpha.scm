@@ -1,13 +1,13 @@
 #| doc
-This library is used internally to convert all variables to unique ones to
-avoid having to track variable shadowing.
+Alpha Conversion
+
+This step renames all variables to fresh symbols. This is not strictly necessary, but
+it makes some compilation steps easier.
 |#
 
 ;;;
 ;;; Alpha conversion
 ;;;
-
-; convert all variables to fresh symbols. makes compilation easier.
 
 (define-library (owl eval alpha)
 
@@ -23,7 +23,7 @@ avoid having to track variable shadowing.
       (owl io)
       (owl eval data)
       (only (owl syscall) error)
-      (owl lcd ff))
+      (owl ff))
 
    (begin
 

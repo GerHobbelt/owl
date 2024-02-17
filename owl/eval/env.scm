@@ -1,3 +1,10 @@
+#| doc
+Environment
+
+Evaluation happens in an environment. An environment maps variables to values. This library
+defines operations on the environment structure used by the compiler.
+|#
+
 (define-library (owl eval env)
 
    (export
@@ -5,7 +12,7 @@
       empty-env
       apply-env env-fold
       verbose-vm-error prim-opcodes opcode->wrapper primop-of primitive?
-      poll-tag name-tag link-tag buffer-tag signal-tag thread-quantum meta-tag
+      poll-tag link-tag buffer-tag signal-tag thread-quantum
       current-library-key
       env-set-macro *tabula-rasa* env-del
       env-get ;; env key default → val | default
@@ -19,7 +26,7 @@
 
    (import
       (owl core)
-      (owl lcd ff)
+      (owl ff)
       (owl function)
       (owl list)
       (owl tuple)
@@ -31,17 +38,12 @@
       (owl io)
       (owl port)
       (owl eval data)
-      ;(only (owl syntax-rules)
-      ;   define-syntax-transformer
-      ;   syntax-transformer
-      ;   ) ;; <- for define-syntax-ng (transitional)
       (scheme base)
-      (scheme cxr)
-      (owl primop))
+      (scheme cxr))
 
    (begin
 
-      (define empty-env empty) ;; will change with ff impl
+      (define empty-env empty)
 
       (define env-del del)
 
@@ -49,8 +51,6 @@
       (define buffer-tag "mcp/buffs")
       (define link-tag "mcp/links")
       (define signal-tag "mcp/break")
-      (define meta-tag '*owl-metadata*) ; key for object metadata
-      (define name-tag '*owl-names*)    ; key for reverse function/object → name mapping
       (define current-library-key '*owl-source*) ; toplevel value storing what is being loaded atm
 
       (define thread-quantum 10000)
@@ -192,7 +192,7 @@
       (define (apply-env exp env)
          (call/cc
             (λ (ret)
-               (ok 
+               (ok
                   ((walker env (B ret fail)) exp)
                   env
                   ))))
@@ -200,31 +200,30 @@
       (define (env-fold o s ff)
          (ff-fold o s ff))
 
-      (define (env-serializer env thing)
-         ((make-serializer
-            empty
-           ; (env-get env name-tag empty)
-           )
-            thing #n))
 
+      ;; Functions can be bytecode, procedures or closures, where in the latter 
+      ;; two cases the first field contains the underlying bytecode/procedure.
+      (define (subfunction-of? val sub)
+         (cond
+            ((eq? val sub) #true)
+            ((function? val)
+               (subfunction-of? (ref val 1) sub))
+            (else #false)))
+            
+      (define (maybe-names env x)
+               (ff-fold
+                  (lambda (found key val)
+                        (if (eq? (ref val 1) 'defined) ;; otherwise macro
+                           (let ((value (ref (ref val 2) 2)))
+                              (if (subfunction-of? value x)
+                                 (cons key found)
+                                 found))
+                           found)) 
+                  '() env))
+         
+      ;; fixme: move elsewhere 
       (define (verbose-vm-error env opcode a b)
          (case opcode
-            ((61)
-            ;; arity error, could be variable
-            ; this is either a call, in which case it has an implicit continuation,
-            ; or a return from a function which doesn't have it. it's usually a call,
-            ; so -1 to not count continuation. there is no way to differentiate the
-            ; two, since there are no calls and returns, just jumps.
-               (let ((func (list->string (env-serializer env a))))
-                  ;; use the updated renderer from toplevel to possibly get a name for the function
-                  (cond
-                     ((fixnum? b)
-                        `(arity error ,func got ,b arguments))
-                     ((function? (ref b 1))
-                        `(arity error ,func arguments ,(cdr (tuple->list b))
-                        or return arity error where first is function))
-                     (else
-                        `(wrong number of returned values ,(tuple->list b))))))
             ((0)
                `("error: bad call: operator" ,a "- args w/ cont" ,b))
             ((105)
@@ -234,7 +233,8 @@
             ((256)
                `("error: hit unimplemented opcode" ,a))
             (else
-               `("error: instruction" ,(primop-name opcode) "reported error:" ,a ,b))))
+               `("error: " ,(primop-name opcode) "reported error:" 
+                   ,a ,(maybe-names env a) ,b))))
 
       ;; ff of wrapper-fn → opcode
       (define prim-opcodes
@@ -261,7 +261,7 @@
 
       ;; only special forms supported by the compiler, no primops etc
       (define *tabula-rasa*
-         (->
+         (pipe
             (list->ff
                (list
                   ;; special forms.
@@ -273,12 +273,10 @@
                   (cons '_define (tuple 'special '_define)) ;; handled by repl
                   (cons 'values   (tuple 'special 'values)) ;; ends up as as regular call to continuation during compilation
                   ))
-            ; (env-set-macro 'define-syntax-ng define-syntax-transformer)
             ; (env-set 'syntax-transformer syntax-transformer)
             ))
 
       ;; take a subset of env
-      ;; fixme - misleading name
       (define (env-keep env namer)
          (env-fold
             (λ (out name value)

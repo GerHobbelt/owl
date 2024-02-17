@@ -1,5 +1,9 @@
 #| doc
-This library defines various system calls and wrappers for calling them.
+System Interface
+
+This library defined various system calls and wrappers for calling them.
+The calls available are mainly frequently needed ones defined in the POSIX
+standard, or otherwise portable enough to be available in most systems these days.
 |#
 
 (define-library (owl sys)
@@ -92,16 +96,17 @@ This library defines various system calls and wrappers for calling them.
       (owl port)
       (owl list)
       (owl vector)
-      (only (owl primop) halt))
+      (only (owl unicode) utf8-decode)
+      )
 
    (begin
 
-      (define-syntax sc
-         (syntax-rules (sys-const)
-            ((sc name index) (define name (sys-const index)))))
-
       (define (sys-const i)
          (λ () (sys-prim 8 i #f #f)))
+
+      (define-syntax sc
+         (syntax-rules (define)
+            ((sc name index) (define name (sys-const index)))))
 
       ;; owl value → value processable in vm (mainly string conversion)
       (define (sys-arg x)
@@ -344,12 +349,22 @@ This library defines various system calls and wrappers for calling them.
       (define (open-dir path)
          (sys 11 path))
 
+
+      (define (maybe-read-unicode-string ptr)
+         (let ((data (mem-string (sys 12 ptr))))
+            (if data
+               (let ((decoded (utf8-decode (string->list data))))
+                  (if decoded
+                     (list->string decoded)
+                     data))
+               #false)))
+
       ;; unsafe-dirfd → #false | eof | raw-string
       (define (read-dir obj)
          (and
             (integer? obj)
             (or
-               (mem-string (sys 12 obj))
+               (maybe-read-unicode-string obj)
                (and (zero? (errno)) (eof-object)))))
 
       (define (close-dir obj)

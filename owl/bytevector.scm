@@ -1,8 +1,19 @@
 #| doc
-Byte vectors are vectors holding only numbers in the range 0-255. 
-They are internally represented as chunks of memory in the garbage collected heap.
-Typical use cases for them is packing data for an operating system call, 
-  or receiving data from an external source.
+Byte Vectors
+
+Byte vectors are vectors holding only numbers in the range 0-255. They are
+internally represented as chunks of memory in the garbage collected heap.
+Typical use cases for them is packing data for an operating system call, or
+receiving data from an external source.
+
+Vectors and byte vectors differ from Scheme in that they are not disjoint
+types. Regular vectors can be, or can contain, byte vectors if the content
+happens to fit in the range representable by bytes. This makes it possible
+to use a more compact representation of data where possible. Representation
+changes to regular vectors where necessary, much like numbers are converted
+from fixnums to bignums where the values would no longer be representable
+by fixnums.
+
 |#
 
 (define-library (owl bytevector)
