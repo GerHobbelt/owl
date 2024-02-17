@@ -3,19 +3,21 @@
 
    (export
       sexp-parser
-      read-exps-from
+      sexp-stream-parser
       list->number
       get-sexps         ;; greedy* get-sexp
       get-padded-sexps  ;; whitespace at either end
       string->sexp
       vector->sexps
       list->sexps
+      byte-stream->sexp-stream   ;; fd -> ll of sexps, and print syntax errors (new)
       read read-ll)
 
    (import
       (owl core)
       (owl eof)
       (prefix (owl parse) get-)
+      (only (owl parse) syntax-error? syntax-errors-as-values report-syntax-error)
       (owl math)
       (owl string)
       (owl list)
@@ -35,7 +37,11 @@
    (begin
 
       ;; character classes
-      (define classes #u8(0 0 0 0 0 0 0 0 0 8 8 8 8 8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 8 1 16 0 1 1 1 0 0 0 1 3 0 3 2 1 6 6 6 6 6 6 6 6 6 6 1 0 1 1 1 1 1 5 37 5 37 69 5 1 1 65 1 1 1 1 1 33 1 1 1 1 1 1 1 1 33 1 1 0 16 0 1 1 0 21 53 5 37 69 5 1 1 65 1 1 1 1 17 33 1 1 17 1 17 1 1 1 33 1 1 0 16 0 1 0))
+      (define classes
+         #u8(0 0 0 0 0 0 0 0 0 8 8 8 8 8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 8
+             1 16 0 1 1 1 0 0 0 1 3 0 3 2 1 6 6 6 6 6 6 6 6 6 6 1 0 1 1 1 1 1
+             5 37 5 37 69 5 1 1 65 1 1 1 1 1 33 1 1 1 1 1 1 1 1 33 1 1 0 16 0
+             1 1 0 21 53 5 37 69 5 1 1 65 1 1 1 1 17 33 1 1 17 1 17 1 1 1 33 1 1 0 16 0 1 0))
 
       (define-syntax is-class?
          (syntax-rules (x)
@@ -220,6 +226,7 @@
 
       (define maybe-whitespace (get-star! get-a-whitespace))
 
+
       ; (
       (define (get-list-of parser)
          (get-parses
@@ -403,24 +410,6 @@
              (skip maybe-whitespace))
             data))
 
-      ;; fixme: new error message info ignored, and this is used for loading causing the associated issue
-      (define (read-exps-from data done fail)
-         (lets/cc ret  ;; <- not needed if fail is already a cont
-            ((data
-               (utf8-decoder data
-                  (λ (self line data)
-                     (ret (fail (list "Bad UTF-8 data on line " line ": " (ltake line 10))))))))
-            (sexp-parser data
-               (λ (data drop val pos)
-                  (cond
-                     ((eof-object? val) (reverse done))
-                     ((null? data) (reverse (cons val done))) ;; only for non-files
-                     (else (read-exps-from data (cons val done) fail))))
-               (λ (pos reason)
-                  (if (null? done)
-                     (fail "syntax error in first expression")
-                     (fail (list 'syntax 'error 'after (car done) 'at pos))))
-               0)))
 
       (define (list->number lst base)
          (get-try-parse (get-number-in-base base) lst #false #false #false))
@@ -444,6 +433,27 @@
       (define (list->sexps lst fail errmsg)
          ; try-parse parser data maybe-path maybe-error-msg fail-val
          (get-try-parse get-padded-sexps lst #false errmsg #false))
+
+
+      (define whitespace-value "ws") ;; any eq?
+
+      (define sexp-stream-parser
+         (get-either sexp-parser
+            (get-parses
+               ((_ (get-plus! get-a-whitespace)))
+               whitespace-value)))
+
+      (define (byte-stream->sexp-stream ll)
+         (lkeep
+            (lambda (result)
+               (cond
+                  ((eq? result whitespace-value)
+                     ;; drop a plain whitespace value, which is allowed at end of file
+                     #f)
+                  (else
+                     #t)))
+            (get-byte-stream->exp-stream ll sexp-stream-parser syntax-errors-as-values)))
+
 
       (define (read-port port)
          (get-fd->exp-stream port sexp-parser (get-silent-syntax-fail null)))

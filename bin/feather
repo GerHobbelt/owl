@@ -177,10 +177,10 @@
          "")
       ((equal? (car example) 'let)
          (let ((example (cdr example)))
-            (str " - let #{" (render-unquoted (car example)) "} = #{" (render-unquoted (caddr example)) "}\n"
+            (str " - let `" (render-unquoted (car example)) "` = `" (render-unquoted (caddr example)) "`\n"
                (render-example (cdddr example)))))
       ((equal? (cadr example) '=)
-            (str " - #{" (render-unquoted (car example)) "} = #{" (render-unquoted (caddr example)) "}\n"
+            (str " - `" (render-unquoted (car example)) "` = `" (render-unquoted (caddr example)) "`\n"
                (render-example (cdddr example))))
       (else
          (error "weird example: " (list (car example) " in " example)))))
@@ -196,7 +196,7 @@
          "\n"
          "Exported values:\n\n"
          (foldr
-            (λ (x tl) (str " - #{" x "}\n" tl))
+            (λ (x tl) (str " - `" x "`\n" tl))
             "" (get doc 'exports #null))
          "\n"
          (if (get doc 'examples #f)

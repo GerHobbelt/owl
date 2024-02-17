@@ -32,7 +32,12 @@
       (owl syntax-rules)
       (only (owl sys) get-heap-bytes-written) ;; <- could be moved to some profiling
       (only (owl readline) port->readline-byte-stream)
-      (only (owl parse) fd->exp-stream byte-stream->exp-stream file->exp-stream try-parse silent-syntax-fail resuming-syntax-fail)
+      (only (owl parse) fd->exp-stream fd->sexp-stream byte-stream->exp-stream file->exp-stream try-parse
+         silent-syntax-fail
+         silent-syntax-fail-at-end
+         syntax-error? report-syntax-error syntax-errors-as-values
+         resuming-syntax-fail
+         )
       (prefix (only (owl parse) plus) get-kleene-)
       (owl function)
       (owl lazy)
@@ -64,6 +69,8 @@
       (define library-key '*libraries*)     ;; list of loaded libraries
       (define features-key '*features*)     ;; list of implementation feature symbols
       (define includes-key '*include-dirs*) ;; paths where to try to load includes from
+      (define libraries-var '*libs*)        ;; toplevel variable which holds currently loaded (r7rs-style) libraries
+      (define loaded-key    '*loaded*)      ;; loaded paths
 
       (define definition?
          (H match (list '_define symbol? ?)))
@@ -73,9 +80,6 @@
 
       (define multi-definition?
          (H match (list '_define list? ?)))
-
-      ;; toplevel variable which holds currently loaded (r7rs-style) libraries
-      (define libraries-var '*libs*)
 
       (define error-port stderr)
 
@@ -99,10 +103,10 @@
          (H match (list 'unquote symbol?)))
 
       (define (mark-loaded env path)
-         (let ((loaded (env-get env '*loaded* #n)))
+         (let ((loaded (env-get env loaded-key #n)))
             (if (member path loaded)
                env
-               (env-set env '*loaded*
+               (env-set env loaded-key
                   (cons path loaded)))))
 
       ;; values used by the repl to signal they should be printed as such, not rendered as a value
@@ -135,8 +139,8 @@
                   ((now (time-ns))
                    (alloc-pre (get-heap-bytes-written))
                    (val (thunk)) ;; <- assumes just one returned value for now
-                   (elapsed-ns (- (time-ns) now))
-                   (alloc-post (get-heap-bytes-written)))
+                   (alloc-post (get-heap-bytes-written))
+                   (elapsed-ns (- (time-ns) now)))
                   (print ";; heap " (format-number (- alloc-post alloc-pre)))
                   (print ";; time " (format-time elapsed-ns))))
             (lambda (error)
@@ -167,16 +171,28 @@
       (define (symbols? exp)
          (and (list? exp) (every symbol? exp)))
 
+      (define (stdin-sexp-stream env)
+         (byte-stream->sexp-stream
+            (if (env-get env '*readline* #f)
+               (port->readline-byte-stream stdin)
+               (port->byte-stream stdin))))
+
+      (define (fd-sexp-stream port)
+         (byte-stream->sexp-stream
+            (port->byte-stream port)))
+
+      (define (file-sexp-stream path)
+         (let ((fd (open-input-file path)))
+            (and fd
+               (fd-sexp-stream fd))))
+
       ;; repl-cont is env, input -> program-exit, directly or via tail call to repl-cont
       (define (repl-load repl-cont repl-exps path in env)
          (lets
             ((exps ;; find the file to read
                (or
-                  (file->exp-stream path sexp-parser (silent-syntax-fail #n))
-                  (file->exp-stream
-                     (string-append (env-get env '*owl* "NA") path)
-                     sexp-parser
-                     (silent-syntax-fail #n)))))
+                  (file-sexp-stream path)
+                  (file-sexp-stream (string-append (env-get env '*owl* "NA") path)))))
             (if exps
                (lets
                   ((interactive? (env-get env '*interactive* #false)) ; <- switch prompt during loading
@@ -482,8 +498,11 @@
                      (lets ((status env (try-autoload env repl lib)))
                         (cond
                            ((eq? status 'ok)
-                              ;; env now contains the library
-                              ((import-iset repl ret) env iset))
+                              ;; file loaded, did we get the library?
+                              (lets ((status msg (import-set->library iset (env-get env library-key #n) (lambda (a b) (values a b)))))
+                                 (if (eq? status 'needed)
+                                    (ret (fail (list "Found file, but no library definition in it for" (str iset) ".")))
+                                    ((import-iset repl ret) env iset))))
                            ((eq? status 'error)
                               (ret (fail (list "Failed to load" lib "because" env))))
                            (else
@@ -597,6 +616,9 @@
             ((abort (λ (why) (ret (fail (list "Macro expansion of " exp " failed: " why)))))
              (env exp (macro-expand exp env abort)))
             (cond
+               ((syntax-error? exp)
+                  (report-syntax-error exp)
+                  (fail (list "syntax errors")))
                ((import? exp)
                   (success (toplevel-library-import env (cdr exp) repl)
                      ((ok value env)
@@ -608,8 +630,7 @@
                   (success (evaluate (caddr exp) env)
                      ((ok value env2)
                         (lets
-                           ((env (env-set env (cadr exp) value))
-                            )
+                           ((env (env-set env (cadr exp) value)))
                            (ok
                               (repl-message
                                  (bytes->string (render ";; Defined " (render (cadr exp) #n))))
@@ -711,6 +732,9 @@
                            (ok last env))
                         ((repl-op? this)
                            (repl-op repl repl (cadr this) in env))
+                        ((syntax-error? this)
+                           (report-syntax-error this)
+                           (fail (list "syntax error")))
                         (else
                            (success (eval-repl this env repl)
                               ((ok result env)
@@ -724,18 +748,6 @@
 
       ;; run the repl on a fresh input stream, report errors and catch exit
 
-      (define (stdin-sexp-stream env)
-         (byte-stream->exp-stream
-            (if (env-get env '*readline* #f)
-               (port->readline-byte-stream stdin)
-               (port->byte-stream stdin))
-            sexp-parser
-            (resuming-syntax-fail
-               (λ (x)
-                  ;; x is not typically a useful error message yet
-                  (print ";; syntax error")
-                  (if (env-get env '*interactive* #false)
-                     (display "> "))))))  ;; reprint prompt
 
       (define eof '(eof))
 
@@ -745,13 +757,21 @@
 
       (define (repl-port env fd)
          (repl env
-            (fd->exp-stream fd sexp-parser (silent-syntax-fail #n))))
+            (fd-sexp-stream fd)))
 
       ;; env -> program exit value (unsigned byte)
+      ;; interactive repl. unlike other versions, here this:
+      ;;  - handles interactive line editing if necessary
+      ;;  - parse errors do not stop processing
       (define (repl-ui env)
          (let loop ((env env) (input (stdin-sexp-stream env)))
             (lets ((exp input (uncons input eof)))
                (cond
+                  ((syntax-error? exp)
+                     (report-syntax-error exp)
+                     (maybe-prompt env)
+                     (loop env input)
+                     #t)
                   ((eq? exp eof)
                      (if (env-get env '*interactive* #false)
                         (print "bye bye _o/~"))

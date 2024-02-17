@@ -5,7 +5,7 @@ PREFIX  := /usr
 BINDIR  := /bin
 MANDIR  := /share/man
 INSTALL := install
-CFLAGS  := -Wall -O2
+CFLAGS  := -O2
 
 CC      := gcc
 MAKE	:= make
@@ -68,6 +68,9 @@ doc/ovm.1.gz: doc/ovm.1
 	gzip -9n <$? >$@
 
 ## other documentation
+
+web-manual.html: web-manual.md
+	pandoc --metadata title=owllisp --toc -f gfm -s $< > $@
 
 web-manual.md: Makefile bin/feather doc/*.md owl/*.scm owl/*/*.scm scheme/*.scm
 	bin/ol -r bin/feather -o web-manual.md \

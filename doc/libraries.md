@@ -33,20 +33,20 @@ for use as follows:
 
 Owl contains a number of builtin libraries. Some of them are general purpose
 ones and others were mainly needed to implement the repl and compiler. A
-listing of readily available libraries can be shown with the #{,libraries} REPL
-command. They are also available in the #{*libraries*} variable, which is
+listing of readily available libraries can be shown with the `,libraries` REPL
+command. They are also available in the `*libraries*` variable, which is
 an association list of library names and the values of the library. There is 
 nothing magical about libraries - they are just values like everything else. 
 
 Libraries can be defined anywhere at toplevel whether using the REPL or loading
 files. There is however a naming and loading convention, which makes it easier
-to load libraries. If a library #{(foo bar baz)} is to be imported and one is
+to load libraries. If a library `(foo bar baz)` is to be imported and one is
 not already loaded, then Owl will automatically attempt to load it from
-#{foo/bar/baz.scm}.
+`foo/bar/baz.scm`.
 
 
 If you know the name of the value you would like to import, but don't know the
-library, then you can search for if using #{,find}.
+library, then you can search for if using `,find`.
 
    > ,find stat
    ,find stat

@@ -212,7 +212,10 @@
                (cons 65 (tuple 'arrow 'up))
                (cons 66 (tuple 'arrow 'down))
                (cons 67 (tuple 'arrow 'right))
-               (cons 68 (tuple 'arrow 'left)))))
+               (cons 68 (tuple 'arrow 'left))
+               (cons #\H (tuple 'home))
+               (cons #\F (tuple 'end))
+               )))
 
       ;; esc[X~
       (define tilde-chars

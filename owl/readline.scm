@@ -89,6 +89,7 @@ traditional readline library does.
       ;;    - alternate position
       ;;    - clipboard
       ;;    - undo buffer
+      ;; todo: ctrl-c = discard line
       ;; todo: ctrl-i = tab
       ;; todo: ctrl-j = enter
       ;; todo: ctrl-t = transpose previous two chars
@@ -234,14 +235,22 @@ traditional readline library does.
                               (loop ll hi left right cx off))))
                      ((enter)
                         (values ll (list->string (append (reverse left) right))))
+                     ((home) ;; beginning of line
+                        (let ((right (append (reverse left) right)))
+                                 (cursor-pos x y)
+                                 (update-line-right right w x) (loop ll hi null right x 0)))
+                     ((end) ;; end of line
+                        (loop (fold (λ (ll x) (cons (tuple 'arrow 'right) ll)) ll (iota 0 1 (length right))) hi left right cx off))
                      ((ctrl key)
                         (case key
                            ((a) ;; beginning of line
                               (let ((right (append (reverse left) right)))
                                  (cursor-pos x y)
                                  (update-line-right right w x) (loop ll hi null right x 0)))
-                           ((e)
+                           ((e) ;; end of line
                               (loop (fold (λ (ll x) (cons (tuple 'arrow 'right) ll)) ll (iota 0 1 (length right))) hi left right cx off))
+                           ;; ((c) ;; discard line
+                           ;;    #;todo)
                            ((w)
                               (let ((bs (tuple 'backspace)))
                                  (loop (backspace-over-word left ll bs #true) hi left right cx off)))
