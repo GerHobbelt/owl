@@ -217,7 +217,7 @@
             (if (null? args)
                (error "rtl-primitive: no type for mkt" args)
                (rtl-primitive regs
-                  (fxbor (<< op 8) (band (value-of (car args)) #xff))
+                  (fxior (<< op 8) (band (value-of (car args)) #xff))
                   formals (cdr args) cont))
             (rtl-args regs args
                (λ (regs args)

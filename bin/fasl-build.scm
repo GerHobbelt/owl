@@ -1,28 +1,11 @@
+,load "owl/sys.scm" ;; fixme: remove after fasl update
+
 (import (owl sys))
-
-(define (execvp args)
-   (let ((cmd (car args)))
-      (if (m/\// cmd)
-         (exec cmd args)
-         (fold
-            (λ (r path)
-               (if (m/^\// path)
-                  (exec (string-append path "/" cmd) args))
-               r)
-            #f
-            (c/:/ (getenv "PATH"))))))
-
-(define (run args)
-   (if-lets ((pid (fork)))
-      (if (eq? pid #t)
-         (or (execvp args) (halt 1))
-         (equal? (wait pid) '(1 . 0)))
-      #f))
 
 (define (build-stat args)
    (lets
       ((start (time-ns))
-       (ret (run args))
+       (ret (system args))
        (final (time-ns)))
       (print "bootstrap: " (quotient (- final start) 1000000) " ms")
       (print "fasl: " (file-size (last args "")) " b")
@@ -31,10 +14,10 @@
 (define (fixed-point args)
    (and
       ; check that the compiling image passes tests
-      (run '("sh" "tests/run" "all" "bin/vm" "fasl/boot.fasl"))
+      (system '("sh" "tests/run" "all" "bin/vm" "fasl/boot.fasl"))
       ; compile fasl
       (build-stat args)
-      (if (run '("cmp" "-s" "fasl/boot.fasl" "fasl/bootp.fasl"))
+      (if (system '("cmp" "-s" "fasl/boot.fasl" "fasl/bootp.fasl"))
          ; move the new image to ol.fasl, if it is a fixed point
          (rename "fasl/bootp.fasl" "fasl/ol.fasl")
          ; otherwise recompile

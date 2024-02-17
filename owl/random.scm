@@ -80,7 +80,7 @@ value.
       ;;;
 
       ;; code assumes this fixnum size
-      (lets ((a b (fxadd #xffffff 1)))
+      (lets ((a b (fx+ #xffffff 1)))
          (if (not (and (eq? a 0) (eq? b 1)))
             (error "unexpected fixnum size" a)))
 
@@ -189,7 +189,7 @@ value.
             (pair (ncar (ref rst 2)) (adhoc-seed->rands rst))))
 
       (define (bit x n)
-         (if (eq? 0 (fxband x n)) 0 1))
+         (if (eq? 0 (fxand x n)) 0 1))
 
       (define (rands->bits rs)
          (lets
@@ -204,9 +204,9 @@ value.
       (define (rands->bytes rs)
          (lets
             ((digit rs (uncons rs 0))
-             (lo (fxband digit #xff))
+             (lo (fxand digit #xff))
              (digit _ (fx>> digit 8))
-             (mid (fxband digit #xff))
+             (mid (fxand digit #xff))
              (hi _ (fx>> digit 8)))
             (ilist lo mid hi
                (λ () (rands->bytes rs)))))
@@ -478,7 +478,7 @@ value.
                (lets
                   ((d rs (uncons rs 0))
                    (n _ (fx- n 1)))
-                  (loop rs (cons (fxband d 255) out) n)))))
+                  (loop rs (cons (fxand d 255) out) n)))))
 
       (define (random-data-file rs path)
          (let

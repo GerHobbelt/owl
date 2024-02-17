@@ -45,7 +45,8 @@
 
    (begin
 
-      ; (parser l r ok) → (ok l' r' val) | (backtrack l r why)
+      ;; (parser l r ok) 
+      ;;   → (ok l' r' val) | (backtrack l r why)
       ;   ... → l|#f r result|error
 
       (define (backtrack l r reason)
@@ -194,7 +195,7 @@
       (define extension-byte
          (parses
             ((b byte)
-             (verify (eq? #b10000000 (fxband b #b11000000)) "Bad extension byte"))
+             (verify (eq? #b10000000 (fxand b #b11000000)) "Bad extension byte"))
             b))
 
       (define (byte-between lo hi)
@@ -292,16 +293,17 @@
                #false)))
 
       (define (try-parse parser data maybe-path maybe-error-msg fail-fn)
-         (lets ((l r val (parser #n data parser-succ)))
-            (cond
-               ((not l)
-                  (if fail-fn
-                     (fail-fn 0 #n)
-                     #false))
-               ((lpair? r) =>
-                  (λ (r)
-                     (backtrack l r "trailing garbage")))
-               (else
-                  ;; full match
-                  val))))
+         (let loop ((try (λ () (parser #n data parser-succ))))
+            (lets ((l r val (try)))
+                (cond
+                  ((not l)
+                     (if fail-fn
+                        (loop (λ () (fail-fn 0 #n)))
+                        #false))
+                  ((lpair? r) =>
+                     (λ (r)
+                        (loop (λ () (backtrack l r "trailing garbage")))))
+                  (else
+                     ;; full match
+                     val)))))
 ))

@@ -16,8 +16,8 @@
    (begin
 
       (define (port? x) (eq? (type x) type-port))
-      (define fd->port (H fxbxor (create-type type-port)))
-      (define port->fd (H fxbxor 0))
+      (define fd->port (H fxxor (create-type type-port)))
+      (define port->fd (H fxxor 0))
 
       (define stdin (fd->port 0))
       (define stdout (fd->port 1))

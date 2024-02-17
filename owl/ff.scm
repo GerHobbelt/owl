@@ -172,12 +172,12 @@ data structures without complex key hashing and collision checks.
       ;; not red → black or #empty
       (define-syntax red?
          (syntax-rules ()
-            ((red? node) (eq? redness (fxband (type node) redness))))) ;; false for black nodes and #empty
+            ((red? node) (eq? redness (fxand (type node) redness))))) ;; false for black nodes and #empty
 
       ;; does a (non-empty) red or black node of size 3 have a right child? 2 never does and 4 always has
       (define-syntax right?
          (syntax-rules ()
-            ((right? node) (eq? rightness (fxband (type node) rightness)))))
+            ((right? node) (eq? rightness (fxand (type node) rightness)))))
 
       ;; preserve structure, intended for debugging only
       (define (color ff)
@@ -248,7 +248,7 @@ data structures without complex key hashing and collision checks.
       (define (ff? obj)
          (if (eq? obj #empty)
             #true
-            (eq? 24 (fxband (type obj) #b1111100))))
+            (eq? 24 (fxand (type obj) #b1111100))))
 
       ;; bytecode above, vm primitive below
       (define-syntax with-ff

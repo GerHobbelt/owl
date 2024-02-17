@@ -722,10 +722,10 @@
             (char->hex b)))
 
       (define get-8bit
-         (get-parses ((hi get-hex) (lo get-hex)) (fxbor (<< hi 4) lo)))
+         (get-parses ((hi get-hex) (lo get-hex)) (fxior (<< hi 4) lo)))
 
       (define get-16bit
-         (get-parses ((hi get-8bit) (lo get-8bit)) (fxbor (<< hi 8) lo)))
+         (get-parses ((hi get-8bit) (lo get-8bit)) (fxior (<< hi 8) lo)))
 
       (define get-32bit
          (get-parses ((hi get-16bit) (lo get-16bit)) (bior (<< hi 16) lo)))

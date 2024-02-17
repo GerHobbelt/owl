@@ -97,7 +97,7 @@ typedef intptr_t wdiff;
 #define BOOL(cval)                  ((cval) ? ITRUE : IFALSE)
 #define immval(desc)                ((hval)(desc) >> IPOS)
 #define fixnump(desc)               (((desc) & 255) == 2)
-#define NR                          190 /* FIXME: should be ~32, see n-registers in register.scm */
+#define NR                          91 /* FIXME: should be ~32, see owl/register.scm:/define.n-registers/ */
 #define header(x)                   V(x)
 #define is_type(x, t)               (((x) & (63 << TPOS | 2)) == ((t) << TPOS | 2))
 #define objsize(x)                  ((hval)(x) >> SPOS)
@@ -1076,7 +1076,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
       case 1:
          A2 = G(A0, ip[1]);
          NEXT(3);
-      case 34: /* FIXME: remove after fasl update */
       case 2: /* jmp-nargs a hi lo */
          if (acc != *ip)
             ip += ip[1] << 8 | ip[2];
@@ -1089,7 +1088,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          A1 = A0;
          A3 = A2;
          NEXT(4);
-      case 4: /* FIXME: remove after fasl update */
       case 6: { /* opcodes 134, 6, 198, 70 */
          word size = *ip++, tmp;
          word *ob;
@@ -1101,7 +1099,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             ob[tmp] = R[*ip++];
          R[*ip++] = (word)ob;
          NEXT(0); }
-      case 54: /* FIXME: remove after fasl update */
       case 7: /* eq? a b r */
          A2 = BOOL(A0 == A1);
          NEXT(3);
@@ -1128,7 +1125,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          if (A0 == load_imms[op >> 6])
             ip += ip[2] << 8 | ip[1];
          NEXT(3);
-      case 55: /* FIXME: remove after fasl update */
       case 18: /* fxand a b r, prechecked */
          A2 = A0 & A1;
          NEXT(3);
@@ -1200,7 +1196,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             A1 = rawp(hdr) ? F(payl_len(hdr)) : IFALSE;
          }
          NEXT(2); }
-      case 56: /* FIXME: remove after fasl update */
       case 29: /* fxior a b r, prechecked */
          A2 = A0 | A1;
          NEXT(3);
@@ -1213,7 +1208,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          while (--n)
             R[*ip++] = tuple[pos++];
          NEXT(0); }
-      case 57: /* FIXME: remove after fasl update */
       case 33: /* fxxor a b r, prechecked */
          A2 = A0 ^ (FMAX << IPOS & A1); /* inherit A0's type info */
          NEXT(3);
@@ -1231,20 +1225,10 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             lst = (word *) lst[2];
          }
          NEXT(4); }
-      case 38: { /* FIXME: remove after fasl update */
-         hval res = immval(A0) + immval(A1);
-         A3 = BOOL(1 << FBITS & res);
-         A2 = F(res);
-         NEXT(4); }
       case 39: { /* fx* a b l h */
          uint64_t res = (uint64_t)immval(A0) * immval(A1);
          A3 = F(res >> FBITS);
          A2 = F(res);
-         NEXT(4); }
-      case 40: { /* FIXME: remove after fasl update */
-         hval r = immval(A0) - immval(A1);
-         A3 = BOOL(1 << FBITS & r);
-         A2 = F(r);
          NEXT(4); }
       case 41: { /* car a r, or cdr d r */
          word *ob = (word *)A0;

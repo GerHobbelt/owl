@@ -37,7 +37,7 @@
             (let ((bytes (bytevector->list code)))
                (if (eq? (car bytes) 0) ;; (0 <hi8> <lo8>) == call extra instruction
                   (lets
-                     ((opcode (fxbor (<< (cadr bytes) 8) (car (cddr bytes))))
+                     ((opcode (fxior (<< (cadr bytes) 8) (car (cddr bytes))))
                       (bytecode (get extras opcode #false)))
                      (if bytecode
                         (code->bytes bytecode extras) ;; <- vanilla bytecode (modulo boostrap bugs)
@@ -260,14 +260,14 @@
          (λ (bs regs fail)
             (lets
                ((a lo8 hi8 bs (get3 (cdr bs)))
-                (jump-len (fxbor (<< hi8 8) lo8)))
+                (jump-len (fxior (<< hi8 8) lo8)))
                (values 'branch (tuple (list "R["a"]=="val) (drop bs jump-len) regs bs regs) regs))))
 
       (define (cify-load-imm val)
          (λ (bs regs fail)
             (lets
                ((hi to bs (get2 (cdr bs)))
-                (val (fxbor (<< hi 2) val)))
+                (val (fxior (<< hi 2) val)))
                (values (list "R["to"]=128*"val"+258;") bs (put regs to 'fixnum)))))
 
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -284,7 +284,7 @@
                   (λ (bs regs fail)
                      (lets
                         ((arity hi8 lo8 bs (get3 (cdr bs)))
-                         (jump-len (fxbor (<< hi8 8) lo8)))
+                         (jump-len (fxior (<< hi8 8) lo8)))
                          (values 'branch
                            (tuple
                               (list "acc==" arity)
@@ -316,7 +316,7 @@
                   (λ (bs regs fail)
                      (lets
                         ((a b lo8 hi8 bs (get4 (cdr bs)))
-                         (jump-len (fxbor (<< hi8 8) lo8)))
+                         (jump-len (fxior (<< hi8 8) lo8)))
                         (values 'branch (tuple (list "R[" a "]==R[" b "]") (drop bs jump-len) regs bs regs) regs))))
                (cons 9 ;; move to from
                   (λ (bs regs fail)
@@ -350,7 +350,7 @@
                ;   (λ (bs regs fail)
                ;      (lets
                ;         ((arity hi8 lo8 bs (get3 (cdr bs)))
-               ;          (jump-len (fxbor (<< hi8 8) lo8)))
+               ;          (jump-len (fxior (<< hi8 8) lo8)))
                ;          (values 'branch
                ;            (tuple
                ;               (list "acc>=" arity)

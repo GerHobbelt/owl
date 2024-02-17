@@ -10,7 +10,7 @@
    (begin
 
       (define *eof-object*
-         (fxbxor '() 4))
+         (fxxor '() 4))
 
       (define (eof-object)
          *eof-object*)
