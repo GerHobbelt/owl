@@ -6,7 +6,7 @@
    (export sort isort quicksort mergesort)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math rational)
       (owl math integer)
       (owl syscall)

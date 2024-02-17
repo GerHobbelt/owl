@@ -22,7 +22,6 @@
 (define elem-ip 20) ;; inverse probability of stopping element addition for linear random data structures
 (define max-bits 128)
 
-
 ;; theorem :: rs → rs' bindings ok?
 
 ; f :: ? → _, keys
@@ -32,7 +31,7 @@
       ((list? x)   (iota 0 1 (length x)))
       ((string? x) (iota 0 1 (string-length x)))
       ((vector? x) (iota 0 1 (vector-length x)))
-      ((ff? x)     (keys x))
+      ;((ff? x)     (keys x))
       (else (error "domain: what is " x))))
 
 ; f :: _ → ?, values
@@ -42,7 +41,7 @@
       ((list? x)   x)
       ((string? x) (string->list x))
       ((vector? x) (vector->list x))
-      ((ff? x)     (ff-fold (λ (out k v) (cons v out)) #n x))
+      ;((ff? x)     (ff-fold (λ (out k v) (cons v out)) #n x))
       (else (error "range: what is " x))))
 
 ;; rs (thing_1 ...) def → rs' thing_i | rs def
@@ -224,7 +223,7 @@
 (import (owl iff))
 
 (define (Iff rs)
-   (let loop ((rs rs) (out #empty))
+   (let loop ((rs rs) (out iempty))
       (lets ((rs n (rand rs elem-ip)))
          (if (eq? n 0)
             (values rs out)
@@ -461,7 +460,7 @@
 
       theorem iff-gen
          ∀ l ∊ (List-of Nat)                                     ; (k_1 k_2 ...)
-            i ← (fold (λ (i k) (iput i k (+ k 1))) #empty l)     ; iff of k_n ⇒ k_n+1
+            i ← (fold (λ (i k) (iput i k (+ k 1))) iempty l)     ; iff of k_n ⇒ k_n+1
             (ifold (λ (ok k v) (and ok (= k (- v 1)))) #true i)  ; check all ff[k_n] = k_n+1
 
       theorem lazy-1
@@ -571,14 +570,14 @@
             ((not (null? unknown))
                (print "Pray tell what are " unknown)
                1)
-            ((getf dict 'help)
+            ((get dict 'help)
                (print "Usage:")
                (print (format-rules cl-handler))
                0)
             (else
                (lets
-                  ((seed (or (getf dict 'seed)  (random-seed)))
-                   (end (getf dict 'rounds))) ; #false if not given
+                  ((seed (or (get dict 'seed)  (random-seed)))
+                   (end (get dict 'rounds))) ; #false if not given
                   (print "Starting random continuous test, seed " seed)
                   (if end
                      (print "Will run up to " end)

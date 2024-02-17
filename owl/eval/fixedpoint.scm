@@ -1,7 +1,7 @@
 #| doc
 Owl does not allow you to use a special toplevel or use mutations to implement recursion.
 Lambdas are the only way to make variable bindings.
-Up to this point the compiler also has `rlambda` functions, 
+Up to this point the compiler also has `rlambda` functions,
    which will end up generating recursive bindings.
 They are essentially to `letrec` what `lambda` is to `let`.
 This compilation step gets rid of all the rlambdas
@@ -11,20 +11,20 @@ This is done by constructing the fixed points manually.
 
 ;; todo: vararg lambdas cannot get self as last parameter!
 
-(define-library (owl fixedpoint)
+(define-library (owl eval fixedpoint)
 
    (export fix-points)
 
    (import
-      (owl defmac)
-      (owl ast)
+      (owl core)
+      (owl eval ast)
       (owl math)
       (owl list)
       (owl equal)
       (owl list-extra)
       (only (owl syscall) error)
       (owl io)
-      (owl env))
+      (owl eval env))
 
    (begin
 

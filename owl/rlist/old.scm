@@ -36,7 +36,7 @@
    ; major abstraction violation anyway).
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl math)
       (owl equal)

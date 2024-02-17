@@ -2,7 +2,7 @@
 This library implements bytecode assembly.
 |#
 
-(define-library (owl assemble)
+(define-library (owl eval assemble)
 
    (export
       assemble-code
@@ -10,13 +10,13 @@ This library implements bytecode assembly.
       small-value?)
 
    (import
-      (owl defmac)
-      (owl ff)
+      (owl core)
+      (owl lcd ff)
       (owl list)
       (owl math)
       (owl list-extra)
       (only (owl syscall) error interact)
-      (only (owl register) allocate-registers n-registers)
+      (only (owl eval register) allocate-registers n-registers)
       (owl primop))
 
    (begin
@@ -32,7 +32,7 @@ This library implements bytecode assembly.
             empty primops))
 
       (define (opcode-arity-ok? op in out)
-         (let ((node (getf primop-arities op)))
+         (let ((node (get primop-arities op)))
             (if node
                (and
                   (or (eq? in  (car node)) (not (car node)))

@@ -44,11 +44,11 @@ up Owl are just fasl-encoded functions.
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl bytevector)
       (owl math)
       (owl primop)
-      (owl ff)
+      (owl lcd ff)
       (owl symbol)
       (owl lazy)
       (only (owl syscall) error)
@@ -88,7 +88,7 @@ up Owl are just fasl-encoded functions.
       (define (partial-object-closure seen obj)
          (cond
             ((immediate? obj) seen)
-            ((getf seen obj) =>
+            ((get seen obj) =>
                (λ (n) (fupd seen obj (+ n 1))))
             (else
                (let ((seen (put seen obj 1)))
@@ -114,7 +114,7 @@ up Owl are just fasl-encoded functions.
             (ff-fold
                (λ (fc val _)
                   (lets ((fp clos fc))
-                     (cons (+ fp 1) (ff-update clos val fp))))
+                     (cons (+ fp 1) (fupd clos val fp))))
                (cons 0 clos) clos)))
 
       (define (render-field clos pos)
@@ -289,20 +289,20 @@ up Owl are just fasl-encoded functions.
                            ;; could just rcons obj to got, but some thigns are special when
                            ;; doing just partial heap transfers
                            (cond
-                              ((symbol? obj)
-                                 ;; symbols must be (re)interned. they are only valid up to equalit within the fasl.
-                                 (decoder ll
-                                    (rcons
-                                       (string->symbol (symbol->string obj))
-                                       got)
-                                    fail))
-                              ((ff? obj)
-                                 ;; WARNING: this is expensive! but correct and used for now
-                                 (ff-bind obj
-                                    (λ (l k v r)
-                                       (decoder ll
-                                          (rcons (ff-union l (put r k v)) got)
-                                          fail))))
+                              ;((symbol? obj)
+                              ;   ;; symbols must be (re)interned. they are only valid up to equalit within the fasl.
+                              ;   (decoder ll
+                              ;      (rcons
+                              ;         (string->symbol (symbol->string obj))
+                              ;         got)
+                              ;      fail))
+                              ;((ff? obj)
+                              ;   ;; WARNING: not safe if obj is invalid
+                              ;   (ff-bind obj
+                              ;      (λ (l k v r)
+                              ;         (decoder ll
+                              ;            (rcons (ff-union l (put r k v)) got)
+                              ;            fail))))
                               (else
                                  (decoder ll (rcons obj got) fail)))))
                      ((eq? kind 2) ; raw, type SIZE byte ...

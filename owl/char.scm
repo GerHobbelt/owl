@@ -11,7 +11,7 @@
       integer->char)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math))
 
    (begin

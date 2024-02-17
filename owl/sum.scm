@@ -1,7 +1,7 @@
 (define-library (owl sum)
 
    (import
-      (owl defmac)
+      (owl core)
       (only (owl math) +)
       (only (owl io) print))
 

@@ -8,10 +8,9 @@ This library defines complex arbitrary precision math functions.
 
    (import
 
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl syscall)
-      (owl ff)
       (only (owl primop) create-type)
 
       (prefix ;; prefix integer operations with i

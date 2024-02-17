@@ -1,17 +1,17 @@
-(define-library (owl cps)
+(define-library (owl eval cps)
 
    (export cps)
 
    (import
-      (owl defmac)
-      (owl ast)
+      (owl core)
+      (owl eval ast)
       (owl list)
       (owl list-extra)
       (owl math)
       (owl gensym)
       (owl io)
       (only (owl syscall) error)
-      (only (owl env) primop? primop-of)
+      (only (owl eval env) primop? primop-of)
       (owl primop))
 
    (begin

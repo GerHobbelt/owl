@@ -3,7 +3,7 @@
 
    (import
       (scheme base)
-      (only (owl defmac) lets)
+      (only (owl core) lets)
       (only (owl math extra) sqrt)
       (only (owl syscall) error))
 

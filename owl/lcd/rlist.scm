@@ -56,10 +56,10 @@ Threfore we have a total complexity of O(log n) for access and update.
 
 |#
 
-(define-library (owl rlist lc-forest)
+(define-library (owl lcd rlist)
 
    (import
-      (owl defmac)
+      (owl core)
       (only (owl syscall) error)
       (owl list))
 

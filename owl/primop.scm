@@ -26,7 +26,7 @@ VM primops
       )
 
    (import
-      (owl defmac))
+      (owl core))
 
    (begin
 

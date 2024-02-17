@@ -1,10 +1,10 @@
 (define-library (owl rlist)
    (import
-      (owl defmac)
+      (owl core)
       (owl proof)
 
       ;; alternative implementations
-      (owl rlist lc-forest) ;; fairly fast, can hold any data, fixnum offset
+      (owl lcd rlist) ;; fairly fast, can hold any data, fixnum offset
       ;(owl rlist old)      ;; fairly fast, can hold non-rlist-node -data, bignum offsets
       ;(owl rlist linear)   ;; reference library using regular lists. can bootstrap ol, barely
       )

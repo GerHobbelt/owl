@@ -5,7 +5,7 @@
       boolean=?)
 
    (import
-      (owl defmac)
+      (owl core)
       (only (owl list) every))
 
    (begin

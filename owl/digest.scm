@@ -30,7 +30,7 @@ return the state words and raw signature bytes correspondingly.
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math)
       (owl list)
       (owl list-extra)

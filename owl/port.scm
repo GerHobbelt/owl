@@ -9,7 +9,7 @@
       stdio-port?)
 
    (import
-      (owl defmac)
+      (owl core)
       (only (owl list) memq)
       (only (owl primop) create-type))
 

@@ -12,11 +12,11 @@ This library introduces seemingly variable values
       link-variable)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl io)
       (only (owl syscall) mail interact wait-mail thread thunk->thread link)
-      (owl ff))
+      (owl lcd ff))
 
    (begin
 
@@ -60,7 +60,7 @@ This library introduces seemingly variable values
                (store val (del env from)))))
 
       (define (start-variable id val)
-         (thread id (store val #empty))
+         (thread id (store val empty))
          (handler id))
 
       (define make-variable

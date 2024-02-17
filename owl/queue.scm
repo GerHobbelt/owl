@@ -25,7 +25,7 @@ Queues (double-ended lists)
       queue->list)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl math)
       (only (owl syscall) error)

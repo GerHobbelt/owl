@@ -18,8 +18,8 @@ valid rational number has q != 0, q != 1, and gcd(p, q) = 1.
       negate)
 
    (import
-      (owl defmac)
-      (owl ff) ;; used in gcd
+      (owl core)
+      (owl lcd ff) ;; used in gcd
       (owl list)
       (only (owl syscall) error)
       (prefix (only (owl math integer) << >> < + - * = rem quotient ediv = negate) i)

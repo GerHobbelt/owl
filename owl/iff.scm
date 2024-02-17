@@ -8,17 +8,19 @@ Number stores (radix trees with a ff at each node)
 
 (define-library (owl iff)
 
-   (export iget iput ifold iff->list)
+   (export iget iput ifold iff->list iempty)
 
    (import
-      (owl defmac)
-      (owl ff)
+      (owl core)
+      (owl lcd ff)
       (only (owl math integer) ncar ncdr ncons)
       (owl list))
 
    (begin
 
       (define tag #false) ;; non-digit special ff key
+
+      (define iempty empty)
 
       (define (iputl ff num val)
          (if (null? num)

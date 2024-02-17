@@ -11,7 +11,7 @@
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math integer)
       (owl list)
       (owl proof)

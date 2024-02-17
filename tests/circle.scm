@@ -1,4 +1,4 @@
-;; Start 10K threads and pass a message through them
+;; Start 10000 threads and pass a message through them
 
 (define n 10000)
 

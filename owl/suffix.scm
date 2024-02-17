@@ -10,7 +10,7 @@ Suffix arrays are a useful data structure for speeding up searches from strings.
    )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math)
       (owl list)
       (owl sort)
@@ -93,7 +93,7 @@ Suffix arrays are a useful data structure for speeding up searches from strings.
             ((sb (add-poss lst 0))
              (sb (cons (cons sentinel (length sb)) sb)) ; add sentinel
              (sb (sort carless sb))
-             (ls bs (chunk sb #empty #n -1)))
+             (ls bs (chunk sb iempty #n -1)))
             (cdr (ssort-steps ls bs 1)))) ; drop the sentinel (is just length of list at car)
 
       (define suffix-list ssort-doubling)

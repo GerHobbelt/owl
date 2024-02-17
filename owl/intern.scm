@@ -21,13 +21,13 @@ Value interning and conversions
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl string)
       (owl syscall)
       (owl list)
       (owl math)
       (owl function)
-      (owl ff)
+      (owl lcd ff)
       (owl tuple)
       (owl symbol))
 

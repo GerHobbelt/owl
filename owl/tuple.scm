@@ -23,7 +23,7 @@ Values are indexed from 1 and there is little error detection
       tuple->list)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (only (owl primop) len object-size)
       (only (owl syscall) error))

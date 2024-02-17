@@ -13,7 +13,7 @@
       read read-ll)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl eof)
       (only (owl parse) fd->exp-stream parses one-of silent-syntax-fail try-parse)
       (prefix (only (owl parse) byte byte-if parses either epsilon greedy-plus greedy-star imm rune rune-if star word) get-)
@@ -23,7 +23,7 @@
       (owl math extra)
       (owl vector)
       (owl list-extra)
-      (owl ff)
+      (owl lcd ff)
       (owl lazy)
       (owl symbol)
       (owl io) ; testing
@@ -103,7 +103,7 @@
                                  char)
                               (get-epsilon #\d))))
                         char))))
-               (getf bases (fxior char 32))) ;; switch to lower case
+               (get bases (fxior char 32))) ;; switch to lower case
             (get-epsilon 10)))
 
       (define (get-natural base)
@@ -313,9 +313,9 @@
             ((type
                (get-either
                   (get-parses ((_ (get-imm #\,)) (_ (get-imm #\@))) 'splice)
-                  (get-byte-if (λ (x) (getf quotations x)))))
+                  (get-byte-if (λ (x) (get quotations x)))))
              (value parser))
-            (list (getf quotations type) value)))
+            (list (get quotations type) value)))
 
       (define get-named-char
          (one-of
@@ -338,30 +338,6 @@
                   (get-epsilon val))))
             res))
 
-      (define (valid-ff-key? val)
-         (or (symbol? val) (immediate? val)))
-
-      (define (ff-able? lst)
-         (cond
-            ((null? lst)
-               #true)
-            ((valid-ff-key? (car lst))
-               (let ((lst (cdr lst)))
-                  (if (null? lst)
-                     #false
-                     (ff-able? (cdr lst)))))
-            (else
-               (print-to stderr "Invalid ff key: " (car lst))
-               #false)))
-
-      (define (lst->ff lst)
-         (let loop ((lst lst) (ff #empty))
-            (if (null? lst)
-               ff
-               (lets ((k lst lst)
-                      (v lst lst))
-                  (loop lst (put ff k v))))))
-
       (define (get-hash-prefixed parser)
          (get-parses
             ((skip get-hash)
@@ -370,7 +346,6 @@
                   (get-letter-word #\f "alse" #false)
                   (get-letter-word #\n "ull" #null)
                   (get-letter-word #\t "rue" #true)
-                  (get-word "empty" #empty)
                   (get-parses ;; character
                      ((skip (get-imm #\\))
                       (codepoint (get-either get-named-char get-rune)))
@@ -394,12 +369,6 @@
                                (verify (lesser? val 256) '(bad u8)))
                               val))))
                      (raw fields type-bytevector))
-                  (get-parses ;; ##(...)
-                     ((skip get-hash)
-                      (fields
-                        (get-list-of parser))
-                      (verify (ff-able? fields) '(bad ff)))
-                     (lst->ff (intern-symbols fields)))
                   (get-parses
                      ((bang (get-imm #\!))
                       (line get-rest-of-line))

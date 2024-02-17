@@ -240,12 +240,12 @@
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl eof)
       (owl equal)
       (owl list)
       (only (owl function) procedure?)
-      (only (owl ff) get)
+      (only (owl lcd ff) get)
       (only (owl syscall) error)
       (only (owl variable) link-variable)
       (owl string)

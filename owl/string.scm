@@ -47,7 +47,7 @@
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl iff)
       (only (owl syscall) error)
       (owl unicode)
@@ -393,7 +393,7 @@
                (if (= (length node) 2)
                   (iput iff (car node) (cadr node))
                   (iput iff (car node) (cdr node))))
-            #empty char-folds))
+            iempty char-folds))
 
       (define (unicode-fold-char codepoint tail)
          (let ((mapping (iget char-fold-iff codepoint codepoint)))

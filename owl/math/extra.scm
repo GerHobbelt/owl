@@ -28,7 +28,7 @@
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl math complex)
       (owl iff)
       (owl list)
@@ -41,7 +41,6 @@
       (prefix (owl math rational) r)
       (only (owl math rational) < > gcd rational)
       (only (owl math integer) << >> band bior ncar ncdr ediv fx-width big-bad-args truncate/ zero?)
-      (owl ff)
       (only (owl syscall) error))
 
    (begin
@@ -235,9 +234,9 @@
       ;;;
       ;;; Variable arity versions
       ;;;
-   
+
       (define add +)
-      
+
       (define +
          (case-lambda
             ((a b) (add a b))
@@ -247,16 +246,16 @@
             (xs (fold add 0 xs))))
 
       (define sub -)
-      
+
       (define -
          (case-lambda
             ((a b) (sub a b))
             ((a) (sub 0 a))
             ((a b . xs)
                (sub a (fold add b xs)))))
-      
+
       (define mul *)
-      
+
       (define *
          (case-lambda
             ((a b) (mul a b))
@@ -449,10 +448,7 @@
       ; n < 3,474,749,660,383, a = 2, 3, 5, 7, 11, and 13.
       ; n < 341,550,071,728,321, a = 2, 3, 5, 7, 11, 13, and 17.
 
-      (define first-primes
-         (list->ff
-            (map (λ (x) (cons x x))
-               '(2 3 5 7 11 13 17))))
+      (define first-primes '(2 3 5 7 11 13 17))
 
       ; divide by 2 (shift 1) while even and count shifts
       (define (miller-qk q k)
@@ -522,7 +518,7 @@
             ((eq? n 1) #false)
             ((eq? n 2) #true)
             ((eq? 0 (band n 1)) #false)
-            ((get first-primes n #false) #true)
+            ((memq n first-primes) #true)
             ((< n 1373653) (miller-rabin-cases-ok? n '(2 3)))
             ((< n 9080191) (miller-rabin-cases-ok? n '(31 73)))
             ((< n 4759123141) (miller-rabin-cases-ok? n '(2 7 61)))
@@ -539,7 +535,7 @@
       ; later apply the knowledge about limits
       (define (atkin-candidates lo max)
          (let ((lim (isqrt max)))
-            (let loox ((store #empty) (x 1))
+            (let loox ((store iempty) (x 1))
                (if (> x lim)
                   store
                   (let looy ((store store) (y 1))
@@ -739,7 +735,7 @@
       ;; find ? such that (expt-mod a ? n) = y
 
       (define (dlp-naive y a n)
-         (let loop ((x 0) (seen empty))
+         (let loop ((x 0) (seen iempty))
             (let ((this (expt-mod a x n)))
                (cond
                   ((= y this) x)
@@ -748,7 +744,7 @@
 
       ;; like naive, but avoids useless multiplications and remainders
       (define (dlp-simple y a n)
-         (let loop ((x 0) (v 1) (seen empty))
+         (let loop ((x 0) (v 1) (seen iempty))
             (cond
                ((>= v n) (loop x (remainder v n) seen)) ; overflow
                ((= v y) x)                             ; solved

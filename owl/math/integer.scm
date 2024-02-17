@@ -48,10 +48,9 @@ negative type only at the root node.
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl list)
       (owl syscall)
-      (owl ff)
       (only (owl primop) create-type))
 
    (begin

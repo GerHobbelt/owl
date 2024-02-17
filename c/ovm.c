@@ -98,7 +98,7 @@ typedef intptr_t wdiff;
 #define BOOL(cval)                  ((cval) ? ITRUE : IFALSE)
 #define immval(desc)                ((hval)(desc) >> IPOS)
 #define fixnump(desc)               (((desc) & 255) == 2)
-#define NR                          91 /* FIXME: should be ~32, see owl/register.scm:/define.n-registers/ */
+#define NR                          98 /* FIXME: should be ~32, see owl/register.scm:/define.n-registers/ */
 #define header(x)                   V(x)
 #define is_type(x, t)               (((x) & (63 << TPOS | 2)) == ((t) << TPOS | 2))
 #define objsize(x)                  ((hval)(x) >> SPOS)
@@ -123,9 +123,6 @@ typedef intptr_t wdiff;
 #define TPORT                       12
 #define TTHREAD                     31
 #define TNUMN                       32
-#define TFF                         24
-#define FFRIGHT                     1
-#define FFRED                       2
 #define TBVEC                       19
 #define TBYTECODE                   16
 #define TPROC                       17
@@ -425,28 +422,6 @@ static word prim_less(word a, word b) {
       return immediatep(b) ? BOOL(a < b) : ITRUE;  /* imm < alloc */
    else
       return immediatep(b) ? IFALSE : BOOL(a < b); /* alloc > imm */
-}
-
-static word prim_get(word *ff, word key, word def) { /* ff assumed to be valid */
-   while ((word)ff != IEMPTY) { /* ff = [header key value [maybe left] [maybe right]] */
-      word this = ff[1], hdr;
-      if (this == key)
-         return ff[2];
-      hdr = *ff;
-      switch (objsize(hdr)) {
-         case 3:
-            return def;
-         case 4:
-            if (key < this)
-               ff = (word *)(1 << TPOS & hdr ? IEMPTY : ff[3]);
-            else
-               ff = (word *)(1 << TPOS & hdr ? ff[3] : IEMPTY);
-            break;
-         default:
-            ff = (word *)(key < this ? ff[3] : ff[4]);
-      }
-   }
-   return def;
 }
 
 static word prim_ref(word pword, hval pos) {
@@ -864,7 +839,7 @@ static word prim_sys(word op, word a, word b, word c) {
          if (rv == 0) {
             word rv = IFALSE;
             while (nth--) {
-               if (res) 
+               if (res)
                   res = res->ai_next;
                if (!res)
                   return INULL;
@@ -901,32 +876,6 @@ static word prim_lraw(word wptr, word type) {
    for (ob = lst; (word)ob != INULL; ob = (word *)ob[2])
       *pos++ = immval(ob[1]);
    return raw;
-}
-
-static word prim_mkff(word t, word l, word k, word v, word r) {
-   word *ob = fp;
-   ob[1] = k;
-   ob[2] = v;
-   if (l == IEMPTY) {
-      if (r == IEMPTY) {
-         *ob = make_header(3, t);
-         fp += 3;
-      } else {
-         *ob = make_header(4, t | FFRIGHT);
-         ob[3] = r;
-         fp += 4;
-      }
-   } else if (r == IEMPTY) {
-      *ob = make_header(4, t);
-      ob[3] = l;
-      fp += 4;
-   } else {
-      *ob = make_header(5, t);
-      ob[3] = l;
-      ob[4] = r;
-      fp += 5;
-   }
-   return (word) ob;
 }
 
 /* TODO: implement this in owl */
@@ -1004,20 +953,6 @@ apply: /* apply something at ob to values in regs, or maybe switch context */
       } else if (hdr == make_header(0, TCLOS)) { /* clos */
          R[1] = (word) ob; ob = (word *) ob[1];
          R[2] = (word) ob; ob = (word *) ob[1];
-      } else if ((hdr >> TPOS & 60) == TFF) { /* low bits have special meaning */
-         word *cont = (word *) R[3];
-         if (acc == 3) {
-            R[3] = prim_get(ob, R[4], R[5]);
-         } else if (acc == 2) {
-            R[3] = prim_get(ob, R[4], (word) 0);
-            if (!R[3])
-               error(260, ob, R[4]);
-         } else {
-            error(259, ob, INULL);
-         }
-         ob = cont;
-         acc = 1;
-         goto apply;
       } else if (!is_type(hdr, TBYTECODE)) { /* not even code, extend bits later */
          error(259, ob, INULL);
       }
@@ -1025,11 +960,6 @@ apply: /* apply something at ob to values in regs, or maybe switch context */
          goto switch_thread;
       ip = (byte *)ob + W;
       goto invoke;
-   } else if ((word)ob == IEMPTY && acc > 1) { /* ff application: (False key def) -> def */
-      ob = (word *) R[3]; /* call cont */
-      R[3] = acc > 2 ? R[5] : IFALSE; /* default arg or false if none */
-      acc = 1;
-      goto apply;
    } else if ((word)ob == IHALT) {
       /* it's the final continuation */
       ob = (word *) R[0];
@@ -1243,13 +1173,17 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          hval size = immval(A1) + 1;
          word *lst = (word *)A2;
          word *ob;
-         allocate(size, ob);
-         A3 = (word) ob;
-         *ob++ = make_header(size, type);
-         while (--size) {
-            assert(pairp(lst), lst, 35);
-            *ob++ = lst[1];
-            lst = (word *) lst[2];
+         if (size < MAXOBJ) {
+            allocate(size, ob);
+            A3 = (word) ob;
+            *ob++ = make_header(size, type);
+            while (--size) {
+               assert(pairp(lst), lst, 35);
+               *ob++ = lst[1];
+               lst = (word *) lst[2];
+            }
+         } else {
+            A3 = IFALSE;
          }
          NEXT(4); }
       case 39: { /* fx* a b l h */
@@ -1271,32 +1205,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
       case 47: /* ref t o r */
          A2 = prim_ref(A0, A1);
          NEXT(3);
-      case 48: /* mk{black,red} l k v r */
-         A4 = prim_mkff(op >> 6 | TFF, A0, A1, A2, A3); /* FFRED is the top bit in op */
-         NEXT(5);
-      case 49: { /* withff node l k v r */
-         word hdr, *ob = (word *)A0;
-         hdr = *ob++;
-         A2 = *ob++; /* key */
-         A3 = *ob++; /* value */
-         switch (objsize(hdr)) {
-            case 3:
-               A1 = A4 = IEMPTY;
-               break;
-            case 4:
-               if (1 << TPOS & hdr) { /* has right? */
-                  A1 = IEMPTY;
-                  A4 = *ob;
-               } else {
-                  A1 = *ob;
-                  A4 = IEMPTY;
-               }
-               break;
-            default:
-               A1 = *ob++;
-               A4 = *ob;
-         }
-         NEXT(5); }
       case 50: { /* run thunk quantum */
          word hdr;
          ob = (word *)A0;

@@ -11,7 +11,7 @@
       thread thunk->thread)
 
    (import
-      (owl defmac)
+      (owl core)
       (owl primop))
 
    (begin

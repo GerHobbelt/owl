@@ -27,7 +27,7 @@ owl cfg parsing combinators and macros
       word
       maybe
 
-      ;; old ones
+      byte-stream->exp-stream
       fd->exp-stream
       file->exp-stream
       silent-syntax-fail
@@ -35,7 +35,7 @@ owl cfg parsing combinators and macros
       )
 
    (import
-      (owl defmac)
+      (owl core)
       (owl function)
       (owl lazy)
       (owl list)
@@ -106,7 +106,7 @@ owl cfg parsing combinators and macros
       (define (maybe x val)
          (either x
             (epsilon val)))
-      
+
       (define (seq a b)
          (λ (l r ok)
             (a l r
@@ -279,23 +279,24 @@ owl cfg parsing combinators and macros
 
       ; (parser l r ok) → (ok l' r' val) | (backtrack l r why)
       ;   ... → l|#f r result|error
-      ;; prompt removed from here - it belongs elsewhere
-      (define (fd->exp-stream fd parser fail)
+      (define (byte-stream->exp-stream ll parser fail)
          (λ ()
-            (let loop ((ll (port->byte-stream fd)))
-               (lets
-                  ((lp r val
-                     (parser #n ll parser-succ)))
-                  (cond
-                     (lp ;; something parsed successfully
-                        (pair val (loop r)))
-                     ((null? r) ;; end of input
-                        ;; typically there is whitespace, so this does not happen
-                        #n)
-                     ((function? fail)
-                        (fail loop r val))
-                     (else
-                        #n))))))
+            (lets ((lp r val (parser #n ll parser-succ)))
+               (cond
+                  (lp ;; something parsed successfully
+                     (pair val (byte-stream->exp-stream r parser fail)))
+                  ((null? r) ;; end of input
+                     ;; typically there is whitespace, so this does not happen
+                     #n)
+                  ((function? fail)
+                     (fail
+                        (λ (ll) (byte-stream->exp-stream ll parser fail))
+                         r val))
+                  (else
+                     #n)))))
+
+      (define (fd->exp-stream fd parser fail)
+         (byte-stream->exp-stream (port->byte-stream fd) parser fail))
 
       (define (file->exp-stream path parser fail)
          ;(print "file->exp-stream: trying to open " path)
@@ -319,7 +320,7 @@ owl cfg parsing combinators and macros
                   (else
                      ;; full match
                      val)))))
-      
+
       (define (first-match parser data fail-val)
          (let loop ((try (λ () (parser #n data parser-succ))))
             (lets ((l r val (try)))
@@ -328,7 +329,7 @@ owl cfg parsing combinators and macros
                      (values fail-val r))
                   (else
                      (values val r))))))
-      
+
       (example
          (first-match byte '(1 2) 'x) = (values 1 '(2))
          (first-match (imm 42) '(1 2) 'x) = (values 'x '(1 2))
