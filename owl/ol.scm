@@ -38,10 +38,10 @@
 
 (import (owl core))   ;; get define, define-library, import, ... from the just loaded (owl core)
 
-(define *interactive* #false) ;; be verbose
+(define *interactive* #false)  ;; be silent
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
 ;(define *owl-names* #empty) ;; default is empty, so safe to remove jh
-(define *owl-version* "0.1.21")
+(define *owl-version* "0.1.22")
 
 (import
    (owl intern)
@@ -90,7 +90,6 @@
      `((help     "-h" "--help")
        (about    "-a" "--about")
        (version  "-v" "--version")
-       (readline "-R" "--readline" comment "enable line editor")
        (evaluate "-e" "--eval"     has-arg comment "evaluate given expression and print result")
        (test     "-t" "--test"     has-arg comment "evaluate given expression exit with 0 unless the result is #false")
        (quiet    "-q" "--quiet"    comment "be quiet (default in non-interactive mode)")
@@ -103,12 +102,11 @@
        (custom-runtime "-C" "--runtime"
           cook ,path->string
           comment "use a custom runtime in C compilation")
-       ;(interactive "-i" "--interactive" comment "use builtin interactive line editor")
        ;(debug    "-d" "--debug" comment "Define *debug* at toplevel verbose compilation")
-       ;(linked  #false "--most-linked" has-arg cook ,string->integer comment "compile most linked n% bytecode vectors to C")
        (mode     "-m" "--mode"    cook ,choose-mode
           default "program"
           comment "output wrapping: program, library, plain")
+       (no-readline #f  "--no-readline" comment "disable builtin line editor")
        )))
 
 (define brief-usage-text "Usage: ol [args] [file] ...")
@@ -159,7 +157,9 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
          take filter remove
          thread-controller
          uncons lfold lmap
-         rand seed->rands))
+         rand seed->rands
+         (fold (λ (ff x) (put ff x x)) empty (iota 0 1 100)) ;; all kinds of nodes
+         ))
 
 
 ;; handles $ ol -c stuff
@@ -249,6 +249,8 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
             (display "> "))
          (halt 126))))
 
+(import (prefix (owl sys) sys-))
+
 ;; todo: this should probly be wrapped in a separate try to catch them all
 ; ... → program rval going to exit-owl
 (define (repl-start vm-args repl compiler env)
@@ -292,7 +294,10 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                   ((null? others)
                      (greeting env)
                      (repl-trampoline repl
-                        (env-set env '*readline* (get dict 'readline))))
+                        (env-set env '*readline* 
+                           (if (get dict 'no-readline)
+                              #false
+                              (sys-isatty stdin)))))
                   (else
                      ;; load the given files
                      (define input
@@ -316,13 +321,6 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
 
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
    (make-compiler empty))
-
-(define (enlist x)
-   (cond
-      ((pair? x) x)
-      ((null? x) x)
-      (else (cons x #null))))
-
 
 (define (heap-entry symbol-list)
    (λ (codes) ;; all my codes are belong to codes
@@ -355,9 +353,10 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                                     ;; repl needs symbol etc interning, which is handled by this thread
                                     (thunk->thread 'intern interner-thunk)
 
-                                    ;; set a signal handler which stop evaluation instead of owl
+                                    ;; set a signal handler, which stops current evaluation thread instead of owl
                                     ;; if a repl eval thread is running
-                                    (set-signal-action repl-signal-handler)
+                                    (sys-catch-signals (list sys-sigint)) ;; C-c
+                                    (set-signal-action signal-handler/repl)
 
                                     (exit-owl
                                        (repl-start vm-args repl compiler
@@ -393,9 +392,8 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       ((equal? str "all") all)
       (else (print "Bad native selection: " str))))
 
-(import (owl sys))
-(print-to stderr "writes: " (>> (get-heap-bytes-written) 20) "MWords")
-(print-to stderr "max live: " (>> (get-heap-max-live) 10) "KB")
+(print-to stderr "writes: " (>> (sys-get-heap-bytes-written) 20) "MWords")
+(print-to stderr "max live: " (>> (sys-get-heap-max-live) 10) "KB")
 
 (λ (args)
    (process-arguments (cdr args) command-line-rules "you lose"

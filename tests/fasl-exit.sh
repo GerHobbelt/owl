@@ -1,6 +1,7 @@
 #!/bin/sh
 
 mkdir -p tmp
+make bin/vm >/dev/null 2>&1 # may not be there yet after release tarball build
 
 echo '(lambda (args) (if (equal? (cadr args) "slartibartfast") 0 1))' > tmp/exit.scm
 $@ -o tmp/exit.fasl tmp/exit.scm

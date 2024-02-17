@@ -77,6 +77,13 @@ typedef uintptr_t word; /* heap cell */
 typedef uint32_t hval; /* heap value */
 typedef intptr_t wdiff;
 
+volatile unsigned int signals; /* caught signals */
+
+static void catch_signal(int signal) {
+   //fprintf(stderr, "[vm: caught signal %d]\n", signal);
+   signals |= (1 << signal);
+}
+
 /*** Macros ***/
 
 #define IPOS                        8 /* offset of immediate payload */
@@ -151,6 +158,7 @@ typedef intptr_t wdiff;
 #define MEMPAD                      (NR + 2) * 8 /* space at end of heap for starting GC */
 #define MINGEN                      1024 * 32 /* minimum generation size before doing full GC */
 #define INITCELLS                   100000
+#define SIGGC                       9  /* signal 9=SIGKILL cannot be caught, so use its place for gc signaling */
 
 /*** Globals and Prototypes ***/
 
@@ -161,7 +169,6 @@ static word *genstart;
 static word *memstart;
 static word *memend;
 static hval max_heap_mb; /* max heap size in MB */
-static int breaked;      /* set in signal handler, passed over to owl in thread switch */
 static word state;       /* IFALSE | previous program state across runs */
 static const byte *hp;
 static word *fp;
@@ -254,6 +261,7 @@ static void fix_pointers(word *pos, wdiff delta) {
    }
 }
 
+
 /* emulate sbrk with malloc'd memory, because sbrk is no longer properly supported */
 /* n-cells-wanted → heap-delta (to be added to pointers), updates memstart and memend */
 static wdiff adjust_heap(wdiff cells) {
@@ -272,7 +280,7 @@ static wdiff adjust_heap(wdiff cells) {
       fix_pointers(memstart, delta);
       return delta;
    } else {
-      breaked |= 8; /* will be passed over to mcp at thread switch */
+      catch_signal(SIGGC);
       return 0;
    }
 }
@@ -299,7 +307,7 @@ static word *gc(int size, word *regs) {
       if (maxheap < nused)
          maxheap = nused;
       if (heapsize / (1024 * 1024) > max_heap_mb)
-         breaked |= 8; /* will be passed over to mcp at thread switch */
+         catch_signal(SIGGC);
       nfree -= size*W + MEMPAD; /* how much really could be snipped off */
       if (nfree < (heapsize / 5) || nfree < 0) {
          /* increase heap size if less than 20% is free by ~10% of heap size (growth usually implies more growth) */
@@ -307,7 +315,7 @@ static word *gc(int size, word *regs) {
          regs = (word *) ((word)regs + adjust_heap(size*W + nused/10 + 4096));
          nfree = memend - regs;
          if (nfree <= size)
-            breaked |= 8; /* will be passed over to mcp at thread switch. may cause owl<->gc loop if handled poorly on lisp side! */
+            catch_signal(SIGGC);
       } else if (nfree > (heapsize/3)) {
          /* decrease heap size if more than 33% is free by 10% of the free space */
          wdiff dec = -(nfree / 10);
@@ -331,17 +339,7 @@ static word *gc(int size, word *regs) {
 
 /*** OS Interaction and Helpers ***/
 
-static void signal_handler(int signal) {
-   switch (signal) {
-      case SIGINT:
-         breaked |= 2;
-         break;
-      case SIGPIPE:
-         break; /* can cause loop when reporting errors */
-      default:
-         breaked |= 4;
-   }
-}
+
 
 /* list length, no overflow or valid termination checks */
 static uint llen(word *ptr) {
@@ -353,14 +351,6 @@ static uint llen(word *ptr) {
    return len;
 }
 
-static void set_signal_handler() {
-   struct sigaction sa;
-   sa.sa_handler = signal_handler;
-   sigemptyset(&sa.sa_mask);
-   sa.sa_flags = SA_RESTART;
-   sigaction(SIGINT, &sa, NULL);
-   sigaction(SIGPIPE, &sa, NULL);
-}
 
 static word mkpair(word h, word a, word d) {
    word *pair;
@@ -857,6 +847,22 @@ static word prim_sys(word op, word a, word b, word c) {
             return rv;
          }
          return IFALSE; }
+      case 45: { /* getpid _ _ _*/
+         return(onum(getpid(), 0)); }
+      case 46: { /* catch-signals (4 8 ...) _ _*/
+         struct sigaction sa;
+         word *lst = (word *)a;
+         sa.sa_handler = catch_signal;
+         sigemptyset(&sa.sa_mask);
+         sa.sa_flags = SA_RESTART;
+         while((word)lst != INULL) {
+            sigaction(immval(lst[1]), &sa, NULL);
+            //printf("[vm: will catch %d]\n",  immval(lst[1]));
+            lst = (word *)lst[2];
+         }
+         return ITRUE; }
+      case 47:
+         return isatty(immval(a)) ? ITRUE : IFALSE;
       default:
          return IFALSE;
    }
@@ -965,7 +971,7 @@ apply: /* apply something at ob to values in regs, or maybe switch context */
       ob = (word *) R[0];
       if (allocp(ob)) {
          R[0] = IFALSE;
-         breaked = 0;
+         signals = 0;
          R[4] = R[3];
          R[3] = F(2);
          R[5] = IFALSE;
@@ -1004,12 +1010,12 @@ switch_thread: /* enter mcp if present */
       ob = (word *) R[0];
       R[0] = IFALSE; /* remove mcp cont */
       /* R3 marks the syscall to perform */
-      R[3] = breaked ? (breaked & 8 ? F(14) : F(10)) : F(1);
+      R[3] = signals ? F(10) : F(1);
       R[4] = (word) state;
-      R[5] = F(breaked);
+      R[5] = F(signals);
       R[6] = IFALSE;
       acc = 4;
-      breaked = 0;
+      signals = 0;
       goto apply;
    }
 invoke: /* nargs and regs ready, maybe gc and execute ob */
@@ -1430,7 +1436,7 @@ static word *load_heap(uint nobjs) {
 static void setup(int nwords, int nobjs) {
    tcgetattr(0, &tsettings);
    state = IFALSE;
-   set_signal_handler();
+   signals = 0;
    max_heap_mb = W == 4 ? 4096 : 65535;
    nwords += nobjs + INITCELLS;
    memstart = genstart = fp = realloc(NULL, (nwords + MEMPAD) * W);

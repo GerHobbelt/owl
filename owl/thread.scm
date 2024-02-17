@@ -9,7 +9,9 @@ a very small kernel.
    (export
       start-thread-controller
       thread-controller
-      repl-signal-handler
+      signal-handler/repl
+      signal-handler/halt
+      signal-handler/ignore
       try-thunk try)
 
    (import
@@ -106,8 +108,12 @@ a very small kernel.
 
       ; mcp syscalls grab the functions from here to transform the state
 
+      (define (signal-handler/halt signals threads state controller)
+         (system-println "[signal-halt]")
+         (halt 42)) ;; exit owl with a specific return value
+
       ;; syscalls used when profiler is running
-      (define mcp-syscalls-during-profiling
+      (define mcp-syscalls
          (tuple
 
             ; 1, runnig and time slice exhausted (the usual suspect, handled directly in scheduler)
@@ -180,10 +186,11 @@ a very small kernel.
 
             ; 10, breaked - call signal handler
             (λ (id a b c todo done state thread-controller)
-               ; (system-println "syscall 10 - break")
+               (system-println "syscall 10 - caught signals")
                (let ((all-threads (cons (tuple id a) (append todo done))))
                   ;; tailcall signal handler and pass controller to allow resuming operation
-                  ((get state signal-tag signal-halt) ; default to standard mcp
+                  ((get state signal-tag signal-handler/halt) ; default to standard mcp
+                     b
                      all-threads state thread-controller)))
 
             ; 11, reset mcp state (usually means exit from mcp repl)
@@ -332,50 +339,6 @@ a very small kernel.
             ;; don't record anything for now for the rare thread starts and resumes with syscall results
             state))
 
-      (define mcp-syscalls
-         (lets
-            ((syscalls mcp-syscalls-during-profiling)
-             (syscalls
-               (set syscalls 20
-                  (λ (id cont b c todo done state tc)
-                     ;; make a new thread scheduler using the other syscall set
-                     (define (scheduler self todo done state)
-                        (if (null? todo)
-                           (if (null? done)
-                              (halt-thread-controller state)
-                              (self self done #n state))
-                           (lets
-                              ((this todo todo)
-                               (id st this)
-                               (state (update-state state st))
-                               (op a b c (run st 0)))
-                              (if (eq? op 1)
-                                 ; out of time, usual suspect, short path here
-                                 (self self todo (cons (tuple id a) done) state)
-                                 ((ref mcp-syscalls-during-profiling op) id a b c todo done state self))))) ; <- difference here
-
-                     (scheduler scheduler (cons (tuple id (λ () (cont 'started-profiling))) todo) done
-                        (put state 'prof           ;; profiling data is stored under key 'prof
-                           (put empty 'tc tc)))))) ;; store normal scheduler there for resuming on syscall 21
-             (syscalls
-               (set syscalls 21 ;; end-profiling syscall doesn't do anything when not profiling
-                  (λ (id cont b c todo done state tc)
-                     (tc tc (cons (tuple id (λ () (cont 'not-profiling-you-fool))) todo) done state)))))
-            syscalls))
-
-      (define (enter-mcp controller threads state)
-         ; could break here also when threads is just repl-input
-         (controller controller
-            (list
-               (tuple 'mcp
-                  (λ ()
-                     ((get state signal-tag signal-halt) ; exit by default
-                        threads state controller))))
-            #n empty))
-
-
-      ; (enter-mcp thread-controller done state) -- no way to go here without the poll, rethink that
-
       ;; nested thread steps cause
       ;;    - exit and false -> forget todo & done
       ;;    - crash -> forget
@@ -465,10 +428,17 @@ a very small kernel.
 
       ;; signal handler which kills the 'repl-eval thread if there, or repl
       ;; if not, meaning we are just at toplevel minding our own business.
-      (define (repl-signal-handler threads state controller)
+      (define (signal-handler/repl signals threads state controller)
+         (system-println "[repl signal handler]")
          (if (any (λ (x) (eq? (ref x 1) 'repl-eval)) threads)
             ;; there is a thread evaling user input, linkely gone awry somehow
             (drop-thread 'repl-eval threads #n state eval-break-message controller)
             ;; nothing evaling atm, exit owl
-            (signal-halt threads state controller)))
+            (begin
+               (system-println "[no eval thread - stopping on signal]")
+               (signal-handler/halt signals threads state controller))))
+      
+      (define (signal-handler/ignore signals threads state controller)
+         (system-println "[ignoring signals]")
+         (controller controller threads null state))
 ))

@@ -5,7 +5,7 @@
       empty-env
       apply-env env-fold
       verbose-vm-error prim-opcodes opcode->wrapper primop-of primitive?
-      poll-tag name-tag link-tag buffer-tag signal-tag signal-halt thread-quantum meta-tag
+      poll-tag name-tag link-tag buffer-tag signal-tag thread-quantum meta-tag
       current-library-key
       env-set-macro *tabula-rasa* env-del
       env-get ;; env key default → val | default
@@ -47,10 +47,6 @@
       (define meta-tag '*owl-metadata*) ; key for object metadata
       (define name-tag '*owl-names*)    ; key for reverse function/object → name mapping
       (define current-library-key '*owl-source*) ; toplevel value storing what is being loaded atm
-
-      (define (signal-halt threads state controller)
-         (print-to stderr "stopping on signal")
-         (halt 42)) ;; exit owl with a specific return value
 
       (define thread-quantum 10000)
 

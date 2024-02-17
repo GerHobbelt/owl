@@ -14,6 +14,7 @@ This library defines various system calls and wrappers for calling them.
       pipe
       wait
       waitpid
+      getpid
       kill
       getenv
       setenv
@@ -40,7 +41,7 @@ This library defines various system calls and wrappers for calling them.
       seek-set
       seek-end
       sighup
-      signint
+      sigint
       sigquit
       sigill
       sigabrt
@@ -62,6 +63,7 @@ This library defines various system calls and wrappers for calling them.
       read
       write
       port->non-blocking
+      port->blocking
       CLOCK_REALTIME
       clock_gettime
       set-terminal-rawness
@@ -72,8 +74,10 @@ This library defines various system calls and wrappers for calling them.
       get-environment
       get-heap-bytes-written
       get-heap-max-live
-      
+      isatty
+
       resolve-host
+      catch-signals  ;; (signal ...)
 
       execvp
       system)
@@ -298,6 +302,10 @@ This library defines various system calls and wrappers for calling them.
             (toggle-file-status-flag port (O_NONBLOCK) (not (stdio-port? port))))
          port)
 
+      (define (port->blocking port)
+         (toggle-file-status-flag port (O_NONBLOCK) #false)
+         port)
+
       (define (open path flags mode)
          (port->non-blocking (sys 1 path flags mode)))
 
@@ -407,20 +415,26 @@ This library defines various system calls and wrappers for calling them.
             (or (eq? pid 0) pid)))
 
       (define (waitpid pid)
-         (let ((res (sys 19 pid (cons #false #false))))
-            (cond
-               ((not res) res)
-               ((eq? res #true)
-                  (interact 'iomux (tuple 'alarm 100))
-                  (waitpid pid))
-               (else
-                  ;; pair of (<exittype> . <result>)
-                  res))))
+         (let loop ((delay 1))
+            (let ((res (sys 19 pid (cons #false #false))))
+               (cond
+                  ((not res) res)
+                  ((eq? res #true)
+                     ;; we can't block all thread doing a blocking waitpid(),
+                     ;; use a gradually slowing down  progression of alarm clocks
+                     (interact 'iomux (tuple 'alarm delay))
+                     (loop (min (+ delay 1) 100)))
+                  (else
+                     ;; pair of (<exittype> . <result>)
+                     res)))))
 
       (define wait waitpid)
 
+      (define (getpid)
+         (sys 45))
+
       (define sighup   1)      ; hangup from controlling terminal or proces
-      (define signint  2)      ; interrupt (keyboard)
+      (define sigint   2)      ; interrupt (keyboard)
       (define sigquit  3)      ; quit (keyboard)
       (define sigill   4)      ; illegal instruction
       (define sigabrt  6)      ; abort(3)
@@ -617,7 +631,7 @@ This library defines various system calls and wrappers for calling them.
                   ;; normally with a zero status
                   (equal? (wait pid) '(1 . 0))))))
 
-      ;; prefer ipv4 
+      ;; prefer ipv4
       (define (resolve-host hostname)
          (let loop ((offset 0) (last #false))
             (let ((res (sys 44 hostname offset)))
@@ -628,4 +642,12 @@ This library defines various system calls and wrappers for calling them.
                      res)
                   (else
                      (loop (+ offset 1) res))))))
+
+      (define (catch-signals lst)
+         (if (and (list? lst) (every fixnum? lst))
+            (sys 46 lst)
+            #f))
+
+      (define (isatty fd)
+         (sys 47 fd 0 0))
 ))
