@@ -93,8 +93,14 @@ registers from their environment and a jump.
       (define (lambda? exp env)
             (eq? (ref exp 1) 'lambda-var)) ;; new
 
+      (define (fixed-lambda? exp env)
+         (and
+            (eq? (ref exp 1) 'lambda-var)
+            (ref exp 2))) ;; fixed?
+
       (define (set-deps node deps) (set node 3 deps))
       (define deps-of (C ref 3))
+      (define value-of (C ref 2))
       (define name-of (C ref 1))
 
       ; pick a set of bindings for binding
@@ -113,7 +119,7 @@ registers from their environment and a jump.
                (filter
                   (λ (node)
                      (and
-                        (lambda? (value-of node) env)
+                        (fixed-lambda? (value-of node) env)
                         (equal? (deps-of node) (list (name-of node)))))
                   deps))
 
@@ -127,7 +133,10 @@ registers from their environment and a jump.
                   ((node
                      (least
                         (B length deps-of)
-                        (filter (λ (node) (lambda? (value-of node) env)) deps))))
+                        (filter
+                           (λ (node)
+                              (lambda? (value-of node) env))
+                           deps))))
                   (if node
                      (let ((partition (deps-of node)))
                         (filter
@@ -262,6 +271,12 @@ registers from their environment and a jump.
          (tuple-case exp
             ((lambda-var fixed? formals body) formals)))
 
+      (define (fixed-lambda-formals exp)
+         (tuple-case exp
+            ((lambda-var fixed? formals body)
+               (if fixed? formals
+                  (error "variable arity in recursive function: " formals)))))
+
       (define (lambda-body exp)
          (tuple-case exp
             ((lambda-var fixed? formals body) body)))
@@ -305,12 +320,13 @@ registers from their environment and a jump.
 
                ; no dependecies, so bind with ((lambda (a ...) X) A ...)
                ((trivial nodes)
+                  ;(print " -> trivial " nodes)
                   (make-bindings (map first nodes) (map second nodes)
                      (generate-bindings
                         (remove-deps (map first nodes) deps)
                         body env)))
 
-               ; bind one or more functions which are simply recursive
+               ; bind one or more functions, which only call themselves recursively
                ((simple nodes)
                   ;(print " -> simple " nodes)
                   (let
@@ -356,6 +372,7 @@ registers from their environment and a jump.
 
                ((mutual nodes)
                   ;;; variable order must be preserved across functions
+                  ;(print "mutual -> " nodes)
                   (lets
                      ((partition (deps-of (car nodes)))
                       (nodes
@@ -370,7 +387,7 @@ registers from their environment and a jump.
                       (env-rec
                         (fold
                            (λ (env node)
-                              (let ((formals (lambda-formals (value-of node))))
+                              (let ((formals (fixed-lambda-formals (value-of node))))
                                  (env-put-raw env
                                     (name-of node)
                                     (tuple 'recursive formals partition))))
@@ -430,12 +447,13 @@ registers from their environment and a jump.
             (dependency-closure dependencies)
             body env))
 
-      ; walk the term and translate all rlambdas to normal lambdas
 
+
+      ; walk the term and translate all rlambdas to normal lambdas
       (define (unletrec exp env)
          (define (unletrec-list exps)
             (map (C unletrec env) exps))
-         ;(print "unletrec " exp)
+         ; (print "unletrec " exp)
          (tuple-case exp
             ((var value) exp)
             ((call rator rands)
@@ -468,8 +486,8 @@ registers from their environment and a jump.
 
       ;; exp env -> #(ok exp' env)
       (define (fix-points exp env)
-         ;(print "fixed point " exp)
+         ; (print "fixed point " exp)
          (let ((result (unletrec exp env)))
-            ;(print "fixed pooint done " result)
+            ; (print "fixed point done " result)
             (ok result env)))
 ))

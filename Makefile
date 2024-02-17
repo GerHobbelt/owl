@@ -1,13 +1,14 @@
 .POSIX:
 
-DESTDIR =
-PREFIX  = /usr
-BINDIR  = /bin
-MANDIR  = /share/man
-INSTALL = install
-CFLAGS  = -Wall -O2
+DESTDIR :=
+PREFIX  := /usr
+BINDIR  := /bin
+MANDIR  := /share/man
+INSTALL := install
+CFLAGS  := -Wall -O2
 
-CC      = gcc
+CC      := gcc
+MAKE	:= make
 
 
 ## Pseudo targets
@@ -36,7 +37,7 @@ c/vm.c: c/_vm.c
 
 fasl/ol.fasl: fasl/init.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
 	# selfcompile boot.fasl until a fixed point is reached
-	make bin/vm
+	$(MAKE) bin/vm
 	bin/vm fasl/init.fasl -r bin/fasl-build.scm -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
 
 ## binary image
@@ -158,11 +159,11 @@ tarball: c/ol.c bin/ol
 	mkdir owl-${VERSION}
 	cp -va bin owl-${VERSION} # keep times
 	-rm owl-${VERSION}/bin/vm owl-${VERSION}/bin/ol owl-${VERSION}/bin/ol-old
-	cp -va Makefile c fasl LICENCE README.md THANKS owl scheme tests doc owl-${VERSION}
+	cp -va Makefile c fasl LICENCE README.md owl scheme tests doc owl-${VERSION}
 	tar -f - -c owl-${VERSION} | gzip -9 > owl-${VERSION}.tar.gz
 	# check that build of the contents succeeds
 	find owl-${VERSION}
-	cd owl-${VERSION} && make
+	cd owl-${VERSION} && $(MAKE)
 	owl-${VERSION}/bin/ol --version
 	bin/vm fasl/ol.fasl --run owl/ol.scm -s none -o ol-${VERSION}.c
 	cc -O -o ol-${VERSION} ol-${VERSION}.c

@@ -1,0 +1,13 @@
+foo was called with 8 instead of 3 arguments.
+Arguments:
+ - 1
+ - 2
+ - 3
+ - 4
+ - 5
+ - 6
+ - 7
+ - 8
+
+Could not load tests/arity-error-name.scm because 
+  Failed to evaluate  (foo 1 2 3 4 5 6 7 8)  because  an error occurred 

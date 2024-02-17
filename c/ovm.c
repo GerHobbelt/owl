@@ -274,17 +274,15 @@ static wdiff adjust_heap(wdiff cells) {
    if (((cells > 0) && (new_words*W < nwords*W)) || ((cells < 0) && (new_words*W > nwords*W)))
       return 0; /* don't try to adjust heap, if the size_t would overflow in realloc */
    memstart = realloc(memstart, new_words*W);
-   if (memstart == old) { /* whee, no heap slide \o/ */
-      memend = memstart + new_words - MEMPAD; /* leave MEMPAD words alone */
-      return 0;
-   } else if (memstart) { /* d'oh! we need to O(n) all the pointers... */
-      wdiff delta = (word)memstart - (word)old;
-      memend = memstart + new_words - MEMPAD; /* leave MEMPAD words alone */
-      fix_pointers(memstart, delta);
-      return delta;
-   } else {
+   if (!memstart) {
       catch_signal(SIGGC);
       return 0;
+   } else {
+      wdiff delta = (word)memstart - (word)old;
+      memend = memstart + new_words - MEMPAD; /* leave MEMPAD words alone */
+      if (delta)
+         fix_pointers(memstart, delta); /* d'oh! we need to O(n) all the pointers... */
+      return delta;
    }
 }
 
@@ -1266,9 +1264,12 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             NEXT(1);
          } else {
             word *t;
-            allocate(acc + 1, t); // todo: also include lower registers for debugging
-            *t = make_header(acc + 1, TTUPLE);
-            memcpy(t + 1, R + 3, acc * W);
+            // [func desired-arity given-arity a0 .. an]
+            allocate(acc + 6, t);
+            *t = make_header(acc + 6, TTUPLE);
+            t[1] = F(*ip);
+            t[2] = F(acc);
+            memcpy(t + 3, R, (acc + 3) * W);
             error(60, ob, t);
          }
       case 61: { /* arity error */

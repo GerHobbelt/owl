@@ -40,6 +40,8 @@ iomux is running. This may happen when working with code that has not called
       start-base-threads      ;; start stdio and sleeper threads
       wait-write              ;; fd → ? (no failure handling yet)
       when-readable           ;; fd → fd, block thread until readable
+      readable?               ;; fd → bool
+      writeable?              ;; fd → bool
 
       ;; stream-oriented blocking (for the writing thread) io
       blocks->port            ;; ll fd → ll' n-bytes-written, don't close fd
@@ -81,6 +83,7 @@ iomux is running. This may happen when working with code that has not called
       write-bytevector  ;; bytevector port → bool
       read-bytevector   ;; n port → bvec | eof | #false
       try-get-block     ;; fd n block? → bvec | eof | #false=error | #true=block
+      try-write-block
       byte-stream->lines ;; (byte ...) → null | ll of string, read error is just null, each [\r]\n removed
       lines              ;; fd → null | ll of string, read error is just null, each [\r]\n removed
 
@@ -112,6 +115,7 @@ iomux is running. This may happen when working with code that has not called
       (owl tuple)
       (owl ff)
       (owl port)
+      (owl time)
       (owl lazy)
       (only (owl vector) merge-chunks vec-leaves))
 
@@ -169,9 +173,20 @@ iomux is running. This may happen when working with code that has not called
       (define stream-block-size
          #x8000)
 
+      ;; block until readable (for data, error or eof)
       (define (when-readable port)
          (interact 'iomux (tuple 'read port))
          port)
+
+      ;; would a read block
+      (define (readable? fd)
+         (let ((req (tuple 'read-timeout fd 1))) ;; <- todo: check if muxer always polls before alarms ring, and if not, convert
+            (eq? req (interact 'iomux req))))
+
+      ;; would a write block
+      (define (writeable? fd)
+         (let ((req (tuple 'write-timeout fd 1)))
+            (eq? req (interact 'iomux req))))
 
       (define (try-get-block fd block-size block?)
          ;; stdio ports are in blocking mode, so poll always
@@ -228,7 +243,6 @@ iomux is running. This may happen when working with code that has not called
                      (mail thread (sys-port->non-blocking fd))
                      #true)
                   (begin
-                     ;(interact sid 5) ;; delay rounds
                      (when-readable fd)
                      (loop rounds))))))
 
@@ -697,7 +711,7 @@ iomux is running. This may happen when working with code that has not called
                      (append lst out)
                      (loop lst (cons a out)))))))
 
-      ;; (... (x . foo) ...) x => (... ...) (x . foo)
+      ;; (... (x . foo) ...) x → (... ...) (x . foo)
       (define (grabelt lst x)
          (let loop ((lst lst) (out #n))
             (if (null? lst)
@@ -707,9 +721,9 @@ iomux is running. This may happen when working with code that has not called
                      (values (append (cdr lst) out) a)
                      (loop (cdr lst) (cons a out)))))))
 
-      ;; rs = ((read-fd . read-request-mail) ...)
-      ;; ws = ((write-fd . id) ...)
-      ;; as = ((wakeup-time . alarm-mail) ...), sorted by wakeup-time
+      ;; rs = ((read-fd . read-request-envelope) ...)
+      ;; ws = ((write-fd . write-request-envelope) ...)
+      ;; as = ((wakeup-time . alarm-envelope) ...), sorted by wakeup-time
 
       (define (remove-alarm alarms envelope)
          (if (null? alarms)
@@ -725,17 +739,16 @@ iomux is running. This may happen when working with code that has not called
       (define (remove-alarm-by-fd alarms fd)
          (remove
             (λ (alarm)
-               ;; (timeout . #(thread #(read-timeout fd ms)))
+               ;; alarm = (timeout . #(thread #(<read|write>-timeout fd ms)))
                (lets
                   ((msg (cdr alarm))
                    (from req msg)
                    (op port ms msg))
-                  (if (eq? port fd)
-                     (print-to stderr " - found it"))
                   (eq? port fd)))
             alarms))
 
-      ;; alarm-mail = #(sender #(read-timeout fd ms))
+      ;; read and write operations have versions with a timeout, in which
+      ;; case there is a corresponding alarm in the alarm queue
 
       (define (wakeup rs ws alarms fd reason)
          (cond
@@ -744,23 +757,20 @@ iomux is running. This may happen when working with code that has not called
                   ((rs x (grabelt rs fd))
                    (fd envelope x)
                    (from message envelope))
-                  (tuple-case message
-                     ((read fd)
-                        (mail from message)
-                        (values rs ws alarms))
-                     ((read-timeout fd timeout)
-                        (mail from message)
-                        (values rs ws
-                           (remove-alarm alarms envelope)))
-                     (else
-                        (print-to stderr "wakeup: unknown wakeup " message)
-                        (values rs ws alarms)))))
+                  (mail from message)
+                  (values rs ws
+                     (if (eq? (ref message 1) 'read-timeout)
+                        (remove-alarm alarms envelope)
+                        alarms))))
             ((eq? reason 2) ;; ready to be written to
                (lets ((ws x (grabelt ws fd))
                       (fd envelope x)
                       (from message envelope))
                   (mail from message)
-                  (values rs ws alarms)))
+                  (values rs ws
+                     (if (eq? (ref message 1) 'write-timeout)
+                        (remove-alarm alarms envelope)
+                        alarms))))
             (else ;; error
                (lets ((rs x (grabelt rs fd))
                       (ws y (grabelt ws fd)))
@@ -777,10 +787,6 @@ iomux is running. This may happen when working with code that has not called
                   (cons a (push-alarm (cdr alarms) time id))
                   (cons (cons time id) alarms)))))
 
-      ;; including time currently causes a circular dependency - resolve later
-      (define (time-ms)
-         (quotient (sys-clock_gettime (sys-CLOCK_REALTIME)) 1000000))
-
       (define (_poll2 rs ws timeout)
          (lets
              ((res (sys-prim 43 rs ws timeout))
@@ -796,6 +802,9 @@ iomux is running. This may happen when working with code that has not called
                   (push-alarm alarms (+ (time-ms) ms) mail)))
             ((write fd)
                (values rs (cons (cons fd mail) ws) alarms))
+            ((write-timeout fd ms)
+               (values rs (cons (cons fd mail) ws)
+                  (push-alarm alarms (+ (time-ms) ms) mail)))
             ((alarm ms)
                (values rs ws (push-alarm alarms (+ (time-ms) ms) mail)))
             (else
@@ -812,14 +821,12 @@ iomux is running. This may happen when working with code that has not called
                   (lets
                      ((timeout (if (single-thread?) #false 0))
                       (waked x (_poll2 rs ws timeout)))
-                     (cond
-                        (waked
-                           (lets ((rs ws alarms (wakeup rs ws alarms waked x)))
-                              (muxer rs ws alarms)))
-                        ;(x 3)
-                        (else
-                           (set-ticker 0)
-                           (muxer rs ws alarms))))))
+                     (if waked
+                        (lets ((rs ws alarms (wakeup rs ws alarms waked x)))
+                           (muxer rs ws alarms)))
+                        (begin
+                           (next-thread)
+                           (muxer rs ws alarms)))))
             (let ((now (time-ms)))
                ;;; alarms and next is not up yet
                (if (< now (caar alarms))
@@ -831,32 +838,34 @@ iomux is running. This may happen when working with code that has not called
                            ((timeout
                               (if (single-thread?) (min fx-greatest (- (caar alarms) now)) 0))
                             (waked x (_poll2 rs ws timeout)))
-                           (cond
-                              (waked
-                                 (lets ((rs ws alarms (wakeup rs ws alarms waked x)))
-                                    (muxer rs ws alarms)))
-                              ;(x 2)
-                              (else
-                                 (set-ticker 0)
-                                 (muxer rs ws alarms))))))
+                           (if waked
+                              (lets ((rs ws alarms (wakeup rs ws alarms waked x)))
+                                 (muxer rs ws alarms)))
+                              (begin
+                                 (next-thread)
+                                 (muxer rs ws alarms)))))
                   ;; the bell tolls
                   (lets
                      ((alarm (car alarms))
                       (time envelope alarm)
                       (id message envelope))
+                     ;; all alarms return a pair with the original request
+                     ;; all i/o thread activations return the original request
+                     (mail id (cons 'timeout message))
                      (tuple-case message
                         ((alarm ms)
-                           (mail id 'alarm)
                            (muxer rs ws (cdr alarms)))
                         ((read-timeout fd ms)
                            ;; remove both the alarm and the read request
-                           (mail id 'timeout)
                            (lets ((rs _ (grabelt rs fd)))
                               (muxer rs ws (cdr alarms))))
+                        ((write-timeout fd ms)
+                           ;; remove both the alarm and the write request
+                           (lets ((ws _ (grabelt ws fd)))
+                              (muxer rs ws (cdr alarms))))
                         (else
-                           (print-to stderr "not sure how to alarm " message)
-                           (mail id 'alarm)
-                           (muxer rs ws (cdr alarms)))))))))
+                           ;; bug. crash.
+                           (car 1234))))))))
 
       (define (start-muxer . id)
          (thread

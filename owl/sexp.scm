@@ -28,6 +28,7 @@
       (owl io) ; testing
       (owl port)
       (owl unicode)
+      (owl proof)
       (only (owl syscall) error)
       (only (owl intern) intern-symbols string->uninterned-symbol))
 
@@ -425,7 +426,11 @@
          (get-try-parse (get-number-in-base base) lst #false #false #false))
 
       (define (string->sexp str fail)
-         (get-try-parse sexp-parser (str-iter str) #false #false fail))
+         (get-try-parse sexp-parser
+            (str-iter str)
+            #false
+            #false
+            #false))
 
       ;; parse all contents of vector to a list of sexps, or fail with
       ;; fail-val and print error message with further info if errmsg
@@ -441,7 +446,7 @@
          (get-try-parse get-padded-sexps lst #false errmsg #false))
 
       (define (read-port port)
-         (get-fd->exp-stream port sexp-parser (get-silent-syntax-fail (list #false))))
+         (get-fd->exp-stream port sexp-parser (get-silent-syntax-fail null)))
 
       (define read-ll
          (case-lambda

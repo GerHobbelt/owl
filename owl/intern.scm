@@ -16,7 +16,6 @@ Value interning and conversions
       put-symbol                    ;; tree sym → tree'
       empty-symbol-tree
       intern-symbols
-      start-dummy-interner
       start-symbol-interner
       )
 
@@ -61,8 +60,6 @@ Value interning and conversions
 
       (define (compare s1 s2)
          (walk (str-iter s1) (str-iter s2)))
-
-      ; FIXME, add a typed ref instruction
 
       (define (string->uninterned-symbol str)
          (mkt type-symbol str))
@@ -216,8 +213,8 @@ Value interning and conversions
                ((tuple? msg)
                   ;(debug "interner: tuple command " (ref (ref msg 1) 1)) ; avoid symbol->string
                   (tuple-case msg
-                     ((flush) ;; clear names before boot (deprecated)
-                        (interner root codes))
+                     ;((flush) ;; clear names before boot (deprecated)
+                     ;   (interner root codes))
                      (else
                         ;(print "unknown interner op: " msg)
                         (interner root codes))))
@@ -230,27 +227,6 @@ Value interning and conversions
                   (mail sender 'bad-kitty)
                   (interner root codes)))))
 
-      ;; a placeholder interner for programs which don't need the other services
-      ;; soon to be removed
-      (define (dummy-interner)
-         (lets ((env (wait-mail))
-                (sender msg env))
-            (cond
-               ((bytecode? msg)
-                  (mail sender msg)
-                  (dummy-interner))
-               ((tuple? msg)
-                  (tuple-case msg
-                     ((get-name x)
-                        (mail sender #false)))
-                  (dummy-interner))
-               ((null? msg)
-                  (mail sender 'dummy-interner))
-               (else
-                  (error "bad interner request: " msg)))))
-
-      (define (start-dummy-interner)
-         (thunk->thread 'intern dummy-interner))
 
       ;; make a thunk to be forked as the thread
       ;; (sym ...)  ((bcode . value) ...) → thunk
