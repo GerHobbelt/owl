@@ -521,7 +521,6 @@ static word do_poll(word, word, word);
 /* system- and io primops */
 static word prim_sys(word op, word a, word b, word c) {
    switch (immval(op)) {
-      case 99: /* FIXME: remove this line after fasl update */
       case 0: { /* clock_gettime clock_id → nanoseconds */
          struct timespec ts;
          if (clock_gettime(cnum(a), &ts) != -1)
@@ -1077,12 +1076,21 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
       case 1:
          A2 = G(A0, ip[1]);
          NEXT(3);
-      case 2: /* FIXME: move op34 here after fasl update */
+      case 34: /* FIXME: remove after fasl update */
+      case 2: /* jmp-nargs a hi lo */
+         if (acc != *ip)
+            ip += ip[1] << 8 | ip[2];
+         NEXT(3);
       case 3: /* goto */
          ob = (word *)A0;
          acc = ip[1];
          goto apply;
-      case 4: { /* opcodes 132, 4, 196, 68 */
+      case 5: /* mov2 from1 to1 from2 to2 */
+         A1 = A0;
+         A3 = A2;
+         NEXT(4);
+      case 4: /* FIXME: remove after fasl update */
+      case 6: { /* opcodes 134, 6, 198, 70 */
          word size = *ip++, tmp;
          word *ob;
          tmp = R[op & 64 ? 1 : *ip++];
@@ -1093,40 +1101,37 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             ob[tmp] = R[*ip++];
          R[*ip++] = (word)ob;
          NEXT(0); }
-      case 5: /* mov2 from1 to1 from2 to2 */
-         A1 = A0;
-         A3 = A2;
-         NEXT(4);
+      case 54: /* FIXME: remove after fasl update */
+      case 7: /* eq? a b r */
+         A2 = BOOL(A0 == A1);
+         NEXT(3);
       case 8: /* jeq a b o, extended jump */
          if (A0 == A1)
             ip += ip[3] << 8 | ip[2];
          NEXT(4);
-      case 9: A1 = A0; NEXT(2);
+      case 9:
+         A1 = A0;
+         NEXT(2);
       case 10: /* ldfix n to, encoding: nnnnnnnn nsoooooo (num-1/sign/op) */
          A1 = ((hval)*ip << 9) + (op << 1) + F(1) - 20;
          NEXT(2);
       case 13: /* ldi{2bit what} [to] */
          A0 = load_imms[op >> 6];
          NEXT(1);
-      case 14: /* FIXME: remove after fasl update */
-         A1 = onum((int8_t)*ip, 1);
-         NEXT(2);
       case 15: { /* type o r */
          word ob = A0;
          if (allocp(ob))
             ob = V(ob);
          A1 = F((hval)ob >> TPOS & 63);
          NEXT(2); }
-      case 16: /* jv[which] a o1 a2 */
+      case 16: /* jeqi[which] a lo hi */ /* FIXME: move this to op4 after fasl update, and encode offset in big-endian (like most other jump instructions) */
          if (A0 == load_imms[op >> 6])
             ip += ip[2] << 8 | ip[1];
          NEXT(3);
-      case 17: { /* arity error */
-         word *t;
-         allocate(acc+1, t);
-         *t = make_header(acc+1, TTUPLE);
-         memcpy(t + 1, R + 3, acc * W);
-         error(17, ob, t); }
+      case 55: /* FIXME: remove after fasl update */
+      case 18: /* fxand a b r, prechecked */
+         A2 = A0 & A1;
+         NEXT(3);
       case 21: { /* fx- a b r u, types prechecked, signs ignored */
          hval r = immval(A0) - immval(A1);
          A3 = F(r >> FBITS & 1);
@@ -1195,6 +1200,10 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             A1 = rawp(hdr) ? F(payl_len(hdr)) : IFALSE;
          }
          NEXT(2); }
+      case 56: /* FIXME: remove after fasl update */
+      case 29: /* fxior a b r, prechecked */
+         A2 = A0 | A1;
+         NEXT(3);
       case 32: { /* bind tuple <n> <r0> .. <rn> */
          word *tuple = (word *) R[*ip++];
          word hdr, pos = 1, n = *ip++ + 1;
@@ -1204,9 +1213,9 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          while (--n)
             R[*ip++] = tuple[pos++];
          NEXT(0); }
-      case 34: /* jmp-nargs a hi li */
-         if (acc != *ip)
-            ip += ip[1] << 8 | ip[2];
+      case 57: /* FIXME: remove after fasl update */
+      case 33: /* fxxor a b r, prechecked */
+         A2 = A0 ^ (FMAX << IPOS & A1); /* inherit A0's type info */
          NEXT(3);
       case 35: { /* listuple type size lst to */
          uint type = immval(A0);
@@ -1222,10 +1231,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
             lst = (word *) lst[2];
          }
          NEXT(4); }
-      case 36: { /* FIXME: remove after fasl update */
-         word *ob = (word *)A0;
-         A1 = immediatep(ob) ? IFALSE : F(objsize(*ob) - 1);
-         NEXT(2); }
       case 38: { /* FIXME: remove after fasl update */
          hval res = immval(A0) + immval(A1);
          A3 = BOOL(1 << FBITS & res);
@@ -1246,12 +1251,6 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
          assert(pairp(ob), ob, op);
          A1 = ob[op >> 6];
          NEXT(2); }
-      case 42: /* FIXME: unused in new fasl */
-         A4 = prim_mkff(TFF, A0, A1, A2, A3);
-         NEXT(5);
-      case 43: /* FIXME: unused in new fasl */
-         A4 = prim_mkff(TFF | FFRED, A0, A1, A2, A3);
-         NEXT(5);
       case 44: /* less a b r */
          A2 = prim_less(A0, A1);
          NEXT(3);
@@ -1312,49 +1311,21 @@ invoke: /* nargs and regs ready, maybe gc and execute ob */
       case 51: /* cons a b r */
          A2 = cons(A0, A1);
          NEXT(3);
-      case 54: /* eq a b r */
-         A2 = BOOL(A0 == A1);
-         NEXT(3);
-      case 55: /* band a b r, prechecked */
-         A2 = A0 & A1;
-         NEXT(3);
-      case 56: /* bor a b r, prechecked */
-         A2 = A0 | A1;
-         NEXT(3);
-      case 57: /* bxor a b r, prechecked */
-         A2 = A0 ^ (FMAX << IPOS & A1); /* inherit A0's type info */
-         NEXT(3);
       case 58: { /* fx>> x n hi lo */
          hval x = immval(A0);
          uint n = immval(A1);
          A2 = F(x >> n);
          A3 = F(x << (FBITS - n));
          NEXT(4); }
-      case 37: /* FIXME: opcode 37 unused in new fasl */
       case 59: /* lraw lst type r (FIXME: alloc amount testing compiler pass not in place yet) */
          A2 = prim_lraw(A0, A1);
          NEXT(3);
-      case 60:
-         op ^= 64; /* FIXME: remove after fasl update */
-      case 61: { /* apply: cont=r3, fn=r4, a0=r5; _sans_cps: func=r3, a0=r4 */
-         word *lst;
-         uint arity = op >> 6;
-         uint reg = 3 + arity; /* FIXME: remove after fasl update */
-         ob = (word *)R[reg];
-         acc -= 2 + arity; /* ignore cont, function and stop before last one (the list) */
-         for (arity += acc; acc--; ++reg)
-            R[reg] = R[reg + 1]; /* move explicitly given arguments down by one to correct positions */
-         lst = (word *)R[reg + 1];
-         while (pairp(lst)) { /* unwind argument list */
-            /* FIXME: unwind only up to last register and add limited rewinding to arity check */
-            if (reg > 128) /* dummy handling for now */
-               exit(3);
-            R[reg++] = lst[1];
-            lst = (word *)lst[2];
-            ++arity;
-         }
-         acc = arity;
-         goto apply; }
+      case 61: { /* arity error */
+         word *t;
+         allocate(acc + 1, t);
+         *t = make_header(acc + 1, TTUPLE);
+         memcpy(t + 1, R + 3, acc * W);
+         error(61, ob, t); }
       case 62: /* set-ticker <val> <to> -> old ticker value */
          /* ponder: it should be possible to remove this, if the only use is to yield control */
          A1 = F(ticker);

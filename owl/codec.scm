@@ -38,7 +38,7 @@
             (vector-ref hex-chars (>> x 4))
             (vector-ref hex-chars (band x 15))
             tl))
-        null lst))
+        #n lst))
 
     (define (hex-char->bits x)
       (cond
@@ -51,7 +51,7 @@
         (else #false)))
 
     (define (hex-decode-bytes bs)
-       (let loop ((out null) (bs bs))
+       (let loop ((out #n) (bs bs))
          (if (null? bs)
             (reverse out)
             (lets ((b bs bs))
@@ -59,12 +59,12 @@
                   ((null? bs)
                      #false)
                   ((hex-char->bits b) =>
-                     (lambda (b)
+                     (λ (b)
                         (lets
                            ((a bs bs)
                             (a (hex-char->bits a)))
                            (if a
-                              (loop (cons (bor (<< b 4) a) out) bs)
+                              (loop (cons (fxbor (<< b 4) a) out) bs)
                               #false))))
                   (else #false))))))
 

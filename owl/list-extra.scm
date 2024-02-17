@@ -88,8 +88,8 @@
 
       (define (take l n)
          (cond
-            ((eq? n 0) null)
-            ((null? l) null)
+            ((eq? n 0) #n)
+            ((null? l) l)
             (else (cons (car l) (take (cdr l) (- n 1))))))
 
       (define (drop l n)
@@ -108,21 +108,21 @@
       (define (iota-up p s e)
          (if (< p e)
             (cons p (iota-up (+ p s) s e))
-            null))
+            #n))
 
       (define (iota-down p s e)
          (if (> p e)
             (cons p (iota-down (+ p s) s e))
-            null))
+            #n))
 
       (define (iota from step to)
          (cond
             ((> step 0)
-               (if (< to from) null (iota-up from step to)))
+               (if (< to from) #n (iota-up from step to)))
             ((< step 0)
-               (if (> to from) null (iota-down from step to)))
+               (if (> to from) #n (iota-down from step to)))
             ((= from to)
-               null)
+               #n)
             (else
                (error "bad iota: " (list 'iota from step to)))))
 
@@ -136,14 +136,14 @@
             (list-tail (cdr lst) (- n 1))))
 
       (define (make-list n thing)
-         (let loop ((n n) (out null))
+         (let loop ((n n) (out #n))
             (if (eq? n 0)
                out
                (loop (- n 1) (cons thing out)))))
 
       ;; lst n -> head tail, SRFI-1
       (define (split-at l n)
-         (let loop ((l l) (o null) (n n))
+         (let loop ((l l) (o #n) (n n))
             (cond
                ((null? l)
                   (values (reverse o) l))

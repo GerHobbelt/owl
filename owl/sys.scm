@@ -1,5 +1,6 @@
-;;; Owl sys library exports various operating system calls and helper
-;;; functions for using them.
+#| doc
+This library defines various system calls and wrappers for calling them.
+|#
 
 (define-library (owl sys)
    (export
@@ -91,7 +92,7 @@
             ((sc name index) (define name (sys-const index)))))
 
       (define (sys-const i)
-         (lambda () (sys-prim 8 i #f #f)))
+         (λ () (sys-prim 8 i #f #f)))
 
       ;; owl value → value processable in vm (mainly string conversion)
       (define (sys-arg x)
@@ -125,7 +126,7 @@
       (define (mem-string-bytes ptr)
          (let ((this (peek-byte ptr)))
             (if (eq? this 0)
-               null
+               #n
                (cons this (mem-string-bytes (+ ptr 1))))))
 
       (define raw-string
@@ -144,7 +145,7 @@
                (let loop ((ptr ptr))
                   (let ((next (peek-word ptr)))
                      (if (eq? next 0)
-                        null
+                        #n
                         (cons
                            (func next)
                            (loop (+ ptr nb)))))))))
@@ -365,13 +366,13 @@
                (if (eq? #\. (ref this 0))
                   seen
                   (cons this seen)))
-            null path))
+            #n path))
 
       ;; everything reported by OS
       (define (dir->list-all path)
          (dir-fold
             (λ (seen this) (cons this seen))
-            null path))
+            #n path))
 
       ;;;
       ;;; Processes
@@ -399,7 +400,6 @@
          (let ((pid (sys 18)))
             (or (eq? pid 0) pid)))
 
-      ;; warning, easily collides with owl wait
       (define (waitpid pid)
          (let ((res (sys 19 pid (cons #false #false))))
             (cond

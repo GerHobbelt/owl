@@ -25,7 +25,7 @@
 
 (mail 'intern (tuple 'flush)) ;; ask symbol interner to forget all symbols it knows
 
-(define *libraries* '()) ;; clear loaded libraries
+(define *libraries* #n) ;; clear loaded libraries
 
 (import (owl defmac)) ;; reload default macros needed for defining libraries etc
 
@@ -39,7 +39,7 @@
 (define *interactive* #false) ;; be verbose
 (define *include-dirs* '(".")) ;; now we can (import <libname>) and have them be autoloaded to current repl
 (define *owl-names* #empty)
-(define *owl-version* "0.1.17")
+(define *owl-version* "0.1.18")
 
 (import
    (owl intern)
@@ -127,21 +127,20 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
    (list
          put get del ff-fold fupd
          - + * /
-         quotient gcd ediv
+         quotient gcd
          << < <= = >= > >>
          equal? memq member
-         band bor bxor
-         sort
+         band bior bxor
+         ; sort
          ; suffix-array bisect
-         fold foldr map reverse length zip append unfold
+         fold foldr map reverse length zip append
          list-ref lset iota
          ;print
          mail interact
          take filter remove
          thread-controller
          uncons lfold lmap
-         rand seed->rands
-         ))
+         rand seed->rands))
 
 ;; handles $ ol -c stuff
 (define (repl-compile compiler env path opts)
@@ -275,7 +274,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                   (else
                      ;; load the given files
                      (define input
-                        (foldr (λ (path tail) (ilist ',load path tail)) null others))
+                        (foldr (λ (path tail) (ilist ',load path tail)) #n others))
                      (tuple-case (repl (env-set env '*interactive* #false) input)
                         ((ok val env)
                            0)
@@ -289,7 +288,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
       (reverse
          (or
             (memq #\/ (reverse (string->runes path)))
-            null))))
+            #n))))
 
 (define compiler ; <- to compile things out of the currently running repl using the freshly loaded compiler
    (make-compiler #empty))
@@ -348,7 +347,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
                                                 (cons 'render render)
                                                 (cons '*vm-special-ops* vm-special-ops)
                                                 (cons '*state* state))))))))))
-                     null)))))))
+                     #n)))))))
 
 
 (define command-line-rules
@@ -358,7 +357,7 @@ Check out https://gitlab.com/owl-lisp/owl for more information.")
 
 (define (choose-natives str all)
    (cond
-      ((equal? str "none") null)
+      ((equal? str "none") #n)
       ((equal? str "some") usual-suspects)
       ((equal? str "all") all)
       (else (print "Bad native selection: " str))))

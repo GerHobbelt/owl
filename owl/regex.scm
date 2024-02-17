@@ -274,7 +274,7 @@
          (if (eq? node (car ms))
             (cons
                (cons (car node) ;; id
-                  (add-range buff (cdr node) null))
+                  (add-range buff (cdr node) #n))
                (cdr ms))
             (cons (car ms) (update-node (cdr ms) node buff))))
 
@@ -310,7 +310,7 @@
       ; O(n) * rex (!)
       (define (lookback rex)
          (λ (ls buff ms cont)
-            (let loop ((rev buff) (try null))
+            (let loop ((rev buff) (try #n))
                (cond
                   ((rex try rev ms (λ (ls buff ms) (null? ls)))
                      (cont ls buff ms))
@@ -322,7 +322,7 @@
       ; O(n) * rex (!)
       (define (lookback-not rex)
          (λ (ls buff ms cont)
-            (let loop ((rev buff) (try null))
+            (let loop ((rev buff) (try #n))
                (cond
                   ((rex try rev ms (λ (ls buff ms) #true))
                      #false)
@@ -373,7 +373,7 @@
       ;;;
 
       (define start-node
-         (cons 0 null))
+         (cons 0 #n))
 
       ;; ranges = ((nth-range . start-node) ...)
       (define blank-ranges
@@ -388,12 +388,12 @@
 
       ;; rex str → bool (matches some prefix of ll)
       (define (rex-match-prefix? rex ll)
-         (rex ll null blank-ranges
+         (rex ll #n blank-ranges
             (λ (ls buff ms) #true)))
 
       ;; rex ll → #false | #(ls buff ms), for replacing
       (define (rex-match-prefix rex ll)
-         (rex ll null blank-ranges
+         (rex ll #n blank-ranges
             (λ (ls buff ms) (tuple ls buff ms))))
 
       ;; rex str → bool (if matches anywhere)
@@ -434,7 +434,7 @@
 
       (define (flush out)
          (if (null? out)
-            null
+            #n
             (list (runes->string (reverse out)))))
 
       (define (force node)
@@ -460,7 +460,7 @@
                                  ((null? ls)  ;; trailing match
                                     (list ""))
                                  (else
-                                    (rex-cut rex ls #false null))))))
+                                    (rex-cut rex ls #false #n))))))
                      (start?
                         (list ll))
                      (else
@@ -473,10 +473,10 @@
          (λ (target)
             (rex-cut rex (iter target) start?
                ; global? retain
-               null)))
+               #n)))
 
       (define (rex-matches rex thing)
-         (let loop ((ll (iter thing)) (out null))
+         (let loop ((ll (iter thing)) (out #n))
             (cond
                ((null? ll)
                   (reverse out))
@@ -525,7 +525,7 @@
       (define (rex-replace ll rex rep start? all?)
          (let loop ((ll ll))
             (cond
-               ((null? ll) null)
+               ((null? ll) ll)
                ((pair? ll)
                   (let ((match (rex-match-prefix rex ll)))
                      (cond
@@ -645,9 +645,10 @@
       (define accept-nonspace (pred (B not space?)))
 
       ;; \<x>
+      ;; todo: can this be merged with char class char?
       (define get-quoted-char
          (get-parses
-            ((skip (get-imm 92)) ; \
+            ((skip (get-imm #\\))
              (val
                (one-of
                   (imm-val #\d accept-digit)       ;; \d = [0-9]
@@ -664,6 +665,7 @@
                   (imm-val #\] (imm #\]))
                   (imm-val #\( (imm #\())
                   (imm-val #\) (imm #\)))
+                  (imm-val #\| (imm #\|))
                   (imm-val #\W accept-nonword)     ;; \W = [^_0-9a-zA-Z]
                   (imm-val #\s accept-space)       ;; \s = [ \t\r\n\v\f]
                   (imm-val #\S accept-nonspace)    ;; \S = [ \t\r\n\v\f]
@@ -720,35 +722,36 @@
             (char->hex b)))
 
       (define get-8bit
-         (get-parses ((hi get-hex) (lo get-hex)) (bor (<< hi 4) lo)))
+         (get-parses ((hi get-hex) (lo get-hex)) (fxbor (<< hi 4) lo)))
 
       (define get-16bit
-         (get-parses ((hi get-8bit) (lo get-8bit)) (bor (<< hi 8) lo)))
+         (get-parses ((hi get-8bit) (lo get-8bit)) (fxbor (<< hi 8) lo)))
 
       (define get-32bit
-         (get-parses ((hi get-16bit) (lo get-16bit)) (bor (<< hi 16) lo)))
+         (get-parses ((hi get-16bit) (lo get-16bit)) (bior (<< hi 16) lo)))
 
       ;; todo: what is the quotation used for 32-bit \xhhhhhhhh?
       (define parse-quoted-char-body
          (one-of
             ;; the usual quotations
-            (imm-val 97  7)   ;; \a = 7
-            (imm-val 98  8)   ;; \b = 8
-            (imm-val 116 9)   ;; \t = 9
-            (imm-val 110 10)  ;; \n = 10
-            (imm-val 118 11)  ;; \v = 11
-            (imm-val 102 12)  ;; \f = 12
-            (imm-val 114 13)  ;; \r = 13
-            (get-imm 91)      ;; \[ = [
-            (get-imm 92)      ;; \\ = \
-            (get-imm 93)      ;; \] = ]
-            (get-imm 94)      ;; \^ = ^
-            (get-parses ((skip (get-imm 120)) (char get-8bit)) char)    ;; \xhh
-            (get-parses ((skip (get-imm 117)) (char get-16bit)) char))) ;; \uhhhh
+            (imm-val #\a  7)
+            (imm-val #\b  8)
+            (imm-val #\t  9)
+            (imm-val #\n 10)
+            (imm-val #\v 11)
+            (imm-val #\f 12)
+            (imm-val #\r 13)
+            (get-imm #\[)
+            (get-imm #\\)
+            (get-imm #\])
+            (get-imm #\^)
+            (get-imm #\|)
+            (get-parses ((skip (get-imm #\x)) (char get-8bit)) char)    ;; \xhh
+            (get-parses ((skip (get-imm #\u)) (char get-16bit)) char))) ;; \uhhhh
 
       (define parse-quoted-char
          (get-parses
-            ((skip (get-imm 92)) ;; \
+            ((skip (get-imm #\\))
              (val parse-quoted-char-body))
             val))
 
@@ -787,8 +790,7 @@
              (comp? get-maybe-caret)
              (charss (get-plus char-class-elem)) ;; todo: [] might also be useful
              (close (get-imm 93)))
-            (make-char-class comp?
-               (foldr append null charss))))
+            (make-char-class comp? (concatenate charss))))
 
       ;; n m|inf → (R → R{n,m})
       (define (make-repeater n m)

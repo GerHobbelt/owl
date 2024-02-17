@@ -2,8 +2,6 @@
 ;;; Math library unit tests
 ;;;
 
-;; todo: factor this to smaller tests
-
 (import (owl math))
 (import (owl math extra))
 
@@ -195,7 +193,7 @@
 		(tuple 'binary int int 'gcd-sign
 			(lambda (a b) (= (gcd a (* a b)) (abs a))))
 		(tuple 'binary nat nat 'bitwise-misc
-			(lambda (a b) (= a (band a (bor a (bxor b b))))))
+			(lambda (a b) (= a (band a (bior a (bxor b b))))))
 		(tuple 'binary int-nz int-nz 'gcd-divides
 			(lambda (a b)
 				(let ((gab (gcd a b)))

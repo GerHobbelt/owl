@@ -12,3 +12,4 @@ build and test:
       - bin/vm
       - bin/ol
       - fasl/ol.fasl
+      - manual.md

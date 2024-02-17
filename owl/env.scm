@@ -83,7 +83,7 @@
          (syntax-rules ()
             ((invoke module name arg ...)
                ((env-get module (quote name)
-                  (lambda (arg ...)
+                  (λ (arg ...)
                      (error "invoke: failed to invoke "
                         (cons (quote name)
                            (list arg ...)))))
@@ -193,18 +193,18 @@
 
       (define (apply-env exp env)
          (call/cc
-            (lambda (ret)
+            (λ (ret)
                (ok env
                   ((walker env (B ret fail)) exp)))))
 
       (define env-fold ff-fold)
 
       (define (env-serializer env thing)
-         ((make-serializer (env-get env name-tag empty)) thing null))
+         ((make-serializer (env-get env name-tag empty)) thing #n))
 
       (define (verbose-vm-error env opcode a b)
          (case opcode
-            ((17)
+            ((61)
             ;; arity error, could be variable
             ; this is either a call, in which case it has an implicit continuation,
             ; or a return from a function which doesn't have it. it's usually a call,
@@ -282,7 +282,7 @@
             empty env))
 
       (define (env-keys env)
-         (ff-fold (λ (words key value) (cons key words)) null env))
+         (ff-fold (λ (words key value) (cons key words)) #n env))
 
       (define primitive? primop-of)
 ))

@@ -58,7 +58,7 @@
 
       ;; (executable ...) → (first-value . rest-ll) | (), or crash if something crashes in them
       (define (par* ts)
-         (syscall 22 ts '()))
+         (syscall 22 ts #n))
 
       ;; macro for calling from code directly
       (define-syntax par
@@ -82,7 +82,7 @@
       (define (check-mail)          (syscall 13 #false #true))
 
       (define (accept-mail pred)
-         (let loop ((this (wait-mail)) (rev-spam '()))
+         (let loop ((this (wait-mail)) (rev-spam #n))
             (cond
                ((pred this)
                   (return-mails rev-spam) ; return the other mails to mailbox as such
@@ -101,7 +101,7 @@
                value)))
 
       (define (poll-mail-from id rounds default)
-         (let loop ((envp (check-mail)) (spam '()) (rounds rounds))
+         (let loop ((envp (check-mail)) (spam #n) (rounds rounds))
             (cond
                ((not envp)
                   (if (eq? rounds 0)
@@ -130,9 +130,9 @@
       (define-syntax thread
          (syntax-rules ()
             ((thread id val)
-               (thunk->thread id (lambda () val)))
+               (thunk->thread id (λ () val)))
             ((thread val)
-               (thunk->thread (lambda () val)))))
+               (thunk->thread (λ () val)))))
 
       ;; (thread (op . args)) → id
       ;; (wait-thread (thread (op . args)) [default]) → value

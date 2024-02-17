@@ -1,12 +1,8 @@
-;;;
-;;; Thread controller
-;;;
-
-;; thread controller is like the kernel of owl lisp. it handles
-;; activation and suspension of threads, and has a tuple of
-;; functions which are like the system calls, via which a thread
-;; send requests via the thread scheduler to other threads or
-;; the underlying system.
+#| doc
+This library defines the thread controller. It handles activation, suspension
+and requested external actions of continuation-based threads.  It is much like
+a very small kernel.
+|#
 
 (define-library (owl thread)
 
@@ -66,7 +62,7 @@
       (define eval-break-message (tuple 'repl-eval (tuple 'breaked)))
 
       (define (subscribers-of state id)
-         (get (get state link-tag empty) id null))
+         (get (get state link-tag empty) id #n))
 
       ; remove the thread and report to any interested parties about the event
       (define (drop-delivering todo done state id msg tc)
@@ -193,7 +189,7 @@
             ; 11, reset mcp state (usually means exit from mcp repl)
             (λ (id cont threads state xtodo xdone xstate tc)
                ; (system-println "syscall 11 - swapping mcp state")
-               (tc tc threads null state))
+               (tc tc threads #n state))
 
             ; 12, set break action
             (λ (id cont choice x todo done state tc)
@@ -244,7 +240,7 @@
                       (val all (catch-thread all info)))
                      (tc
                         (cons (tuple id (λ () (cont val))) all)
-                        null state))
+                        #n state))
                   (tc
                      (ilist (tuple id (λ () (cont 'released))) info todo)
                      done state)))
@@ -253,7 +249,7 @@
             (λ (id cont b c todo done state tc)
                (lets
                   ((grab (λ (l n) (cons (ref n 1) l)))
-                   (ids (fold grab (fold grab null todo) done)))
+                   (ids (fold grab (fold grab #n todo) done)))
                   (tc tc (cons (tuple id (λ () (cont (cons id ids)))) todo) done state)))
 
             ; 19, set return value proposal
@@ -285,7 +281,7 @@
             (λ (id cont target c todo done state tc)
                (lets
                   ((links (get state link-tag empty))
-                   (followers (get links target null))
+                   (followers (get links target #n))
                    (links
                      (if (memq id followers)
                         links
@@ -332,10 +328,10 @@
                   (λ (id cont b c todo done state tc)
                      ;; make a new thread scheduler using the other syscall set
                      (define (scheduler self todo done state)
-                        (if (eq? todo null)
+                        (if (null? todo)
                            (if (null? done)
                               (halt-thread-controller state)
-                              (self self done null state))
+                              (self self done #n state))
                            (lets
                               ((this todo todo)
                                (id st this)
@@ -363,7 +359,7 @@
                   (λ ()
                      ((get state signal-tag signal-halt) ; exit by default
                         threads state controller))))
-            null empty))
+            #n empty))
 
 
       ; (enter-mcp thread-controller done state) -- no way to go here without the poll, rethink that
@@ -380,15 +376,15 @@
             (if (null? todo)
                (if (null? done)
                   ;; no options left
-                  (values #true (λ () (cont null)))
+                  (values #true (λ () (cont #n)))
                   ;; rewind the track, spin the record and take it back
-                  (step-parallel (tuple cont done null)))
+                  (step-parallel (tuple cont done #n)))
                (lets ((state todo todo))
                   (if (eq? (type state) type-tuple)
                      (lets ((fini state (step-parallel state)))
-                        (if (eq? fini null)
+                        (if (null? fini)
                            ;; crashed, propagate
-                           (values null state)
+                           (values #n state)
                            ;; either par->single or single->value state change,
                            ;; but consumed a quantum already so handle it in next round
                            (values #false (tuple cont todo (cons state done)))))
@@ -408,13 +404,13 @@
                            (else
                               ;; treat all other reasons and syscalls as errors
                               (print "bad syscall op within par: " op)
-                              (values null (tuple op a b c))))))))))
+                              (values #n (tuple op a b c))))))))))
 
       (define (thread-controller self todo done state)
-         (if (eq? todo null)
+         (if (null? todo)
             (if (null? done)
                (halt-thread-controller state)  ;; nothing left to run
-               (self self done null state))    ;; new scheduler round
+               (self self done #n state))    ;; new scheduler round
             (lets
                ((this todo todo)
                 (id st this))
@@ -425,7 +421,7 @@
 
       (define (start-thread-controller threads state-alist)
          (thread-controller thread-controller threads
-            null (list->ff state-alist)))
+            #n (list->ff state-alist)))
 
       (define (try-thunk thunk fail-fn)
          (let ((id (list 'thread)))
@@ -460,7 +456,7 @@
       (define (repl-signal-handler threads state controller)
          (if (any (λ (x) (eq? (ref x 1) 'repl-eval)) threads)
             ;; there is a thread evaling user input, linkely gone awry somehow
-            (drop-thread 'repl-eval threads null state eval-break-message controller)
+            (drop-thread 'repl-eval threads #n state eval-break-message controller)
             ;; nothing evaling atm, exit owl
             (signal-halt threads state controller)))
 ))

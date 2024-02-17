@@ -43,7 +43,7 @@
          (and (null? (car cl)) (null? (cdr cl))))
 
       (define (half-rev l)
-         (let loop ((l l) (h l) (s #false) (o null)) ;; todo: check that at least one is always moved, like () (a)
+         (let loop ((l l) (h l) (s #false) (o #n)) ;; todo: check that at least one is always moved, like () (a)
             (cond
                ((null? h) (values (reverse l) (reverse o)))
                (s (loop l (cdr h) #false o))
@@ -114,7 +114,7 @@
                         (values (car rtl) (cons hd (cdr rtl))))))
                (values (car rtl) (cons hd (cdr rtl))))))
 
-      (define list->queue (C cons null))
+      (define list->queue (C cons #n))
 
       (define (queue->list cl)
          (lets ((hd rtl cl))

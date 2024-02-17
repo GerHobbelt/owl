@@ -42,7 +42,7 @@
       (owl defmac)
       (owl list)
       (owl list-extra)
-      (owl math)
+      (owl math complex)
       (owl proof)
       (only (owl syscall) error))
 
@@ -101,7 +101,7 @@
             ((null? lst) state)
             (else (lfoldr op state (lst)))))
 
-      (define (llen lst) (lfold (lambda (n x) (+ n 1)) 0 lst))
+      (define (llen lst) (lfold (λ (n x) (+ n 1)) 0 lst))
 
       ; much more readable this way...
 
@@ -114,7 +114,7 @@
                (cons (fn (car l))
                   (lmap fn (cdr l))))
             ((null? l)
-               null)
+               #n)
             (else
                (λ () (lmap fn (l))))))
 
@@ -129,12 +129,12 @@
 
       (define (lunfold op st end?)
          (if (end? st)
-            null
+            #n
             (lets ((this st (op st)))
                (pair this
                   (lunfold op st end?)))))
 
-      (define (ltail) null)
+      (define (ltail) #n)
 
       ;;; numbers (integers)
 
@@ -147,7 +147,7 @@
                ((b _ (fx+ a 1))
                 (c _ (fx+ b 1))
                 (d _ (fx+ c 1)))
-               (ilist a b c (lambda () (lnums-fix d))))
+               (ilist a b c (λ () (lnums-fix d))))
             (lnums-other a)))
 
       (define (lnums n)
@@ -159,18 +159,18 @@
 
       (define (liota-walk st step end)
          (if (= st end)
-            null
+            #n
             (pair st (liota-walk (+ st step) step end))))
 
       (define liota-steps 8)
 
       (define (liota-walk-one st end)
          (if (= st end)
-            null
+            #n
             (cons st
                (let ((st (+ st 1)))
                   (if (= st end)
-                     null
+                     #n
                      (pair st (liota-walk-one (+ st 1) end)))))))
 
       ; fixnum range iota making 2 cells at a time. this is actually a bit
@@ -183,7 +183,7 @@
                   (lets ((next _ (fx+ posp 1)))
                      (cons pos (pair posp (liota-fix next end))))
                   (list pos)))
-            null))
+            #n))
 
       (define (liota pos step end)
          (if (eq? step 1)
@@ -202,8 +202,7 @@
             ((null? l)
                l)
             (else
-               (lambda ()
-                  (ledit op (l))))))
+               (λ () (ledit op (l))))))
 
       (define (liter op st)
          (pair st (liter op (op st))))
@@ -228,7 +227,7 @@
 
       (define (ltake l n)
          (cond
-            ((eq? n 0) null)
+            ((eq? n 0) #n)
             ((null? l) l)
             ((pair? l)
                (cons (car l)
@@ -237,7 +236,7 @@
                (λ () (ltake (l) n)))))
 
       (define (lsplit l n)
-         (let loop ((l l) (o null) (n n))
+         (let loop ((l l) (o #n) (n n))
             (cond
                ((eq? n 0)
                   (values (reverse o) l))
@@ -268,8 +267,8 @@
       ;; zip, preserves laziness of first argument
       (define (lzip op a b)
          (cond
-            ((null? a) null)
-            ((null? b) null)
+            ((null? a) a)
+            ((null? b) b)
             ((pair? a)
                (if (pair? b)
                   (pair (op (car a) (car b))
@@ -284,16 +283,16 @@
       (define (lperm-take l out rest)
          (if (null? l)
             (cons out rest)
-            (let loop ((a l) (b null))
+            (let loop ((a l) (b #n))
                (if (null? a)
                   (rest)
                   (lperm-take (append b (cdr a)) (cons (car a) out)
-                     (lambda () (loop (cdr a) (cons (car a) b))))))))
+                     (λ () (loop (cdr a) (cons (car a) b))))))))
 
       (define (lperms l)
          (if (null? l)
             '(())
-            (lperm-take (reverse l) null ltail)))
+            (lperm-take (reverse l) #n ltail)))
 
 
       (define permutations lperms)
@@ -305,7 +304,7 @@
       ;   (if (null? l)
       ;      (cons out more)
       ;      (ssubs-take (cdr l) (cons (car l) out)
-      ;         (lambda () (ssubs-take (cdr l) out more)))))
+      ;         (λ () (ssubs-take (cdr l) out more)))))
       ;
       ;(define (ssubs l)
       ;   (ssubs-take (reverse l) #n ltail))
@@ -316,26 +315,25 @@
             ((null? l) more)
             (else
                (lpick (cdr l) (cons (car l) out) (- n 1)
-                  (lambda () (lpick (cdr l) out n more))))))
+                  (λ () (lpick (cdr l) out n more))))))
 
        ; subsets of growing size
       (define (subs l)
          (if (null? l)
             '(())
-            (pair null
+            (pair #n
                (let ((end (+ (length l) 1)))
                   (let loop ((n 1))
                      (if (= n end)
-                        null
-                        (lpick l null n
-                           (lambda ()
-                              (loop (+ n 1))))))))))
+                        #n
+                        (lpick l #n n
+                           (λ () (loop (+ n 1))))))))))
 
       (define subsets subs)
 
-      ; (lfold (lambda (n s) (print s) (+ n 1)) 0 (subsets (iota 0 1 5)))
+      ; (lfold (λ (n s) (print s) (+ n 1)) 0 (subsets (iota 0 1 5)))
 
-      ; (lfold (lambda (n s) (print s) (+ n 1)) 0 (permutations (iota 0 1 5)))
+      ; (lfold (λ (n s) (print s) (+ n 1)) 0 (permutations (iota 0 1 5)))
 
       (define (force-ll it)
          (cond

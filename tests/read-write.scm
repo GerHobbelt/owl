@@ -25,7 +25,7 @@
 (test 10+4/3i)
 (test #true)
 (test #false)
-(test #empty)
+(test ##())
 (test (put #empty 1 2))
 (test (list->ff '((a . 1) (b . 2) (c . 3))))
 

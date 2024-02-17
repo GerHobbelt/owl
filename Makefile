@@ -5,31 +5,22 @@ PREFIX = /usr
 BINDIR = /bin
 MANDIR = /share/man
 INSTALL = install
-CFLAGS = -Wall -O2
-CC = gcc
 
-# owl needs just a single binary
-all owl: bin/ol
+export CFLAGS = -Wall -O2
+export CC = gcc
+export LDFLAGS
 
-simple-ol: bin/vm
-	bin/vm fasl/init.fasl --run owl/ol.scm -s none -o c/ol.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/ol c/ol.c
+all owl: bin/ol manual.md
 
 ## fasl (plain bytecode) image boostrap
 
-fasl/boot.fasl: fasl/init.fasl
+fasl/boot.fasl: bin/vm fasl/init.fasl
 	# start bootstrapping with the bundled init.fasl image
-	cp $? $@
+	bin/vm fasl/init.fasl -r bin/fasl-build.scm bin/vm fasl/init.fasl -r owl/ol.scm -o $@
 
-fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm scheme/*.scm tests/*.scm tests/*.sh owl/*/*.scm
+fasl/ol.fasl: bin/vm fasl/boot.fasl owl/*.scm owl/*/*.scm scheme/*.scm tests/*.scm tests/*.sh
 	# selfcompile boot.fasl until a fixed point is reached
-	@bin/vm fasl/init.fasl -e '(time-ms)' >.start
-	bin/vm fasl/boot.fasl --run owl/ol.scm -s none -o fasl/bootp.fasl
-	@bin/vm fasl/init.fasl -e '(str"bootstrap: "(-(time-ms)(read(open-input-file".start")))"ms\nfasl: "(file-size"fasl/bootp.fasl")"b")'
-	# check that the new image passes tests
-	CC='$(CC)' sh tests/run all bin/vm fasl/bootp.fasl
-	# copy new image to ol.fasl if it is a fixed point, otherwise recompile
-	if cmp -s fasl/boot.fasl fasl/bootp.fasl; then mv fasl/bootp.fasl $@; else mv fasl/bootp.fasl fasl/boot.fasl && exec make $@; fi
+	bin/vm fasl/init.fasl -r bin/fasl-build.scm -f bin/vm fasl/boot.fasl -r owl/ol.scm -o fasl/bootp.fasl
 
 ## building just the virtual machine to run fasl images
 
@@ -44,11 +35,11 @@ c/vm.c: c/_vm.c
 	# make a vm without a bundled heap
 	echo 'static void *heap = 0;' | cat - $? >$@
 
-manual.md: doc/manual.md owl/*.scm scheme/*.scm
-	bin/find-documentation.sh | cat doc/manual.md - >$@
+manual.md: doc/manual.md owl/*.scm owl/*/*.scm scheme/*.scm
+	bin/ol -r bin/tada.scm -d owl -d scheme -o manual.md
 
 manual.man: manual.md
-	pandoc $? -s -t man > $@
+	pandoc $? -s -t man >$@
 
 manual.pdf: manual.md
 	pandoc --latex-engine xelatex -o $@ $?
@@ -62,7 +53,7 @@ c/ol.c: fasl/ol.fasl
 bin/ol: c/ol.c
 	# compile the real owl repl binary
 	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/olp $?
-	CC='$(CC)' CFLAGS='$(CFLAGS)' LDFLAGS='$(LDFLAGS)' sh tests/run all bin/olp
+	sh tests/run all bin/olp
 	test '!' -f $@ || mv $@ bin/ol-old
 	mv bin/olp $@
 
@@ -70,14 +61,14 @@ bin/ol: c/ol.c
 ## running unit tests manually
 
 fasltest: bin/vm fasl/ol.fasl
-	CC='$(CC)' sh tests/run all bin/vm fasl/ol.fasl
+	sh tests/run all bin/vm fasl/ol.fasl
 
 test: bin/ol
-	CC='$(CC)' sh tests/run all bin/ol
+	sh tests/run all bin/ol
 
 random-test: bin/vm bin/ol fasl/ol.fasl
-	CC='$(CC)' sh tests/run random bin/vm fasl/ol.fasl
-	CC='$(CC)' sh tests/run random bin/ol
+	sh tests/run random bin/vm fasl/ol.fasl
+	sh tests/run random bin/ol
 
 
 ## data
@@ -113,10 +104,10 @@ clean:
 	-rm -f fasl/boot.fasl fasl/bootp.fasl fasl/ol.fasl
 	-rm -f c/_vm.c c/vm.c c/ol.c
 	-rm -f doc/*.gz manual.md
-	-rm -f tmp/* .start
+	-rm -f tmp/*
 	-rm -f bin/ol bin/ol-old bin/vm
 
 fasl-update: fasl/ol.fasl
 	cp fasl/ol.fasl fasl/init.fasl
 
-.PHONY: all clean fasl-update fasltest install owl random-test simple-ol test uninstall
+.PHONY: all clean fasl-update fasltest install owl random-test test uninstall

@@ -113,10 +113,10 @@
                    (a _ (truncate/ y 4))
                    (b _ (truncate/ y 100))
                    (c _ (truncate/ y 400)))
-                  (+ 1 (- (+ (- a 0) (- c 0)) (- b 0)))))))
+                  (+ 1 (- (+ a c) b))))))
 
       (define (year-start-day y)
-         (+ 1 (remainder (+ 5 (* 365 y) (leap-years-before y)) 7)))
+         (+ 1 (remainder (+ 5 (+ (* 365 y) (leap-years-before y))) 7)))
 
       (define day-names-fi
          (tuple "maanantai" "tiistai" "keskiviikko" "torstai" "perjantai" "lauantai" "sunnuntai"))

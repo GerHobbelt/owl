@@ -20,6 +20,7 @@
       (owl defmac)
       (owl list)
       (owl list-extra)
+      (owl bytevector)
       (owl math)
       (owl function)
       (owl ff)
@@ -33,7 +34,7 @@
       ; -> list of bytes | #false
       (define (code->bytes code extras)
          (if (bytecode? code)
-            (let ((bytes (map (H ref code) (iota 0 1 (sizeb code)))))
+            (let ((bytes (bytevector->list code)))
                (if (eq? (car bytes) 0) ;; (0 <hi8> <lo8>) == call extra instruction
                   (lets
                      ((opcode (fxbor (<< (cadr bytes) 8) (car (cddr bytes))))
@@ -115,28 +116,28 @@
             (values (list "R["to"]=prim_ref(R["ob"],R["pos"]);") bs
                (del regs to))))
 
-      ; fx+ a b r o?
+      ; fx+ a b r o
       (define (cify-fxadd bs regs fail)
          (lets ((a b r o bs (get4 (cdr bs))))
             (values
                ;; res is shifted down, so there is room for an overflow bit
-               (list "{hval res=immval(R["a"])+immval(R["b"]);R["o"]=BOOL(1<<FBITS&res);R["r"]=F(res);}")
+               (list "{hval r=immval(R["a"])+immval(R["b"]);R["o"]=F(r>>FBITS);R["r"]=F(r);}")
                bs (put (put regs r 'fixnum) o 'bool))))
 
-      ; fxband a b r
-      (define (cify-fxband bs regs fail)
+      ; fxand a b r
+      (define (cify-fxand bs regs fail)
          (lets ((a b r bs (get3 (cdr bs))))
             (values (list "R["r"]=R["a"]&R["b"];") bs
                (put regs r 'fixnum))))
 
-      ; fxbor a b r
-      (define (cify-fxbor bs regs fail)
+      ; fxior a b r
+      (define (cify-fxior bs regs fail)
          (lets ((a b r bs (get3 (cdr bs))))
             (values (list "R["r"]=R["a"]|R["b"];") bs
                (put regs r 'fixnum))))
 
-      ; fxbxor a b r
-      (define (cify-fxbxor bs regs fail)
+      ; fxxor a b r
+      (define (cify-fxxor bs regs fail)
          (lets ((a b r bs (get3 (cdr bs))))
             (values (list "R["r"]=R["a"]^(FMAX<<IPOS&R["b"]);") bs
                (put regs r 'fixnum))))
@@ -148,11 +149,11 @@
                (list "{uint64_t p=(uint64_t)immval(R["a"])*immval(R["b"]);R["l"]=F(p);R["h"]=F(p>>FBITS);}")
                bs (put (put regs h 'fixnum) l 'fixnum))))
 
-      ; fx- a b r u?
+      ; fx- a b r u
       (define (cify-fxsub bs regs fail)
          (lets ((a b r u bs (get4 (cdr bs))))
             (values
-               (list "{hval r=immval(R["a"])-immval(R["b"]);R["u"]=BOOL(1<<FBITS&r);R["r"]=F(r);}")
+               (list "{hval r=immval(R["a"])-immval(R["b"]);R["u"]=F(r>>FBITS&1);R["r"]=F(r);}")
                bs (put (put regs r 'fixnum) u 'bool))))
 
       ; fx>> x n hi lo
@@ -279,15 +280,22 @@
                   (λ (bs regs fail)
                      (lets ((from offset to bs (get3 (cdr bs))))
                         (values (list "R["to"]=G(R["from"],"offset");") bs (del regs to)))))
+               (cons 2 ;; fixed jump-arity n hi8 lo8
+                  (λ (bs regs fail)
+                     (lets
+                        ((arity hi8 lo8 bs (get3 (cdr bs)))
+                         (jump-len (fxbor (<< hi8 8) lo8)))
+                         (values 'branch
+                           (tuple
+                              (list "acc==" arity)
+                              bs regs
+                              (drop bs jump-len) regs)
+                           regs))))
                (cons 3 ;; goto <rator> <nargs>
                   (λ (bs regs fail)
                      (lets ((rator nargs bs (get2 (cdr bs))))
                         (let ((code (list "ob=(word*)R[" rator "];acc=" nargs ";" )))
-                           (values code null regs)))))
-               (cons 132 (cify-closer "TCLOS"))
-               (cons 4 (cify-closer "TPROC"))
-               (cons 196 (cify-closer-1 "TCLOS"))
-               (cons 68 (cify-closer-1 "TPROC"))
+                           (values code #n regs)))))
                (cons 5 ;; move2 from1 to1 from2 to2
                   (λ (bs regs fail)
                      (lets
@@ -296,6 +304,14 @@
                          (regs (put regs to1 (get regs from1 #false)))
                          (regs (put regs to2 (get regs from2 #false))))
                            (values (list "R["to1"]=R["from1"];R["to2"]=R["from2"];") bs regs))))
+               (cons 134 (cify-closer "TCLOS"))
+               (cons 6 (cify-closer "TPROC"))
+               (cons 198 (cify-closer-1 "TCLOS"))
+               (cons 70 (cify-closer-1 "TPROC"))
+               (cons 7 ;; eq? a b to
+                  (λ (bs regs fail)
+                     (lets ((a b to bs (get3 (cdr bs))))
+                        (values (list "R["to"]=BOOL(R["a"]==R["b"]);") bs regs))))
                (cons 8 ;; jump-if-equal a b lo8 hi8
                   (λ (bs regs fail)
                      (lets
@@ -320,18 +336,16 @@
                            (list "{word ob=R["o"];if(allocp(ob))ob=V(ob);R["r"]=F((hval)ob>>TPOS&63);}")
                            bs
                            (put regs r 'fixnum)))))
-               (cons 17 ;; arity-fail
-                  (λ (bs regs fail)
-                     (values
-                        (list "error(17,ob,F(acc));")
-                        null regs)))
+               (cons 18 cify-fxand)
+               (cons 21 cify-fxsub)
+               (cons 22 cify-fxadd)
                (cons 23 cify-mkt)
                (cons 24 ;; ret r == call R3 with 1 argument at Rr
                   (λ (bs regs fail)
                      (let ((res (cadr bs)))
                         (values
                            (list "ob=(word*)R[3];R[3]=R["res"];acc=1;") ; the goto apply is automatic
-                           null regs)))) ;; <- always end compiling (another branch may continue here)
+                           #n regs)))) ;; <- always end compiling (another branch may continue here)
                ;(cons 25 ;; jump-variable-arity n
                ;   (λ (bs regs fail)
                ;      (lets
@@ -345,21 +359,10 @@
                ;               ) regs))))
                (cons 26 cify-fxqr)
                (cons 28 cify-sizeb)
+               (cons 29 cify-fxior)
                (cons 32 cify-bind)
-               (cons 34 ;; fixed jump-arity n hi8 lo8
-                  (λ (bs regs fail)
-                     (lets
-                        ((arity hi8 lo8 bs (get3 (cdr bs)))
-                         (jump-len (fxbor (<< hi8 8) lo8)))
-                         (values 'branch
-                           (tuple
-                              (list "acc==" arity)
-                              bs regs
-                              (drop bs jump-len) regs)
-                           regs))))
-               (cons 38 cify-fxadd)
+               (cons 33 cify-fxxor)
                (cons 39 cify-fxmul)
-               (cons 40 cify-fxsub)
                (cons 44 ;; less a b r
                   (λ (bs regs fail)
                      (lets ((a b to bs (get3 (cdr bs))))
@@ -419,21 +422,15 @@
                               (values
                                  (list "assert(pairp(R[" from "]),R[" from "],169);R[" to "]=G(R[" from "],2);")
                                  bs (del (put regs from 'pair) to)))))))
-               (cons 54 ;; eq a b to
-                  (λ (bs regs fail)
-                     (lets ((a b to bs (get3 (cdr bs))))
-                        (values
-                           (list "R["to"]=BOOL(R["a"]==R["b"]);")
-                           bs regs))))
                (cons 16 (cify-jump-imm "F(0)"))
                (cons 80 (cify-jump-imm "INULL"))
                (cons 144 (cify-jump-imm "ITRUE"))
                (cons 208 (cify-jump-imm "IFALSE"))
-               (cons 55 cify-fxband)
-               (cons 56 cify-fxbor)
-               (cons 57 cify-fxbxor)
                (cons 58 cify-fxright)
                (cons 59 cify-lraw)
+               (cons 61 ;; arity-fail
+                  (λ (bs regs fail)
+                     (values (list "error(61,ob,F(acc));") #n regs)))
                (cons 63 cify-sysprim)
                ;; below are lower primop + extra info (like 13=ldi<what>)
                (cons 13 ;; ldz r
@@ -490,8 +487,8 @@
                (call/cc
                   (λ (ret)
                      (list->string
-                        (foldr render null
-                           (emit-c ops empty (λ () (ret #false)) null))))))
+                        (foldr render #n
+                           (emit-c ops empty (λ () (ret #false)) #n))))))
             #false))
 ))
 ; (import (owl cgen))

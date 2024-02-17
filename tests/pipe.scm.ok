@@ -3,5 +3,5 @@ nothing
 nothing
 #u8(11 22 33 44)
 nothing
-#eof
+(eof-object)
 #false

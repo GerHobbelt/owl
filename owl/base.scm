@@ -1,4 +1,6 @@
-;; Owl default toplevel
+#| doc
+This library defines the default toplevel. 
+|#
 
 (define-library (owl base)
 

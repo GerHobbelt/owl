@@ -33,9 +33,6 @@
 
    (begin
 
-      (define lp #\()
-      (define rp #\))
-
       ;; this could be removed?
       (define (make-renderer meta)
          (define (render obj tl)
@@ -99,18 +96,14 @@
                            (cons #\} tl)
                            (iota (tuple-length obj) -1 1)))))
 
-               ((eq? obj #empty) ;; don't print as #()
-                  (ilist #\# #\e #\m #\p #\t #\y tl))
-
                ((ff? obj)
-                  (cons #\@ (render (ff-foldr (λ (st k v) (cons k (cons v st))) null obj) tl)))
+                  (ilist #\# #\# (render (ff-foldr (λ (st k v) (ilist k v st)) #n obj) tl)))
 
                ((tuple? obj)
                   (ilist #\# #\[ (render (tuple->list obj) (cons #\] tl))))
 
                ((port? obj) (ilist #\# #\[ #\f #\d #\space (render (port->fd obj) (cons #\] tl))))
-               ((eof-object? obj) (ilist #\# #\e #\o #\f tl))
-               ((eq? obj #empty) (ilist #\# #\e #\m #\p #\t #\y tl))
+               ((eof-object? obj) (ilist #\( #\e #\o #\f #\- #\o #\b #\j #\e #\c #\t #\) tl))
 
                (else
                   (append (string->list "#<WTF>") tl)))) ;; What This Format?
@@ -144,7 +137,7 @@
                                           (k (put sh obj (- 0 id))))))))))))
 
                ((null? obj)
-                  (ilist #\' #\( #\) (k sh)))
+                  (ilist #\( #\) (k sh)))
 
                ((number? obj)
                   (render-number obj (delay (k sh)) 10))
@@ -221,11 +214,8 @@
                ;            (cons 41 tl)
                ;            (iota (tuple-length obj) -1 1)))))
 
-               ((eq? obj #empty) ;; @() is also valid
-                  (ilist #\# #\e #\m #\p #\t #\y (delay (k sh))))
-
                ((ff? obj)
-                  (cons #\@ (ser sh (ff-foldr (λ (st k v) (cons k (cons v st))) null obj) k)))
+                  (ilist #\# #\# (ser sh (ff-foldr (λ (st k v) (ilist k v st)) #n obj) k)))
 
                ((tuple? obj)
                   (ilist #\# #\[
@@ -234,23 +224,19 @@
 
                ((port? obj)   (render obj (λ () (k sh))))
                ((eof-object? obj) (render obj (λ () (k sh))))
-               ((eq? obj #empty)    (render obj (λ () (k sh))))
 
                (else
                   (append (string->list "#<WTF>") (delay (k sh))))))
          ser)
 
-      (define (self-quoting? val)
-         (or
-            (immediate? val)
-            (number? val) (string? val) (function? val)
-            (ff? val)))
+      (define (not-self-quoting? val)
+         (or (null? val) (pair? val) (symbol? val)))
 
       ;; could drop val earlier to possibly gc it while rendering
       (define (maybe-quote val lst)
-         (if (self-quoting? val)
-            lst
-            (cons #\' lst)))
+         (if (not-self-quoting? val)
+            (cons #\' lst)
+            lst))
 
       ;; a value worth checking for sharing in datum labeler
       (define (shareable? x)
@@ -284,7 +270,7 @@
                            ((eq? refs 1) shared)
                            ((shareable? ob) (cons ob shared))
                            (else shared))))
-                  null refs)))
+                  #n refs)))
             (let loop ((out empty) (shares shares) (n 1))
                (if (null? shares)
                   out
@@ -308,5 +294,5 @@
 
       (define (str . args)
          (bytes->string
-            (foldr render null args)))
+            (foldr render #n args)))
 ))

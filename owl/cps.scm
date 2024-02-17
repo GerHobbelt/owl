@@ -84,15 +84,15 @@
             (error "bad arguments for tuple bind: " rands)))
 
 
-      ;; (a0 .. an) → (cons a0 (cons .. (cons an null))), modulo AST
+      ;; (a0 .. an) → (cons a0 (cons .. (cons an #n))), modulo AST
       (define (enlist-tail args)
          (foldr
             (λ (x tl)
                (mkcall (tuple 'value cons) (list x tl)))
-            (tuple 'value null)
+            (tuple 'value #n)
             args))
 
-      ;; (f0 .. fn) (a0 ... am) → #false | (a0 ... an-1 (cons an (cons ... (cons am null))))
+      ;; (f0 .. fn) (a0 ... am) → #false | (a0 ... an-1 (cons an (cons ... (cons am #n))))
       (define (enlist-improper-args formals args)
          (cond
             ((null? (cdr formals))
@@ -262,7 +262,7 @@
       (define (cps exp env)
          (or
             (call/cc
-               (lambda (fail)
+               (λ (fail)
                   (let ((cont-sym (gensym exp)))
                      ; a hack to be able to define code sans cps
                      ; a better solution would be ability to change the

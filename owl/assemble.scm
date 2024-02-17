@@ -1,6 +1,6 @@
-;;;
-;;; Bytecode assembly
-;;;
+#| doc
+This library implements bytecode assembly.
+|#
 
 (define-library (owl assemble)
 
@@ -52,10 +52,10 @@
             '((move . 9)      ; move a, t:      Rt = Ra
               (refi . 1)      ; refi a, p, t:   Rt = Ra[p], p unsigned
               (goto . 3)      ; jmp a, nargs    call Ra with nargs args
-              (clos . 132)    ; clos lp, o, nenv, e0 ... en, t:
-              (cloc . 4)      ; cloc lp, o, nenv, e0 ... en, t:
-              (clos1 . 196)
-              (cloc1 . 68)
+              (clos . 134)    ; clos lp, o, nenv, e0 ... en, t:
+              (cloc . 6)      ; cloc lp, o, nenv, e0 ... en, t:
+              (clos1 . 198)
+              (cloc1 . 70)
               (move2 . 5)     ; two moves, 4 args
               (jeq . 8)       ; jeq a b o1 o2   ip += o if Ra == Rb
               (jeqi . 16)     ; jeqi a o1 o2    ip += o if Ra == imm[i>>6]
@@ -247,13 +247,13 @@
                            (error "too much bytecode: " len))
                         (bytes->bytecode
                            (ilist
-                              (if fixed? 34 25)
+                              (if fixed? 2 25)
                               (if fixed? arity (- arity 1)) ;; last is the optional one
                               (>> len 8)        ;; jump hi
                               (fxband len #xff) ;; jump lo
                               (append bytes
                                  (if (null? tail)
-                                    (list 17) ;; force error
+                                    (list 61) ;; force error
                                     tail))))))))
             (else
                (error "assemble-code: unknown AST node " obj))))

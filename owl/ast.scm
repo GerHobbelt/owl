@@ -1,6 +1,7 @@
-;;;
-;;; Converting S-exps to a more compact and checked AST
-;;;
+#| doc
+After macro expansion the S-expressions are translated to a tree of tuples 
+with checked structure to avoid having to constantly check S-expression structure.
+|#
 
 (define-library (owl ast)
 
@@ -49,7 +50,7 @@
 
       ;; formals-sexp → (sym ..)|#false fixed-arity?
       (define (check-formals lst)
-         (let loop ((lst lst) (out null))
+         (let loop ((lst lst) (out #n))
             (cond
                ((null? lst)
                   (values (reverse out) #true))
@@ -118,7 +119,7 @@
                               (let ((env (env-bind env formals)))
                                  (tuple 'rlambda formals
                                     (map
-                                       (lambda (x) (translate x env fail))
+                                       (λ (x) (translate x env fail))
                                        values)
                                     (translate body env fail)))
                               (fail (list "Bad rlambda: " exp))))
@@ -150,7 +151,7 @@
                   ;; FIXME pattern
                   ((values)
                      (tuple 'values
-                        (map (lambda (arg) (translate arg env fail)) (cdr exp))))
+                        (map (λ (arg) (translate arg env fail)) (cdr exp))))
                   (else
                      (fail
                         (list
@@ -159,7 +160,7 @@
             ((bound)
                (mkcall (mkvar (car exp))
                   (map
-                     (lambda (x) (translate x env fail))
+                     (λ (x) (translate x env fail))
                      (cdr exp))))
             ;; both now handled by apply-env
             ;((undefined)
@@ -167,7 +168,7 @@
             ; left here to handle primops temporarily
             ((defined value)
                (mkcall value
-                  (map (lambda (x) (translate x env fail)) (cdr exp))))
+                  (map (λ (x) (translate x env fail)) (cdr exp))))
             (else
                ; could be useful for (eval (list + 1 2) env)
                ; so just warn for now
@@ -187,8 +188,7 @@
                   (mkcall
                      (translate (car exp) env fail)
                      (map
-                        (lambda (x)
-                           (translate x env fail))
+                        (λ (x) (translate x env fail))
                         (cdr exp)))))
             ((symbol? exp)
                (tuple-case (lookup env exp)
@@ -212,7 +212,7 @@
 
       (define (sexp->ast exp env)
          (call/cc
-            (lambda (drop)
+            (λ (drop)
                (tuple 'ok
                   (translate exp env (B drop fail))
                   env))))

@@ -1,33 +1,32 @@
-;;; Randomness is an interesting thing to work with in a purely
-;;; functional setting. Owl builds randomness around streams of
-;;; typically deterministically generated 24-bit fixnums. These
-;;; are usually called rands in the code.
-;;;
-;;; A function involving randomness typically receives a rand
-;;; stream, and also returns it after possibly consuming some
-;;; rands. Behavior like this would be easy to hide using macros
-;;; or monadic code, but Owl generally strives to be explicit and
-;;; simple, so the rand streams are handled just like any other
-;;; value.
-;;;
-;;; ```
-;;;   > (define rs (seed->rands 9))
-;;;   > (rand rs 10000)
-;;;   '(values #<function> 3942) ;; the new rand stream and 3942
-;;;   > (lets ((rs a (rand rs 10000))) a)
-;;;   3942
-;;;   > (lets ((rs elem (rand-elem rs '(a b c d e f g)))) elem)
-;;;   'c
-;;;   > (lets ((rs sub (rand-subset rs '(a b c d e f g)))) sub)
-;;;   '(b e f)
-;;;   > (lets ((rs perm (random-permutation rs '(a b c d e f g)))) perm)
-;;;   '(g e c b d a f)
-;;;   > (lets ((rs ns (random-numbers rs 100 10))) ns)
-;;;   '(95 39 69 99 2 98 56 85 77 39)
-;;; ```
+#| doc
+Randomness is an interesting thing to work with in a purely
+functional setting. Owl builds randomness around streams of
+typically deterministically generated 24-bit fixnums. These
+are usually called rands in the code.
 
-;; todo: alternative distributions
-;; note - we use mainly primop math here, so this may look a bit odd
+A function involving randomness typically receives a rand
+stream, and also returns one after possibly consuming some
+rands. Behavior like this would be easy to hide using macros
+or monadic code, but Owl generally strives to be explicit and
+simple, so the rand streams are handled just like any other
+value.
+
+```
+  > (define rs (seed->rands 9))
+  > (rand rs 10000)
+  '(values #<function> 3942) ;; the new rand stream and 3942
+  > (lets ((rs a (rand rs 10000))) a)
+  3942
+  > (lets ((rs elem (rand-elem rs '(a b c d e f g)))) elem)
+  'c
+  > (lets ((rs sub (rand-subset rs '(a b c d e f g)))) sub)
+  '(b e f)
+  > (lets ((rs perm (random-permutation rs '(a b c d e f g)))) perm)
+  '(g e c b d a f)
+  > (lets ((rs ns (random-numbers rs 100 10))) ns)
+  '(95 39 69 99 2 98 56 85 77 39)
+```
+|#
 
 (define-library (owl random)
 
@@ -61,6 +60,7 @@
    (import
       (owl defmac)
       (owl math)
+      (only (owl math integer) ncar ncdr ncons)
       (owl lazy)
       (owl list)
       (only (owl syscall) error)
@@ -80,8 +80,8 @@
       ;;;
 
       ;; code assumes this fixnum size
-      (lets ((a b (fx+ #xffffff 1)))
-         (if (not (and (eq? a 0) (eq? b #true)))
+      (lets ((a b (fxadd #xffffff 1)))
+         (if (not (and (eq? a 0) (eq? b 1)))
             (error "unexpected fixnum size" a)))
 
       ; random data generators implement an infinite stream of positive fixnums,
@@ -122,10 +122,10 @@
                (cond
                   ((eq? d 0) ;; drop leading zeros
                      (nrev-fix ds))
-                  ((eq? ds null) ;; downgrade a single digit to fixnum
+                  ((null? ds) ;; downgrade a single digit to fixnum
                      d)
                   (else
-                     (nrev-iter ds (ncons d null)))))))
+                     (nrev-iter ds (ncons d #n)))))))
 
       (define word32 #xffffffff)
 
@@ -160,25 +160,25 @@
             ((eq? (type seed) type-fix+)
                ;; promote to bignum and random state
                (lets ((seed (* (+ seed 1) 11111111111111111111111)))
-                  (tuple #true (rand-walk rand-acc seed null) seed)))
+                  (tuple #true (rand-walk rand-acc seed #n) seed)))
             ((eq? (type seed) type-int+)
                ;; promote to random state
-               (tuple #true (rand-walk rand-acc seed null) seed))
+               (tuple #true (rand-walk rand-acc seed #n) seed))
             (else
                (lets ((st a b seed))
                   (cond
                      ((= a b)
                         ;; friends meet, we're going to need a bigger track
                         (let ((ap (ncons (if st rand-acc rand-mult)  a)))
-                           (tuple #true (rand-walk rand-acc ap null) ap)))
+                           (tuple #true (rand-walk rand-acc ap #n) ap)))
                      (st
                         ;; hare and tortoise
                         (tuple #false
-                           (rand-walk rand-acc a null)
-                           (rand-walk rand-acc b null)))
+                           (rand-walk rand-acc a #n)
+                           (rand-walk rand-acc b #n)))
                      (else
                         ;; just hare
-                        (tuple #true (rand-walk rand-acc a null) b)))))))
+                        (tuple #true (rand-walk rand-acc a #n) b)))))))
 
       ;;; Mersenne Twister (missing)
 
@@ -231,17 +231,17 @@
 
       (define (rand-big rs n)
          (if (null? n)
-            (values rs null #true)
+            (values rs #n #true)
             (lets
                ((rs head eq (rand-big rs (ncdr n)))
                 (this rs (uncons rs 0)))
                (if eq
                   (let ((val (remainder this (+ (ncar n) 1))))
                      (if (eq? val 0)
-                        (values rs (if (null? head) null (ncons 0 head)) (eq? (ncar n) 0))
+                        (values rs (if (null? head) #n (ncons 0 head)) (eq? (ncar n) 0))
                         (values rs (ncons val head) (eq? val (ncar n)))))
                   (if (eq? this 0)
-                     (values rs (if (null? head) null (ncons 0 head)) #false)
+                     (values rs (if (null? head) #n (ncons 0 head)) #false)
                      (values rs (ncons this head) #false))))))
 
       (define (rand-fixnum rs n)
@@ -251,7 +251,7 @@
          ;; expensive approach makes sure we terminate for all random streams.
          (lets
             ((r rs (uncons rs rs))
-             (m *max-fixnum*))
+             (m fx-greatest))
             (if (eq? r m)
                (values rs 0)
                (lets ((q r (truncate/ (* n r) m)))
@@ -259,14 +259,14 @@
 
       ;; like rand-fixnum, but <= limit instead of <
       (define (rand-bignum-topdigit rs n)
-         (if (eq? n *max-fixnum*)
+         (if (eq? n fx-greatest)
             ;; no, no, there's no limit
             (lets ((d rs (uncons rs rs)))
                (values rs d))
             (rand-fixnum rs (+ n 1))))
 
       (define (rand-bignum rs n)
-         (let loop ((rs rs) (left n) (out null) (lower? #false))
+         (let loop ((rs rs) (left n) (out #n) (lower? #false))
             (lets ((digit left left))
                (if (null? left)
                   (if lower?
@@ -346,16 +346,16 @@
             (lets
                ((hi (<< 1 (- n 1)))
                 (rs val (rand rs hi)))
-               (values rs (bor val hi)))))
+               (values rs (bior val hi)))))
 
       ;; select with bits of a random number (to save some rands)
       (define (random-subset rs l)
          (if (null? l)
-            (values rs null)
+            (values rs #n)
             (lets
                ((n (length l))
                 (rs bits (rand-nbit rs (+ n 1))))
-               (values rs (reverse (select-members l bits 1 null))))))
+               (values rs (reverse (select-members l bits 1 #n))))))
 
       ;;;
       ;;; Reservoir sampler
@@ -395,12 +395,12 @@
       ; rs lst → rs' sublist, each element having 50% chance of being in the sublist
       (define (rand-subset rs l)
          (if (null? l)
-            (values rs null)
+            (values rs #n)
             (lets
                ((n (length l))
                 (rs bits (rand-nbit rs (+ n 1))))
                (values rs
-                  (reverse (select-members l bits 1 null))))))
+                  (reverse (select-members l bits 1 #n))))))
 
       ; a number with log_2(n) instead of n evenly distributed in range
       (define (rand-log rs n)
@@ -452,19 +452,19 @@
          (if (null? lst)
             (values rs tail)
             (lets
-               ((rs opts (fold2 shuffle-label rs null lst))
+               ((rs opts (fold2 shuffle-label rs #n lst))
                 (opts (sort carless opts)))
                (shuffle-merge rs opts tail shuffler))))
 
       (define (shuffle rs lst)
          (if (null? lst)
             (values rs lst)
-            (shuffler rs lst null)))
+            (shuffler rs lst #n)))
 
       (define random-permutation shuffle)
 
       (define (random-numbers rs bound count)
-         (let loop ((rs rs) (out null) (count count))
+         (let loop ((rs rs) (out #n) (count count))
             (if (= count 0)
                (values rs out)
                (lets ((rs n (rand rs bound)))
@@ -472,7 +472,7 @@
 
       ; grab directly low 8 bits of each rand (same would happend with (rand rs 256))
       (define (random-bvec rs n)
-         (let loop ((rs rs) (out null) (n n))
+         (let loop ((rs rs) (out #n) (n n))
             (if (eq? n 0)
                (values rs (raw (reverse out) type-bytevector)) ; reverses to keep order
                (lets
