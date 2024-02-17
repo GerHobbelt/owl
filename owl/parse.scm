@@ -11,7 +11,8 @@ operation is traditional top down backtracking parsing.
    (export
       parses
       byte
-      imm
+      imm                       ;; byte
+      imm-or                    ;; byte error-msg
       input-ready?              ;; parser, receives fd
       seq
       epsilon ε
@@ -33,6 +34,8 @@ operation is traditional top down backtracking parsing.
       first-match          ;; parser data fail-val → result data'
       word
       maybe
+
+      error-context                ;; epsilon + leave a syntax error message (parser)
 
       syntax-error?                ;; val -> bool
       report-syntax-error          ;; val -> _ + side-effects
@@ -61,13 +64,15 @@ operation is traditional top down backtracking parsing.
 
    (begin
 
-      ;; Why = #(pos message <rest>)
-      ;;
-      ;; (parser l r p ok)
-      ;;   → (ok l' r' p' val) | (backtrack l r p why)
-      ;   ... → l|#f r p' result|error
-
-      ;; bactrtrack function : l r fp why
+      ;; l = reverse list of left (handled) runes and (pos . error-message) parse error messages
+      ;; r = a list or a ll of unparsed data
+      ;; p = position in input
+      ;; why = error message
+      ;; ok = parser
+      ;; parser = λ (l r p ok) → (ok l' r' p' val)
+      ;;                       → (backtrack l r p why)
+      ;;    backtracking with #f left means parse failure
+      ;;    if r was a ll, it will be forced at least up to the syntax error
 
       (define (backtrack l r p why)
          (if (null? l)
@@ -77,12 +82,19 @@ operation is traditional top down backtracking parsing.
                   ((eq? (type hd) type-fix+)
                      (backtrack (cdr l) (cons hd r) p why))
                   ((pair? hd)
-                     ;; (failure-pos . failure-msg)
-                     (if (> (car hd) p)
-                        ;; grab a parse error that managed to get deeper
-                        (backtrack (cdr l) r (car hd) (cdr hd))
-                        (backtrack (cdr l) r p why)))
+                     (cond
+                        ((not (number? (car hd)))
+                           (if (eq? (car hd) why)
+                              (let ((node (cdr hd)))
+                                 (backtrack (cdr l) r (+ (car node) 1) (cdr node))) ;; advance by 1 to distinquish from subsequent failed parses at the same point (temporary)
+                              (backtrack (cdr l) r p why)))
+                        ((> (car hd) p) ;; a deeper error message
+                           ;; grab a parse error that managed to get deeper
+                           (backtrack (cdr l) r (car hd) (cdr hd)))
+                        (else
+                           (backtrack (cdr l) r p why))))
                   (else
+                     ;; backtrack point
                      (hd (cdr l) r p why))))))
 
       (define (input-ready? port)
@@ -103,12 +115,10 @@ operation is traditional top down backtracking parsing.
 
       (define wrong-char "syntax error")
 
-
       (define (fail-expected byte)
          (list 'expected byte))
 
       (define (byte l r p ok)
-         ;(print (list 'byte l r p))
          (cond
             ((null? r) (backtrack l r p eof-error))
             ((pair? r) (ok (cons (car r) l) (cdr r) (+ p 1) (car r)))
@@ -139,22 +149,31 @@ operation is traditional top down backtracking parsing.
                (else
                   ((peek-byte pred) l (r) p ok)))))
 
-      (define (imm x)
+      (define (imm-or x why)
          (λ (l r p ok)
-            ;(print (list 'imm l r p 'want x))
             (cond
                ((null? r)
-                  (backtrack l r p eof-error))
+                  (backtrack l r p why))
                ((pair? r)
                   (if (eq? (car r) x)
                      (ok (cons x l) (cdr r) (+ p 1) x)
                      (backtrack l r p (fail-expected x))))
                (else
-                  ((imm x) l (r) p ok)))))
+                  ((imm-or x why) l (r) p ok)))))
+
+      (define (imm x)
+         (imm-or x eof-error))
 
       (define (ε val)
          (λ (l r p ok)
             (ok l r p val)))
+
+      ;; leave a (error-message . (position . better-error-message)) -error node
+      (define (error-context msg)
+         (λ (l r p ok)
+            (ok
+               (cons (cons msg (cons p "Unterminated")) l)
+               r p msg)))
 
       (define epsilon ε)
 
@@ -163,6 +182,9 @@ operation is traditional top down backtracking parsing.
             (a
                (cons
                   (λ (l r fp why)
+                     ;; leave the error position and reason, so that in
+                     ;; case of backtrack we can chich which unded up
+                     ;; furthest
                      (b (cons (cons fp why) l) r p ok))
                   l)
                r p ok)))
@@ -398,7 +420,7 @@ operation is traditional top down backtracking parsing.
 
       (define (verbose-error msg data pos val)
          (lets ((line pos (seek-line data pos)))
-            (print-to stderr (or msg "Syntax error"))
+            (print-to stderr (or msg (or val "Syntax error")))
             (print-to stderr "  " line)
             (print-to stderr (list->string (map (lambda (x) #\space) (iota 0 1 (+ pos 1)))) "^")))
 

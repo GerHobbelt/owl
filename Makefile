@@ -61,11 +61,9 @@ c/ol-small.c: fasl/ol.fasl
 
 ## manual pages
 
-doc/ol.1.gz: doc/ol.1
-	gzip -9n <$? >$@
-
-doc/ovm.1.gz: doc/ovm.1
-	gzip -9n <$? >$@
+.SUFFIXES: .1 .1.gz
+.1.1.gz:
+	gzip -9n < $< > $@
 
 ## other documentation
 
@@ -183,6 +181,13 @@ install: bin/ol bin/vm doc/ol.1.gz doc/ovm.1.gz
 	$(INSTALL) -m 755 bin/vm $(DESTDIR)$(PREFIX)$(BINDIR)/ovm
 	$(INSTALL) -m 644 doc/ol.1.gz $(DESTDIR)$(PREFIX)$(MANDIR)/man1/ol.1.gz
 	$(INSTALL) -m 644 doc/ovm.1.gz $(DESTDIR)$(PREFIX)$(MANDIR)/man1/ovm.1.gz
+
+bin/feather.bin: bin/ol
+	./bin/ol -O2 -x c -o - ./bin/feather | $(CC) -x c $(CFLAGS) -o $@ -
+
+install-tools: bin/feather.bin doc/feather.1.gz
+	$(INSTALL) -m 755 bin/feather.bin $(DESTDIR)$(PREFIX)$(BINDIR)/feather
+	$(INSTALL) -m 644 doc/feather.1.gz $(DESTDIR)$(PREFIX)$(MANDIR)/man1/feather.1.gz
 
 uninstall:
 	-rm -f $(DESTDIR)$(PREFIX)$(BINDIR)/ol

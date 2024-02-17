@@ -1,5 +1,4 @@
-doc/ol.1.gz
-doc/ovm.1.gz
+doc/*.gz
 c/_vm.c
 c/ol.c
 c/vm.c
@@ -12,3 +11,4 @@ bin/ol-old
 bin/vm
 lib
 web-manual.md
+*.bin
