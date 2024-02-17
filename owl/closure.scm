@@ -1,6 +1,6 @@
-;;;
-;;; Convert lambdas to closures where necessary
-;;;
+#| doc
+Convert lambdas to closures where necessary
+|#
 
 (define-library (owl closure)
 

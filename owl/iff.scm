@@ -1,9 +1,10 @@
-;;;
-;;; Number stores (radix trees with a ff at each node)
-;;;
+#| doc
+Number stores (radix trees with a ff at each node)
+|#
 
 ;; todo: extend to work for negative numbers
 ;; todo: no unit tests. add a quick lib-compare test asap.
+
 
 (define-library (owl iff)
 

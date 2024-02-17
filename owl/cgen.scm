@@ -1,15 +1,16 @@
-;;;
-;;; Bytecode->C translator
-;;;
+#| doc
+Bytecode->C translator
 
-; Each normal owl program (one not using something eval-like) contains
-; a fixed set of bytecode sequences. Owl can optionally compile these
-; to special instructions in a custom VM when compiling them. This
-; makes programs run much faster at the expense of making the resulting
-; executables larger.
 
-;; todo: support variable arity functions
-;; todo: keep all fixnum variables in registers unboxed with a special type, and add guards to saves and calls to tag them lazily. this would remove a lot of payload shifting from math code.
+Each normal owl program (one not using something eval-like) contains
+a fixed set of bytecode sequences. Owl can optionally compile these
+to special instructions in a custom VM when compiling them. This
+makes programs run much faster at the expense of making the resulting
+executables larger.
+
+todo: support variable arity functions
+todo: keep all fixnum variables in registers unboxed with a special type, and add guards to saves and calls to tag them lazily. this would remove a lot of payload shifting from math code.
+|#
 
 (define-library (owl cgen)
    (export
