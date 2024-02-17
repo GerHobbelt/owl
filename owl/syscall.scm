@@ -7,6 +7,7 @@
       return-mails fork-named exit-thread exit-owl
       poll-mail-from start-profiling stop-profiling running-threads par*
       par por* por
+      library-exit
       thread thunk->thread)
 
    (import
@@ -60,6 +61,9 @@
       (define (par* ts)
          (syscall 22 ts #n))
 
+      (define (library-exit rval)
+         (syscall 24 rval #f))
+         
       ;; macro for calling from code directly
       (define-syntax par
          (syntax-rules ()
