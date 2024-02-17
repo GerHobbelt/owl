@@ -85,7 +85,7 @@
                         (receive (evb)
                            (λ bs
                               (if (not (theorem-equal? as bs))
-                                 (error "example does not hold: " (list (quote term-a) " != " (quote term-b)))
+                                 (error "example does not hold: " (list (quote term-a) " evalutes to values " as))
                                  (example . rest))))))))
             ((example)
                #true)))

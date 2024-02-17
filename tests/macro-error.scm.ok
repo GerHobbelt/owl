@@ -1,0 +1,3 @@
+Could not load tests/macro-error.scm because 
+  Macro expansion of  (let 1)  failed:  
+    let 1 

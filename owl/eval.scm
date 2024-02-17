@@ -25,19 +25,19 @@ environment.
       (only (owl primop) lets/cc)
       (only (owl primop) call/cc)
       (only (owl syscall) error)
+      (owl eval data)
       (owl eval env)
       (owl eval ast)
       (owl eval fixedpoint)
       (owl eval alpha)
       (owl eval cps)
+      (only (owl tuple) tuple?) ;; temp
       (owl eval closure)
-      (owl eval compile))
+      (owl eval compile)
+      (only (owl io) print)
+      )
 
    (begin
-
-      (define (ok? x) (eq? (ref x 1) 'ok))
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define (execute exp env)
          (receive (exp)
@@ -49,7 +49,7 @@ environment.
                      (else (cons 'values vals)))
                   env))))
 
-      ; (op exp env) -> #(ok exp' env') | #(fail info)
+      ; (op exp env) -> #(ok exp' env') | #(fail info) | success
       (define compiler-passes
          (list
                             ;; macros have already been expanded
@@ -62,29 +62,32 @@ environment.
             compile         ;; translate and flatten to bytecode
             execute))       ;; call the resulting code
 
+      ;; -> old-success, internal ones can return a new one
       (define (try-evaluate exp env fail-val)
-         (try
+         (try ;; return fail-val in case of error
             (λ ()
                (call/cc
                   (λ (exit)
                      (fold
                         (λ (state next)
-                           (if (ok? state)
-                              (next (ref state 2) (ref state 3))
-                              (exit state)))
+                           (success state
+                              ((ok exp env)
+                                 (next exp env))
+                              ((fail why)
+                                 (exit (fail why)))))
                         (ok exp env)
                         compiler-passes))))
             fail-val))
 
       (define (evaluate exp env)
          (try-evaluate exp env
-            (tuple 'fail "an error occurred")))
+            (fail "an error occurred")))
 
       (define (exported-eval exp env)
          (lets/cc fail
             ((abort (λ (why) (fail #f)))
              (env exp (macro-expand exp env abort)))
-            (tuple-case (evaluate exp env)
+            (success (evaluate exp env)
                ((ok value env) value)
                ((fail why) #f))))
 

@@ -1,4 +1,5 @@
 #| doc
+
 Owl does not allow you to use a special toplevel or use mutations to implement recursion.
 Lambdas are the only way to make variable bindings.
 Up to this point the compiler also has `rlambda` functions,
@@ -7,6 +8,7 @@ They are essentially to `letrec` what `lambda` is to `let`.
 This compilation step gets rid of all the rlambdas
    turning them the ones we all know and love.
 This is done by constructing the fixed points manually.
+
 |#
 
 ;; todo: vararg lambdas cannot get self as last parameter!
@@ -24,7 +26,8 @@ This is done by constructing the fixed points manually.
       (owl list-extra)
       (only (owl syscall) error)
       (owl io)
-      (owl eval env))
+      (owl eval env)
+      (owl eval data))
 
    (begin
 
@@ -56,13 +59,8 @@ This is done by constructing the fixed points manually.
             (tuple-case exp
                ((var exp)
                   (take exp found bound))
-               ((lambda formals body)
-                  (walk body (union formals bound) found))
                ((lambda-var fixed? formals body)
                   (walk body (union formals bound) found))
-               ((case-lambda fn else)
-                  (walk fn bound
-                     (walk else bound found)))
                ((call rator rands)
                   (walk rator bound
                      (walk-list rands bound found)))
@@ -80,8 +78,9 @@ This is done by constructing the fixed points manually.
 
          (walk exp #n #n))
 
+
       (define (lambda? exp env)
-         (eq? (ref exp 1) 'lambda))
+            (eq? (ref exp 1) 'lambda-var)) ;; new
 
       (define (set-deps node deps) (set node 3 deps))
       (define deps-of (C ref 3))
@@ -140,7 +139,8 @@ This is done by constructing the fixed points manually.
 
       (define (make-bindings names values body)
          (mkcall
-            (mklambda names body)
+            (tuple 'lambda-var #t names body)
+            ; (mklambda names body)
             values))
 
       (define (var-eq? node sym)
@@ -161,10 +161,12 @@ This is done by constructing the fixed points manually.
                      (tuple 'call
                         (walk rator)
                         (map walk rands))))
-               ((lambda formals body)
-                  (if (memq name formals)
-                     exp
-                     (tuple 'lambda formals (walk body))))
+               ((lambda-var fixed? formals body)
+                  (if fixed?
+                     (if (memq name formals)
+                        exp
+                        (tuple 'lambda-var #t formals (walk body)))
+                     (error "carry-simple-recursion: variable lambda " exp)))
                ((branch kind a b then else)
                   (tuple 'branch kind (walk a) (walk b) (walk then) (walk else)))
                ((receive op fn)
@@ -177,7 +179,7 @@ This is done by constructing the fixed points manually.
                      (begin
                         ;(print " making a wrapper for " name)
                         ;(print "   - with deps " deps)
-                        (tuple 'lambda (reverse (cdr (reverse deps))) (tuple 'call exp (map mkvar deps))))
+                        (tuple 'lambda-var #t (reverse (cdr (reverse deps))) (tuple 'call exp (map mkvar deps))))
                      exp))
                (else
                   (error "carry-simple-recursion: what is this node type: " exp))))
@@ -205,8 +207,10 @@ This is done by constructing the fixed points manually.
                   (else
                      (mkcall (carry-bindings rator env)
                         (map (C carry-bindings env) rands)))))
-            ((lambda formals body)
-               (mklambda formals
+            ((lambda-var fixed? formals body)
+               (tuple
+                  'lambda-var fixed?
+                  formals
                   (carry-bindings body
                      (env-bind env formals))))
             ((branch kind a b then else)
@@ -226,7 +230,8 @@ This is done by constructing the fixed points manually.
                   ((recursive formals deps)
                      (let
                         ((lexp
-                           (mklambda formals
+                           (tuple
+                              'lambda-var #t formals
                               (mkcall exp (map mkvar (append formals deps))))))
                         ; (print "carry-bindings: made local closure " lexp)
                         lexp))
@@ -241,15 +246,24 @@ This is done by constructing the fixed points manually.
       ;;; ((name (λ (formals) body) deps) ...) env
       ;;; -> ((lambda (formals+deps) body') ...)
 
+
+      (define (lambda-formals exp)
+         (tuple-case exp
+            ((lambda-var fixed? formals body) formals)))
+
+      (define (lambda-body exp)
+         (tuple-case exp
+            ((lambda-var fixed? formals body) body)))
+
       (define (handle-recursion nodes env)
          ; convert the lambda and carry bindings in the body
          (map
             (λ (node)
                (lets
                   ((lexp (value-of node))
-                   (formals (ref lexp 2))
-                   (body (ref lexp 3)))
-                  (mklambda
+                   (formals (lambda-formals lexp))
+                   (body (lambda-body lexp)))
+                  (tuple 'lambda-var #t                   ;; warning, was mklambda earlier, so #t implicit
                      (append formals (deps-of node))
                      (carry-bindings body env))))
             nodes))
@@ -259,9 +273,9 @@ This is done by constructing the fixed points manually.
             ((name (name-of node))
              (lexp (value-of node))
              (deps (deps-of node))
-             (formals (ref lexp 2))
-             (body (ref lexp 3)))
-            (mklambda formals
+             (formals (lambda-formals lexp))
+             (body (lambda-body lexp)))
+            (tuple 'lambda-var #t formals
                (mkcall
                   (mkvar name)
                   (map mkvar
@@ -269,9 +283,11 @@ This is done by constructing the fixed points manually.
 
       ; bind all things from deps using possibly several nested head lambda calls
 
+            
       (define (generate-bindings deps body env)
          (define second (C ref 2))
          (define first (C ref 1))
+         ;(print "generate-bindings " deps)
          (if (null? deps)
             body
             (tuple-case (pick-binding deps env)
@@ -285,11 +301,12 @@ This is done by constructing the fixed points manually.
 
                ; bind one or more functions which are simply recursive
                ((simple nodes)
+                  ;(print " -> simple " nodes)
                   (let
                      ((env-rec
                         (fold
                            (λ (env node)
-                              (let ((formals (ref (value-of node) 2)))
+                              (let ((formals (lambda-formals (value-of node))))
                                  (env-put-raw env
                                     (name-of node)
                                     (tuple 'recursive formals
@@ -322,7 +339,7 @@ This is done by constructing the fixed points manually.
                               (λ (body node)
                                  (lets ((name val deps node))
                                     (carry-simple-recursion body name
-                                       (append (ref val 2) deps)))) ; add self to args
+                                       (append (lambda-formals val) deps)))) ; add self to args
                               body nodes)
                            ))))
 
@@ -342,7 +359,7 @@ This is done by constructing the fixed points manually.
                       (env-rec
                         (fold
                            (λ (env node)
-                              (let ((formals (ref (value-of node) 2)))
+                              (let ((formals (lambda-formals (value-of node))))
                                  (env-put-raw env
                                     (name-of node)
                                     (tuple 'recursive formals partition))))
@@ -366,18 +383,22 @@ This is done by constructing the fixed points manually.
 
          (define third (C ref 3))
          (define (grow current deps)
+            ;(print " - grow current " current)
             (lets
                ((related
                   (filter (λ (x) (memq (name-of x) current)) deps))
                 (new-deps
                   (fold union current
                      (map third related))))
+               ;(print " -> new currnet " new-deps)
                (if (= (length current) (length new-deps))
                   current
                   (grow new-deps deps))))
 
+         ;(print "dependency-closure " deps)
          (map
             (λ (node)
+               ;(print " - of node " node)
                (set-deps node
                   (grow (deps-of node) deps)))
             deps))
@@ -393,6 +414,7 @@ This is done by constructing the fixed points manually.
                         (free-vars value env))))
                names values))
 
+         ;(print "compile-rlambda " names)
          (generate-bindings
             (dependency-closure dependencies)
             body env))
@@ -402,17 +424,15 @@ This is done by constructing the fixed points manually.
       (define (unletrec exp env)
          (define (unletrec-list exps)
             (map (C unletrec env) exps))
+         ;(print "unletrec " exp)
          (tuple-case exp
             ((var value) exp)
             ((call rator rands)
                (tuple 'call
                   (unletrec rator env)
                   (unletrec-list rands)))
-            ((lambda formals body)
-               (mklambda formals
-                  (unletrec body (env-bind env formals))))
             ((lambda-var fixed? formals body)
-               (mkvarlambda formals
+               (tuple 'lambda-var fixed? formals
                   (unletrec body (env-bind env formals))))
             ((rlambda names values body)
                (lets
@@ -432,15 +452,13 @@ This is done by constructing the fixed points manually.
                    (then (unletrec then env))
                    (else (unletrec else env)))
                   (tuple 'branch kind a b then else)))
-            ((case-lambda func else)
-               (tuple 'case-lambda
-                  (unletrec func env)
-                  (unletrec else env)))
             (else
                (error "Funny AST node in unletrec: " exp))))
 
       ;; exp env -> #(ok exp' env)
       (define (fix-points exp env)
+         ;(print "fixed point " exp)
          (let ((result (unletrec exp env)))
-            (tuple 'ok result env)))
+            ;(print "fixed pooint done " result)
+            (ok result env)))
 ))

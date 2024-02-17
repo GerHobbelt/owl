@@ -20,12 +20,12 @@ avoid having to track variable shadowing.
       (owl math)
       (owl list)
       (owl list-extra)
+      (owl io)
+      (owl eval data)
       (only (owl syscall) error)
       (owl lcd ff))
 
    (begin
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define (gensyms free n)
          (if (= n 0)
@@ -50,17 +50,6 @@ avoid having to track variable shadowing.
                   ((rator free (alpha rator env free))
                    (rands free (alpha-list alpha rands env free)))
                   (values (mkcall rator rands) free)))
-            ((lambda formals body)
-               (lets
-                  ((new-formals free (gensyms free (length formals)))
-                   (body free
-                     (alpha body
-                        (fold
-                           (λ (env node)
-                              (put env (car node) (cdr node)))
-                            env (zip cons formals new-formals))
-                        free)))
-                  (values (mklambda new-formals body) free)))
             ((lambda-var fixed? formals body) ;; <- mostly clone branch to be merged later
                (lets
                   ((new-formals free (gensyms free (length formals)))
@@ -91,11 +80,6 @@ avoid having to track variable shadowing.
             ((values vals)
                (lets ((vals free (alpha-list alpha vals env free)))
                   (values (tuple 'values vals) free)))
-            ((case-lambda fn then)
-               (lets
-                  ((fn free (alpha fn env free))
-                   (then free (alpha then env free)))
-                  (values (tuple 'case-lambda fn then) free)))
             (else
                (error "alpha: unknown AST node: " exp))))
 

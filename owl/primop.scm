@@ -20,10 +20,14 @@ VM primops
       apply
       call/cc
       lets/cc
+      call/cc      ;; unary continuation, the usual suspect
+      call/cc2     ;; returning two values
+      call/cc3     ;; return three values
       create-type
       object-size
       len
-      )
+
+      opcode-arity-ok?)
 
    (import
       (owl core))
@@ -49,19 +53,13 @@ VM primops
       (define (func lst)
          (lets ((arity lst lst))
             (bytes->bytecode
-               (ilist 2 arity 0 (len lst)
-                  (app lst (list 61)))))) ;; fail if arity mismatch
+               (ilist 60 arity lst))))
 
       ;; changing any of the below 3 primops is tricky. they have to be recognized by the primop-of of
       ;; the repl which builds the one in which the new ones will be used, so any change usually takes
       ;; 2 rebuilds.
 
-      ; these 2 primops require special handling, mainly in cps
-      (define ff-bind ;; turn to badinst soon, possibly return later
-         ; (func '(2 49))
-         '__ff-bind__
-
-         )
+      ;; consider getting rid of bind later
       (define bind
          ; (func '(2 32 4 5 24 5))
          '__bind__
@@ -109,22 +107,9 @@ VM primops
 
       (define apply-error "implementation restriction: please fold a long list instead of applying a function")
 
-      (define apply
-         (case-lambda
-            ((fn l)
-               (if (null? l) (fn)
-                  (lets ((a l l))
-                     (if (null? l) (fn a)
-                        (lets ((b l l))
-                           (if (null? l) (fn a b)
-                              (lets ((c l l))
-                                 (if (null? l) (fn a b c)
-                                    (lets ((d l l))
-                                       (if (null? l) (fn a b c d)
-                                          (lets ((e l l))
-                                             (if (null? l) (fn a b c d e)
-                                                (car apply-error)))))))))))))
-            ((fn a l)
+      (define (apply fn l)
+         (if (null? l) (fn)
+            (lets ((a l l))
                (if (null? l) (fn a)
                   (lets ((b l l))
                      (if (null? l) (fn a b)
@@ -134,30 +119,7 @@ VM primops
                                  (if (null? l) (fn a b c d)
                                     (lets ((e l l))
                                        (if (null? l) (fn a b c d e)
-                                          (car apply-error)))))))))))
-            ((fn a b l)
-               (if (null? l) (fn a b)
-                  (lets ((c l l))
-                     (if (null? l) (fn a b c)
-                        (lets ((d l l))
-                           (if (null? l) (fn a b c d)
-                              (lets ((e l l))
-                                 (if (null? l) (fn a b c d e)
-                                    (car apply-error)))))))))
-            ((fn a b c l)
-               (if (null? l) (fn a b c)
-                  (lets ((d l l))
-                     (if (null? l) (fn a b c d)
-                        (lets ((e l l))
-                           (if (null? l) (fn a b c d e)
-                              (car apply-error)))))))
-            ((fn a b c d l)
-               (if (null? l) (fn a b c d)
-                  (lets ((e l l))
-                     (if (null? l) (fn a b c d e)
-                        (car apply-error)))))
-            (x
-               (car apply-error))))
+                                          (car apply-error)))))))))))))
 
       (define primops
          (list
@@ -181,7 +143,6 @@ VM primops
             (tuple 'listuple     35 3 1 listuple)  ;; (listuple type size lst)
             (tuple 'mkblack      48 4 1 mkblack) ;; (mkblack l k v r)
             (tuple 'mkred       176 4 1 mkred)   ;; ditto, opcode: FFRED << 6 | 48
-            (tuple 'ff-bind      49 1 #false ff-bind)  ;; SPECIAL ** (ffbind thing (lambda (name ...) body))
             (tuple 'fx-          21 2 2 fx-) ;; (fx- a b) -> lo u
             (tuple 'fx+          22 2 2 fx+) ;; (fx+ a b) -> lo hi
             (tuple 'fxqr         26 3 3 fxqr)  ;; (fxdiv ah al b) -> qh ql r
@@ -189,32 +150,44 @@ VM primops
             (tuple 'fx>>         58 2 2 fx>>)   ;; (fx>> a b) -> hi lo, lo are the lost bits
             (tuple 'sys-prim     63 4 1 sys-prim)))
 
+      ;; warning: O(n)
+      (define (opcode->primop op)
+         (let loop ((primops primops))
+            (cond
+               ((null? primops) (car 1142)) ;; no (error ...) yet here, failing in a unique way to find this if necessary
+               ((eq? (ref (car primops) 2) op)
+                  (car primops))
+               (else
+                  (loop (cdr primops))))))
+
+      (define (opcode-arity-ok? op n)
+         (bind (opcode->primop op)
+            (λ (name op in out fn)
+               (cond
+                  ((eq? in n) #true)
+                  ((eq? in 'any) #true)
+                  (else #false)))))
+
+
       ;; special things exposed by the vm
       (define (set-memory-limit n) (sys-prim 7 n #f #f))
       (define (get-word-size) (sys-prim 8 1 #f #f))
       (define (get-memory-limit) (sys-prim 9 #f #f #f))
 
-      ;; todo: add get-heap-metrics
-
       ;; stop the vm *immediately* without flushing input or anything else with return value n
       (define (halt n) (sys-prim 6 n #f #f))
 
-      ;; a minimal definition would be this, but we also want variable arities here
-      ; (define call/cc  ('_sans_cps (λ (k f) (f k (λ (r a) (k a))))))
-
       (define call/cc
          ('_sans_cps
-            (λ (k f)
-               (f k
-                  (case-lambda
-                     ((_ a) (k a))
-                     ((_ a b) (k a b))
-                     ((_ a b c) (k a b c))
-                     ((_ a b c d) (k a b c d))
-                     ((_ a b c d e) (k a b c d e))
-                     (x
-                        (car "implementation restriction: add more values to continuation handling")
-                        ))))))
+            (λ (k f) (f k (lambda (_ a) (k a))))))
+
+      (define call/cc2
+         ('_sans_cps
+            (λ (k f) (f k (lambda (_ a b) (k a b))))))
+
+      (define call/cc3
+         ('_sans_cps
+            (λ (k f) (f k (lambda (_ a b c) (k a b c))))))
 
       (define-syntax lets/cc
          (syntax-rules (call/cc)
@@ -222,6 +195,13 @@ VM primops
                (syntax-error "let/cc: continuation name cannot be " (quote (om . nom))))
             ((lets/cc var . body)
                (call/cc (λ (var) (lets . body))))))
+
+      (define-syntax lets/cc1
+         (syntax-rules (call/cc1)
+            ((lets/cc1 (om . nom) . fail)
+               (syntax-error "let/cc1: continuation name cannot be " (quote (om . nom))))
+            ((lets/cc1 var . body)
+               (call/cc1 (λ (var) (lets . body))))))
 
       ;; unsafe function - not to be exported!
       (define get-header (bytes->bytecode '(1 4 0 5 24 5)))
@@ -241,6 +221,8 @@ VM primops
             ((eq? op 32) 'bind)
             ((eq? op 50) 'run)
             ((eq? op 61) 'arity-error)
+            ((eq? op 60) 'arity-error)
+            ((eq? op 57) 'variable-arity-error)
             (else #false)))
 
       (define (primop-name pop)

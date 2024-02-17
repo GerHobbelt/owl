@@ -33,15 +33,18 @@
       ;; the functionality comes from the imported library
       ;; here we just nail down some semantics using (owl proof)
 
+      (define rla (rlist 1 2))
+      (define rlb (rlist 3 4 5))
+      
       (example
 
          (rcar (rcons 11 rnull)) = 11
 
          (rget rnull 100 'no) = 'no
 
-         (rget (rlist 11 22 33) 2 'no) = 33
+         (rget rla 1 'no) = 2
 
-         (rget (list->rlist '(11 22 33)) 9 'no) = 'no
+         (rget rla 9 'no) = 'no
 
          (rnull? (rcdr (rcons 11 rnull))) = #t
 

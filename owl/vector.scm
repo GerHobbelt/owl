@@ -519,13 +519,9 @@ Vectors use the same order, but with 256-ary trees.
          (B list->vector vec-iterr))
 
       ;; fixme: make-vector does not share the nodes despite most being equal
-      (define make-vector
-         (case-lambda
-            ((n)
-               (list->vector (make-list n #f)))
-            ((n val)
-               (list->vector (make-list n val)))))
-
+      (define (make-vector n . elem?)
+         (list->vector (make-list n (if (null? elem?) #f (car elem?)))))
+      
       ;;;
       ;;; Vector construction
       ;;;

@@ -22,7 +22,7 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
    (import
       (owl core)
       (only (owl parse) one-of try-parse)
-      (prefix (only (owl parse) byte either epsilon imm parses star plus) get-)
+      (prefix (only (owl parse) byte rune either epsilon imm parses star plus) get-)
       (only (owl syscall) error)
       (owl io)
       (owl lcd ff)
@@ -194,6 +194,7 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
 
       ;;; non-greedy (altruistic?) quantifiers
 
+      ;; <rx>*?
       (define (alt-star rx)
          (define (collect ls buff ms cont)
             (or (cont ls buff ms)
@@ -379,7 +380,6 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
       (define blank-ranges
          (list start-node))
 
-
       (define (null-ll? ll)
          (cond
             ((null? ll) #true)
@@ -496,13 +496,13 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
       ;; it may either itself find all the matches and perform substitutions,
       ;; handle the first one, or something completely different.
 
-      ;; fixme: trailing \ is handled wrong
+      ;; fixme: trailing \ is allowed
       ;; copy and fill in submatches
       (define (replace rep ms tl)
          (foldr
             (λ (char tl)
                (cond
-                  ((eq? char 92) ;; \
+                  ((eq? char #\\) ;; handle quotation
                      (if (null? tl)
                         (cons char tl)
                         (let ((op (car tl)))
@@ -512,8 +512,16 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
                                     (if submatch
                                        (append submatch (cdr tl))
                                        tl))) ;; todo: add a fail cont and complain about bad backreference
-                              ((eq? op 92) tl) ; \\
-                              (else ;; todo: warn about unhandeld quote
+                              ((eq? op #\\) 
+                                 tl) ; \\
+                              ((eq? op #\n)
+                                 (cons #\newline (cdr tl)))
+                              ((eq? op #\t)
+                                 (cons #\tab (cdr tl)))
+                              ((eq? op #\r)
+                                 (cons #\return (cdr tl)))
+                              (else 
+                                 ;; todo: unhandeld quote warning should turn up at parse time
                                  tl)))))
                   (else
                      (cons char tl))))
@@ -557,30 +565,6 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
                (else
                   (rex-replace (iter target) rex rep start? all?)))))
 
-      (define (rex-full-match ll rex)
-         (let ((match (rex-match-prefix rex ll)))
-            (if match
-               (lets
-                  ((ls buff ms match))
-                  ;; check end of stream
-                  (lets ((a ls (uncons ls #false)))
-                     (if a #false ms)))
-               #false)))
-
-      (define (make-full-match rex)
-         (λ (target)
-            (cond
-               ((string? target)
-                  (let ((res (rex-full-match (str-iter target) rex)))
-                     (if res
-                        (map (B runes->string cdr)
-                           (cdr (reverse res)))
-                        #false)))
-               (else
-                  (let ((res (rex-full-match (iter target) rex)))
-                     (if res
-                        (map cdr (cdr (reverse res)))
-                        res))))))
 
 
       ;;;
@@ -599,7 +583,9 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
 
       ;; todo: / or ?, and carry along in get-regex
       (define get-regex-delim
-         (get-imm #\/))
+         ;(get-imm #\/)
+         get-rune
+         )
 
       ;; → (rex → rex')
       (define get-rex-star
@@ -897,16 +883,16 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
       (define (get-regex)
          (get-parses
             ((hd (get-catn get-regex))
-             (tl (get-star (get-parses ((skip (get-imm 124)) (rex (get-catn get-regex))) rex))))
+             (tl (get-star (get-parses ((skip (get-imm #\|)) (rex (get-catn get-regex))) rex))))
             (fold rex-or hd tl)))
 
       (define get-matcher-regex
          (get-parses
             ((skip (get-imm #\m)) ;; [m]atch
-             (skip (get-imm 47))  ;; opening /
-             (start? (get-either (get-imm 94) (get-epsilon #false))) ;; maybe get leading ^ (special)
+             (skip (get-imm #\/))
+             (start? (get-either (get-imm #\^) (get-epsilon #false))) ;; maybe get leading ^ (special)
              (rex (get-regex))
-             (skip (get-imm 47))) ;; closing /
+             (skip (get-imm #\/)))
             (make-matcher rex start?)))
 
       ;; a parser for terms like ab{1,3}a* with implicit ^ and $
@@ -933,15 +919,16 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
             )
            (make-cutter rex start?)))
 
+      ;; could allow alternate terminals now that the syntax is decoubled from sexps
       (define get-replace-char
          (get-either
-            (get-parses ;; quoted
-               ((skip (get-imm 92)) ;; \\
-                (char (get-imm 98)))
+            (get-parses ;; quoted terminal
+               ((skip (get-imm #\\)) 
+                (char (get-imm #\/)))
                char)
-            (get-parses ;; something other than /
-               ((char get-byte)
-                (verify (not (eq? char 47)) #false))
+            (get-parses ;; something other than the terminal
+               ((char get-rune)
+                (verify (not (eq? char #\/)) #false))
                char)))
 
       (define get-maybe-g
@@ -951,23 +938,15 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
 
       (define get-replace-regex
          (get-parses
-            ((skip (get-imm 115))  ;; opening s
-             (skip (get-imm 47))  ;; opening /
-             (start? (get-either (get-imm 94) (get-epsilon #false))) ;; maybe get leading ^ (special)
+            ((skip (get-imm #\s))     ;; opening s
+             (delim get-regex-delim)  ;; opening /
+             (start? (get-either (get-imm #\^) (get-epsilon #false))) ;; maybe get leading ^ (special)
              (rex (get-regex))
-             (skip (get-imm 47))  ;; delimiting /
+             (skip (get-imm delim))  ;; delimiter
              (rep (get-star get-replace-char))
-             (skip (get-imm 47)) ;; closing /
-             (all? get-maybe-g)) ;; fixme: add other search/replace match than g
+             (skip (get-imm delim)) ;; closing /
+             (all? get-maybe-g)) 
             (make-replacer rex rep all? start?)))
-
-      (define get-full-match-regex
-         (get-parses
-            ((skip (get-imm #\M))  ;; opening s
-             (delim get-regex-delim)
-             (rex (get-regex))     ;; delim not carried yet
-             (skip (get-imm delim)))
-            (make-full-match rex)))
 
       (define get-sexp-regex
          (one-of
@@ -975,7 +954,6 @@ syntax ref of portable scheme regexps (Dorai Sitaram): http://evalwhen.com/prege
             get-matcher-regex
             get-cutter-regex
             get-copy-matcher-regex ;; m/<regex>/ -> like /<regex>/ but returns a list of the matched data
-            get-full-match-regex ;; M/<regex>/ -> return list of (fully matched) patterns, test
             ))
 
       ;; str -> rex|#false, for conversion of strings to complete matchers

@@ -17,11 +17,10 @@ with checked structure to avoid having to constantly check S-expression structur
       (owl core)
       (owl equal)
       (owl eval env)
+      (owl eval data)
       (scheme cxr))
 
    (begin
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define (call? thing) (eq? (ref thing 1) 'call))
       (define (var? thing) (eq? (ref thing 1) 'var))
@@ -31,7 +30,7 @@ with checked structure to avoid having to constantly check S-expression structur
          (tuple 'value val))
 
       (define (mklambda formals body)
-         (tuple 'lambda formals body))
+         (tuple 'lambda-var #t formals body))
 
       ;; formals is a list as usual, but last one will be bound to an arg list
       ;; having an extra var? field because the fixed one could be merged to this later
@@ -95,14 +94,6 @@ with checked structure to avoid having to constantly check S-expression structur
                                     (else
                                        (mkvarlambda formals
                                           (translate body (env-bind env formals) fail))))))
-                           ((> len 3)
-                              ;; recurse via translate
-                              (let
-                                 ((formals (cadr exp))
-                                  (body (cddr exp)))
-                                 (translate
-                                    (list 'lambda formals
-                                       (cons 'begin body)) env fail)))
                            (else
                               (fail (list "Bad lambda: " exp))))))
                   ((rlambda) ;;; (rlambda formals definitions body)
@@ -138,17 +129,10 @@ with checked structure to avoid having to constantly check S-expression structur
                               (translate then env fail)
                               (translate else env fail)))
                         (fail (list "Bad branch: " exp))))
-                  ((_case-lambda)
-                     (if (= (length exp) 3)
-                        (tuple 'case-lambda
-                           (translate (cadr exp) env fail)
-                           (translate (caddr exp) env fail))
-                        (fail (list "Bad case-lambda node: " exp))))
                   ((receive) ; (receive <exp> <receiver>)
                      (tuple 'receive
                         (translate (list-ref exp 1) env fail)
                         (translate (list-ref exp 2) env fail)))
-                  ;; FIXME pattern
                   ((values)
                      (tuple 'values
                         (map (λ (arg) (translate arg env fail)) (cdr exp))))
@@ -162,16 +146,10 @@ with checked structure to avoid having to constantly check S-expression structur
                   (map
                      (λ (x) (translate x env fail))
                      (cdr exp))))
-            ;; both now handled by apply-env
-            ;((undefined)
-            ;   (fail (list "i do not know this function" exp)))
-            ; left here to handle primops temporarily
             ((defined value)
                (mkcall value
                   (map (λ (x) (translate x env fail)) (cdr exp))))
             (else
-               ; could be useful for (eval (list + 1 2) env)
-               ; so just warn for now
                (fail
                   (list
                      "Unknown value type in ast conversion: "
@@ -208,12 +186,10 @@ with checked structure to avoid having to constantly check S-expression structur
                            (lookup env exp))))))
             (else (mkval exp))))
 
-      ; -> #(ok exp' env) | #(fail reason)
-
       (define (sexp->ast exp env)
          (call/cc
             (λ (drop)
-               (tuple 'ok
+               (ok
                   (translate exp env (B drop fail))
                   env))))
 ))

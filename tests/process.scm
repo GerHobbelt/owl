@@ -30,6 +30,10 @@
 
 (define pipefd (sys-pipe))
 
+(define leading-dash? (string->regex "m/^\\//"))
+
+(define split-colon (string->regex "c/:/"))
+
 (if pipefd
    (case (sys-fork)
       ((#false)
@@ -41,9 +45,9 @@
          (close-port (cdr pipefd))
          (for-each
             (λ (path)
-               (if (m/^\// path)
+               (if (leading-dash? path)
                   (sys-exec (string-append path "/echo") '("echo" "hello"))))
-            (c/:/ (sys-getenv "PATH")))
+            (split-colon (sys-getenv "PATH")))
          (halt 45))
       (else => (λ (pid)
          ;; parent: close write end

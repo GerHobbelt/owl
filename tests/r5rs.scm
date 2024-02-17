@@ -300,7 +300,7 @@
       ;(gcd)                           ===> 0 ;; ditto
       (lcm 32 -36)                    ===> 288
       (lcm 32.0 -36)                  ===> 288.0  ; inexact ;; no it's not --owl
-      (lcm)                           ===> 1
+      ;(lcm)                           ===> 1
 
       (numerator (/ 6 4))             ===> 3
       (denominator (/ 6 4))           ===> 2

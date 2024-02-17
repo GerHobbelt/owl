@@ -12,13 +12,12 @@
       (owl io)
       (only (owl syscall) error)
       (only (owl eval env) primop? primop-of)
+      (owl eval data)
       (owl primop))
 
    (begin
       ;; fixme: information about cps-special primops could be stored elsewhere
 
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define (cps-literal exp env cont free)
          (values
@@ -30,9 +29,8 @@
             ((cont-sym free (fresh free))
              (body free (cps body env (mkvar cont-sym) free)))
             (values
-               (if fixed?  ;; <- fixme, merge with node having fixedness later
-                  (mklambda (cons cont-sym formals) body)
-                  (mkvarlambda (cons cont-sym formals) body))
+               (tuple 'lambda-var fixed? 
+                  (cons cont-sym formals) body)
                free)))
 
       (define (cps-lambda cps formals fixed? body env cont free)
@@ -47,9 +45,6 @@
                 (rands (cdr call)))
                (values (mkcall rator rands) free))
             (tuple-case (car args)
-               ((lambda formals body)
-                  (lets ((lexp free (cps-just-lambda cps formals #true body env free)))
-                     (cps-args cps (cdr args) (cons lexp call) env free)))
                ((lambda-var fixed? formals body)
                   (lets ((lexp free (cps-just-lambda cps formals fixed? body env free)))
                      (cps-args cps (cdr args) (cons lexp call) env free)))
@@ -74,11 +69,13 @@
       (define (cps-bind cps rator rands env cont free)
          (if (= (length rands) 2)
             (tuple-case (cadr rands)
-               ((lambda formals body)
-                  (lets ((body free (cps body env cont free)))
-                     (cps-args cps (list (car rands))
-                        (list (mklambda formals body) rator)
-                        env free)))
+               ((lambda-var fixed? formals body)
+                  (if fixed?
+                     (lets ((body free (cps body env cont free)))
+                        (cps-args cps (list (car rands))
+                           (list (mklambda formals body) rator)
+                           env free))
+                     (error "bad tuple bind: " 'variable-arity)))
                (else
                   (error "bad arguments for tuple bind: " rands)))
             (error "bad arguments for tuple bind: " rands)))
@@ -104,25 +101,21 @@
 
       (define (cps-call cps rator rands env cont free)
          (tuple-case rator
-            ((lambda formals body)
-               (lets
-                  ((body free (cps body env cont free)))
-                  (if (null? formals)
-                     ;;; drop lambdas from ((lambda () X))
-                     (values body free)
-                     (cps-args cps rands
-                        (list (mklambda formals body))
-                        env free))))
             ((lambda-var fixed? formals body)
                (cond
-                  (fixed? ;; downgrade to a regular lambda
-                     (cps-call cps
-                        (tuple 'lambda formals body)
-                        rands env cont free))
+                  (fixed?
+                     (lets
+                        ((body free (cps body env cont free)))
+                        (if (null? formals)
+                           ;;; drop lambdas from ((lambda () X))
+                           (values body free)
+                           (cps-args cps rands
+                              (list (mklambda formals body))
+                              env free))))
                   ((enlist-improper-args formals rands) => ;; downgrade to a regular lambda converting arguments
                      (λ (rands)
                         (cps-call cps
-                           (tuple 'lambda formals body)
+                           (mklambda formals body)
                            rands env cont free)))
                   (else
                      (error "Bad head lambda arguments:" (list 'args formals 'rands rands)))))
@@ -172,21 +165,6 @@
                    (rest free
                      (cps-branch cps kind a (mkvar this) then else env cont free)))
                   (cps b env (mklambda (list this) rest) free)))
-            ((eq? kind 4)
-               ; a binding type discrimination. matching branch is treated as in bind
-               ; only cps-ing body to current continuation
-               (tuple-case then
-                  ((lambda formals body)
-                     (lets
-                        ((then-body free (cps body env cont free))
-                         (else free (cps else env cont free)))
-                        (values
-                           (tuple 'branch kind a b
-                              (mklambda formals then-body)
-                              else)
-                           free)))
-                  (else
-                     (error "cps-branch: then is not a lambda: " then))))
             (else
                (lets
                   ((then free (cps then env cont free))
@@ -197,12 +175,6 @@
 
       (define (cps-receive cps exp semi-cont env cont free)
          (tuple-case semi-cont
-            ((lambda formals  body)
-               (lets ((body-cps free (cps body env cont free)))
-                  (cps exp env
-                     (mklambda formals body-cps)
-                     free)))
-            ;; FIXME: this ends up as operator, but doesn't go through the call operator variable lambda conversion and thus confuses rtl-* which assume all operator lambdas are already taken care of by CPS
             ((lambda-var fixed? formals  body)
                (lets ((body-cps free (cps body env cont free)))
                   (cps exp env
@@ -211,30 +183,12 @@
             (else
                (error "cps-receive: receiver is not a lambda. " semi-cont))))
 
-      ;; translate a chain of lambdas as if they were at operator position
-      ;; note! also cars are handled as the same jump, which is silly
-      (define (cps-case-lambda cps node env cont free)
-         (tuple-case node
-            ((case-lambda fn else)
-               (lets
-                  ((fn free (cps-case-lambda cps fn env cont free))
-                   (else free (cps-case-lambda cps else env cont free)))
-                  (values (tuple 'case-lambda fn else) free)))
-            ((lambda formals body)
-               (cps-just-lambda cps formals #true body env free))
-            ((lambda-var fixed? formals body)
-               (cps-just-lambda cps formals fixed? body env free))
-            (else
-               (error "cps-case-lambda: what is " node))))
-
       (define (cps-exp exp env cont free)
          (tuple-case exp
             ((value val)
                (cps-literal exp env cont free))
             ((var sym)
                (cps-literal exp env cont free))
-            ((lambda formals body)
-               (cps-lambda cps-exp formals #true body env cont free))
             ((lambda-var fixed? formals body)
                (cps-lambda cps-exp formals fixed? body env cont free))
             ((call rator rands)
@@ -245,9 +199,6 @@
                (cps-values cps-exp vals env cont free))
             ((receive exp target)
                (cps-receive cps-exp exp target env cont free))
-            ((case-lambda fn else)
-               (lets ((res free (cps-case-lambda cps-exp exp env cont free)))
-                  (values (mkcall cont (list res)) free)))
             (else
                (error "CPS does not do " exp))))
 
@@ -257,20 +208,16 @@
                (eq? this val))
             (else #false)))
 
-      ; pass fail to cps later and exit via it on errors
-
       (define (cps exp env)
          (or
             (call/cc
                (λ (fail)
                   (let ((cont-sym (gensym exp)))
-                     ; a hack to be able to define code sans cps
-                     ; a better solution would be ability to change the
-                     ; compiler chain interactively
                      (if (and
                            (call? exp)
                            (val-eq? (ref exp 2) '_sans_cps)
-                           (= (length (ref exp 3)) 1))
+                           ; (= (length (ref exp 3)) 1)
+                           )
                         (ok
                            (mklambda (list cont-sym)
                               (mkcall (mkvar cont-sym)

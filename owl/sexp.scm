@@ -30,8 +30,7 @@
       (owl primop)
       (owl unicode)
       (only (owl syscall) error)
-      (only (owl intern) intern-symbols string->uninterned-symbol)
-      (only (owl regex) get-sexp-regex))
+      (only (owl intern) intern-symbols string->uninterned-symbol))
 
    (begin
 
@@ -382,17 +381,12 @@
                (get-one-of
                   (get-list-of (get-sexp))
                   get-number         ;; more than a simple integer
-                  get-sexp-regex ;; must be before identifiers, which also may start with /
                   get-identifier
                   (get-hash-prefixed (get-sexp))
                   get-string
                   (get-quoted (get-sexp))
                   (get-byte-if eof-object?))))
             val))
-
-      (define (ok? x) (eq? (ref x 1) 'ok))
-      (define (ok exp env) (tuple 'ok exp env))
-      (define (fail reason) (tuple 'fail reason))
 
       (define sexp-parser
          ;; do not read trailing white-space to avoid blocking, when parsing a stream
